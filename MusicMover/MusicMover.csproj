@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>MusicMover</AssemblyName>
+        <RootNamespace>MusicMover</RootNamespace>
+        <PackageId>MusicMover</PackageId>
+        <Authors>MusicMover</Authors>
+        <Company>MusicMover</Company>
+        <Product>MusicMover</Product>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="ConsoleAppFramework" Version="5.2.4">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="ShuffleList" Version="1.0.0" />
+      <PackageReference Include="Spectre.Console" Version="0.49.2-preview.0.44" />
+      <PackageReference Include="Spectre.Console.Cli" Version="0.49.2-preview.0.44" />
+      <PackageReference Include="System.Runtime.Caching" Version="9.0.0-rc.1.24431.7" />
+      <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    </ItemGroup>
+
+</Project>
