@@ -13,4 +13,5 @@ public class CliOptions
     public List<string> ExtraScans { get; set; } = new List<string>();
     public bool RenameVariousArtists { get; set; }
     public bool ExtraDirMustExist { get; set; }
+    public bool UpdateArtistTags { get; set; }
 }

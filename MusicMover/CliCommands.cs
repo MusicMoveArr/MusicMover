@@ -19,8 +19,9 @@ public class CliCommands
     /// <param name="extrascan">-a, Scan a extra directory, besides the target directory.</param>
     /// <param name="variousArtists">-va, Rename "Various Artists" in the file name with First Performer.</param>
     /// <param name="extraDirMustExist">-AX, Artist folder must already exist in the extra scanned directories.</param>
+    /// <param name="updateArtistTags">-UA, Update Artist metadata tags.</param>
     [Command("")]
-    public static void Root(string from, 
+    public static void Root(string from,
         string target, 
         bool createArtistDirectory, 
         bool createAlbumDirectory, 
@@ -29,6 +30,7 @@ public class CliCommands
         bool dryrun = false,
         bool variousArtists = false,
         bool extraDirMustExist = false,
+        bool updateArtistTags = false,
         int skipDirectories = 0,
         List<string> extrascans = null,
         string extrascan = null)
@@ -52,6 +54,7 @@ public class CliCommands
         options.DeleteDuplicateFrom = deleteDuplicateFrom;
         options.RenameVariousArtists = variousArtists;
         options.ExtraDirMustExist = extraDirMustExist;
+        options.UpdateArtistTags = updateArtistTags;
 
         if (extrascans?.Count > 0)
         {

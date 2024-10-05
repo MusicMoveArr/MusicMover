@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Caching;
+using TagLib;
 using File = TagLib.File;
 
 namespace MusicMover;
@@ -16,6 +17,7 @@ public class MoveProcessor
     private int scannedTargetFiles = 0;
     private int cachedReadTargetFiles = 0;
     private object CounterLock = new object();
+    private int updatedTagfiles = 0;
     
     private Stopwatch sw = Stopwatch.StartNew();
     private Stopwatch runtimeSw = Stopwatch.StartNew();
@@ -94,7 +96,9 @@ public class MoveProcessor
                 continue;
             }
             
+            string oldArtistName = tagFile.Tag.FirstAlbumArtist;
             string artist = tagFile.Tag.FirstAlbumArtist;
+            bool updatedArtistName = false;
 
             if (string.IsNullOrWhiteSpace(artist) ||
                 (artist == VariousArtistsName && !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)))
@@ -112,12 +116,14 @@ public class MoveProcessor
             
             DirectoryInfo toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
             DirectoryInfo toAlbumDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}/{SanitizeAlbumName(tagFile.Tag.Album)}");
-
+            
             if (!toArtistDirInfo.Exists)
             {
                 if (artist.Contains(','))
                 {
                     artist = artist.Substring(0, artist.IndexOf(',')).Trim();
+                    
+                    updatedArtistName = true;
                     if (!SetToArtistDirectory(artist, tagFile, out toArtistDirInfo, out toAlbumDirInfo))
                     {
                         continue;
@@ -126,6 +132,7 @@ public class MoveProcessor
                 else if (artist.Contains('&'))
                 {
                     artist = artist.Substring(0, artist.IndexOf('&')).Trim();
+                    updatedArtistName = true;
                     if (!SetToArtistDirectory(artist, tagFile, out toArtistDirInfo, out toAlbumDirInfo))
                     {
                         continue;
@@ -134,6 +141,7 @@ public class MoveProcessor
                 else if (artist.Contains('+'))
                 {
                     artist = artist.Substring(0, artist.IndexOf('+')).Trim();
+                    updatedArtistName = true;
                     if (!SetToArtistDirectory(artist, tagFile, out toArtistDirInfo, out toAlbumDirInfo))
                     {
                         continue;
@@ -142,6 +150,7 @@ public class MoveProcessor
                 else if (artist.Contains('/'))
                 {
                     artist = artist.Substring(0, artist.IndexOf('/')).Trim();
+                    updatedArtistName = true;
                     if (!SetToArtistDirectory(artist, tagFile, out toArtistDirInfo, out toAlbumDirInfo))
                     {
                         continue;
@@ -150,6 +159,7 @@ public class MoveProcessor
                 else if (artist.Contains(" feat"))
                 {
                     artist = artist.Substring(0, artist.IndexOf(" feat")).Trim();
+                    updatedArtistName = true;
                     if (!SetToArtistDirectory(artist, tagFile, out toArtistDirInfo, out toAlbumDirInfo))
                     {
                         continue;
@@ -173,7 +183,7 @@ public class MoveProcessor
             
             
             
-            List<SimilarFileInfo> similarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, toArtistDirInfo, out scanErrors);
+            List<SimilarFileInfo> similarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, toArtistDirInfo, artist, out scanErrors);
 
             if (scanErrors)
             {
@@ -192,7 +202,7 @@ public class MoveProcessor
                     continue;
                 }
                 
-                var extraSimilarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, extraDirInfo, out scanErrors);
+                var extraSimilarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, extraDirInfo, artist, out scanErrors);
                 
                 if (scanErrors)
                 {
@@ -240,6 +250,8 @@ public class MoveProcessor
                     
                     Debug.WriteLine($"Created directory, {toAlbumDirInfo.FullName}");
                 }
+
+                UpdateArtistTag(updatedArtistName, tagFile, oldArtistName, artist, fromFile);
                 
                 fromFile.MoveTo(newFromFilePath, true);
                 
@@ -283,6 +295,7 @@ public class MoveProcessor
                     
                         Debug.WriteLine($"Created directory, {toAlbumDirInfo.FullName}");
                     }
+                    UpdateArtistTag(updatedArtistName, tagFile, oldArtistName, artist, fromFile);
                     fromFile.MoveTo(newFromFilePath, true);
                     similarFile.File.Delete();
                 
@@ -349,7 +362,7 @@ public class MoveProcessor
         return toArtistDirInfo.Exists;
     }
     
-    private List<SimilarFileInfo> GetSimilarFileFromTagsArtist(TagLib.File matchTagFile, FileInfo fromFileInfo, DirectoryInfo toArtistDirInfo, out bool errors)
+    private List<SimilarFileInfo> GetSimilarFileFromTagsArtist(TagLib.File matchTagFile, FileInfo fromFileInfo, DirectoryInfo toArtistDirInfo, string artistName, out bool errors)
     {
         errors = false;
         List<SimilarFileInfo> tagFiles = new List<SimilarFileInfo>();
@@ -389,8 +402,10 @@ public class MoveProcessor
 
                 if (tagFile.Tag.Title == matchTagFile.Tag.Title &&
                     tagFile.Tag.Album == matchTagFile.Tag.Album &&
-                    (tagFile.Tag.FirstAlbumArtist == matchTagFile.Tag.FirstAlbumArtist ||
-                     tagFile.Tag.FirstPerformer == matchTagFile.Tag.FirstPerformer))
+                    ((tagFile.Tag.FirstAlbumArtist == matchTagFile.Tag.FirstAlbumArtist ||
+                     tagFile.Tag.FirstPerformer == matchTagFile.Tag.FirstPerformer) ||
+                    (tagFile.Tag.FirstAlbumArtist == artistName ||
+                     tagFile.Tag.FirstPerformer == artistName)))
                 {
                     tagFiles.Add(new SimilarFileInfo(toFile, tagFile));
                 }
@@ -411,6 +426,21 @@ public class MoveProcessor
         return tagFiles;
     }
 
+    private void UpdateArtistTag(bool updatedArtistName, TagLib.File tagFile, string oldArtistName, string artist, FileInfo fromFile)
+    {
+        if (updatedArtistName && _options.UpdateArtistTags)
+        {
+            tagFile.Tag.AlbumArtists = new[] { artist };
+            tagFile.Tag.Performers = new[] { artist };
+            tagFile.Save();
+            Console.WriteLine($"Updated {updatedTagfiles}, {oldArtistName} => {artist}, {fromFile.FullName}");
+            lock (CounterLock)
+            {
+                updatedTagfiles++;
+            }
+        }
+    }
+
     private string SanitizeAlbumName(string albumName)
     {
         return albumName
@@ -429,6 +459,7 @@ public class MoveProcessor
     {
         Console.WriteLine($"Stats: Moved {movedFiles}, " +
                           $"Local Delete: {localDelete}, " +
+                          $"Updated Artist Tags: {updatedTagfiles}, " +
                           $"created SubDirectories: {createdSubDirectories}, " +
                           $"Scanned From Files: {scannedFromFiles}. " +
                           $"Cached Read Target Files: {cachedReadTargetFiles}. " +
