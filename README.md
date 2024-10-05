@@ -58,3 +58,15 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --various-artists \
 --update-Artist-Tags
 ```
+
+# Build
+## ArchLinux
+```
+sudo pacman -Syy dotnet-sdk-8.0 git
+git clone https://github.com/MusicMoveArr/MusicMover.git
+cd MusicMover
+dotnet restore
+dotnet build
+cd MusicMover/bin/Debug/net8.0
+dotnet MusicMover.dll --help
+```
