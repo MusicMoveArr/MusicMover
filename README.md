@@ -35,6 +35,8 @@ Update the Artist and Performers tags by using "--update-Artist-Tags", this will
 ```
 dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --from "~/Downloads" \
+--extrascans "[\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"]", \
+--artist-dirs-must-not-exist "[\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"]", \
 --target "~/Music" \
 --create-album-directory \
 --create-artist-directory \
@@ -47,7 +49,8 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 ```
 dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --from "~/Downloads" \
---extrascan "/mnt/usb/Music" \
+--extrascans "[\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"]", \
+--artist-dirs-must-not-exist "[\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"]", \
 --target "~/Music" \
 --create-album-directory \
 --create-artist-directory \
@@ -56,7 +59,8 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --delete-duplicate-from \
 --skip-directories 5 \
 --various-artists \
---update-Artist-Tags
+--update-Artist-Tags \
+--fix-file-corruption
 ```
 
 # Build
