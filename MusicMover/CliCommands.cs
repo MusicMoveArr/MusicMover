@@ -19,9 +19,11 @@ public class CliCommands
     /// <param name="extrascan">-a, Scan a extra directory, besides the target directory.</param>
     /// <param name="variousArtists">-va, Rename "Various Artists" in the file name with First Performer.</param>
     /// <param name="extraDirMustExist">-AX, Artist folder must already exist in the extra scanned directories.</param>
+    /// <param name="artistDirsMustNotExist">-AN, Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g.</param>
     /// <param name="updateArtistTags">-UA, Update Artist metadata tags.</param>
+    /// <param name="fixFileCorruption">-FX, Attempt fixing file corruption by using FFMpeg for from/target/scan files.</param>
     [Command("")]
-    public static void Root(string from,
+    public static void Root(string from, 
         string target, 
         bool createArtistDirectory, 
         bool createAlbumDirectory, 
@@ -31,8 +33,10 @@ public class CliCommands
         bool variousArtists = false,
         bool extraDirMustExist = false,
         bool updateArtistTags = false,
+        bool fixFileCorruption = false,
         int skipDirectories = 0,
         List<string> extrascans = null,
+        List<string> artistDirsMustNotExist = null,
         string extrascan = null)
     {
         if (!target.EndsWith('/'))
@@ -55,6 +59,20 @@ public class CliCommands
         options.RenameVariousArtists = variousArtists;
         options.ExtraDirMustExist = extraDirMustExist;
         options.UpdateArtistTags = updateArtistTags;
+        options.FixFileCorruption = fixFileCorruption;
+        
+        Console.WriteLine("Options used:");
+        Console.WriteLine($"From Directory: {options.FromDirectory}");
+        Console.WriteLine($"ToDirectory: {options.ToDirectory}");
+        Console.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
+        Console.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");
+        Console.WriteLine($"Parallel: {options.Parallel}");
+        Console.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
+        Console.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
+        Console.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
+        Console.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
+        Console.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
+        Console.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
 
         if (extrascans?.Count > 0)
         {
@@ -66,6 +84,21 @@ public class CliCommands
                     extra += '/';
                 }
                 options.ExtraScans.Add(extra);
+                Console.WriteLine($"Extra scans, {extra}");
+            }
+        }
+        
+        if (artistDirsMustNotExist?.Count > 0)
+        {
+            foreach (string artistDir in artistDirsMustNotExist)
+            {
+                string directory = artistDir;
+                if (!directory.EndsWith('/'))
+                {
+                    directory += '/';
+                }
+                options.ArtistDirsMustNotExist.Add(directory);
+                Console.WriteLine($"Artist Directories Must Not Exist, {directory}");
             }
         }
 
@@ -76,9 +109,8 @@ public class CliCommands
                 extrascan += '/';
             }
             options.ExtraScans.Add(extrascan);
+            Console.WriteLine($"Extra scan, {extrascan}");
         }
-        
-        
         
         MoveProcessor moveProcessor = new MoveProcessor(options);
         moveProcessor.Process();

@@ -11,7 +11,10 @@ public class CliOptions
     public int SkipFromDirAmount { get; set; }
     public bool DeleteDuplicateFrom { get; set; }
     public List<string> ExtraScans { get; set; } = new List<string>();
+    public List<string> ArtistDirsMustNotExist { get; set; } = new List<string>();
+    
     public bool RenameVariousArtists { get; set; }
     public bool ExtraDirMustExist { get; set; }
     public bool UpdateArtistTags { get; set; }
+    public bool FixFileCorruption { get; set; }
 }

@@ -3,11 +3,11 @@ namespace MusicMover;
 public class SimilarFileInfo
 {
     public FileInfo File { get; set; }
-    public TagLib.File Tag { get; set; }
+    public CachedMediaInfo MediaInfo { get; set; }
 
-    public SimilarFileInfo(FileInfo file, TagLib.File tag)
+    public SimilarFileInfo(FileInfo file, CachedMediaInfo mediaInfo )
     {
         this.File = file;
-        this.Tag = tag;
+        this.MediaInfo = mediaInfo;
     }
 }
