@@ -15,15 +15,13 @@ public class CorruptionFixer
         ProcessStartInfo ffmpegStartInfo = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments = $"-i \"{input.FullName}\" -c copy -movflags faststart \"{tempFile}\"",
+            Arguments = $"-i \"{input.FullName}\" -c copy -movflags +faststart \"{tempFile}\"",
             RedirectStandardOutput = true,  // Redirect standard output
             RedirectStandardError = true,   // Redirect standard error
             UseShellExecute = false,        // Necessary to redirect output
             CreateNoWindow = true           // Prevents the creation of a console window
         };
         Process ffmpegProcess = Process.Start(ffmpegStartInfo);
-        
-        //Process ffmpegProcess = Process.Start("ffmpeg", $"-i \"{input.FullName}\" -c copy -movflags faststart \"{tempFile}\"");
         
         ffmpegProcess.WaitForExit();
         
