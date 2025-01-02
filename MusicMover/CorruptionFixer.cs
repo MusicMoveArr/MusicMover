@@ -10,7 +10,6 @@ public class CorruptionFixer
     public bool FixCorruption(FileInfo input)
     {
         string tempFile = $"{input.FullName}{FileExtensionPostfix}{input.Extension}";
-        bool corruptedBefore = CanReadTags(input.FullName) == false;
         
         ProcessStartInfo ffmpegStartInfo = new ProcessStartInfo
         {
@@ -34,30 +33,8 @@ public class CorruptionFixer
             return false;
         }
 
-        bool corruptedAfter = CanReadTags(tempFile) == false;
-
-        if (corruptedBefore && !corruptedAfter)
-        {
-            File.Move(tempFile, input.FullName, true);
-            return true;
-        }
+        File.Move(tempFile, input.FullName, true);
         
-        if (File.Exists(tempFile))
-        {
-            File.Delete(tempFile);
-        }
-        
-        return false;
-    }
-    
-    private bool CanReadTags(string inputFile)
-    {
-        try
-        {
-            TagLib.File.Create(inputFile);
-            return true;
-        }
-        catch { }
-        return false;
+        return true;
     }
 }
