@@ -6,7 +6,7 @@ namespace MusicMover;
 
 public class IndexedMover
 {
-    public static void MoveIndexed(string FromRootDirectory, string ToRootDirectory)
+    /*public static void MoveIndexed(string FromRootDirectory, string ToRootDirectory)
     {
         //1. index files from FromRootDirectory for FileInfo / Media Tags
         //2. index files from ToRootDirectory for FileInfo / Media Tags
@@ -171,5 +171,5 @@ public class IndexedMover
                     }
                 }
             });
-    }
+    }*/
 }
