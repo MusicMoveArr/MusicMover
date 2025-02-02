@@ -44,7 +44,8 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --delete-duplicate-from \
 --skip-directories 5 \
 --various-artists \
---update-Artist-Tags
+--update-Artist-Tags \
+--fix-file-corruption
 ```
 ```
 dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
