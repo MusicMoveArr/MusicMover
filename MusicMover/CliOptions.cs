@@ -17,4 +17,9 @@ public class CliOptions
     public bool ExtraDirMustExist { get; set; }
     public bool UpdateArtistTags { get; set; }
     public bool FixFileCorruption { get; set; }
+    public string AcoustIdAPIKey { get; set; }
+    public string FileFormat { get; set; }
+    public string DirectorySeperator { get; set; }
+    public bool AlwaysCheckAcoustId { get; set; }
+    public bool ContinueScanError { get; set; }
 }

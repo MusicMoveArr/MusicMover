@@ -19,6 +19,12 @@ public class MediaFileInfo
     public string AcoustId { get; set; }
     public string AcoustIdFingerPrint { get; set; }
     public double BitRate { get; set; }
+    public int Disc { get; set; }
+
+    public MediaFileInfo()
+    {
+        
+    }
     
     public MediaFileInfo(FileInfo fileInfo)
     {
@@ -52,6 +58,19 @@ public class MediaFileInfo
             this.Track = trackValue;
             this.TrackCount = trackTotal;
         }
+
+        int disc = 0;
+        string discTag = mediaTags.FirstOrDefault(tag => tag.Key == "disc").Value;
+        if (discTag?.Contains('/') == true)
+        {
+            int.TryParse(discTag.Split('/')[0], out disc);
+        }
+        else
+        {
+            int.TryParse(discTag, out int discValue);
+            disc = discValue;
+        }
+        this.Disc = disc;
         
         this.AlbumArtist = mediaTags.FirstOrDefault(tag => tag.Key == "album_artist").Value;
         this.SortArtist = mediaTags.FirstOrDefault(tag => tag.Key == "artistsort").Value;

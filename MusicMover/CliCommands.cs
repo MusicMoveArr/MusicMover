@@ -22,6 +22,11 @@ public class CliCommands
     /// <param name="artistDirsMustNotExist">-AN, Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g.</param>
     /// <param name="updateArtistTags">-UA, Update Artist metadata tags.</param>
     /// <param name="fixFileCorruption">-FX, Attempt fixing file corruption by using FFMpeg for from/target/scan files.</param>
+    /// <param name="acoustidAPIKey">-AI When AcoustId API Key is set, try getting the artist/album/title when needed.</param>
+    /// <param name="fileFormat">-FF rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.</param>
+    /// <param name="directorySeperator">-ds, Directory Seperator replacer, replace '/' '\' to .e.g. '_'.</param>
+    /// <param name="alwaysCheckAcoustId">-ac, Always check & Write to media with AcoustId for missing tags.</param>
+    /// <param name="continueScanError">-CS, Continue on scan errors from the Music Libraries.</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -37,7 +42,12 @@ public class CliCommands
         int skipDirectories = 0,
         List<string> extrascans = null,
         List<string> artistDirsMustNotExist = null,
-        string extrascan = null)
+        string extrascan = null,
+        string acoustidAPIKey = null,
+        string fileFormat = "",
+        string directorySeperator = "_",
+        bool alwaysCheckAcoustId = false,
+        bool continueScanError = false)
     {
         if (!target.EndsWith('/'))
         {
@@ -60,6 +70,11 @@ public class CliCommands
         options.ExtraDirMustExist = extraDirMustExist;
         options.UpdateArtistTags = updateArtistTags;
         options.FixFileCorruption = fixFileCorruption;
+        options.AcoustIdAPIKey = acoustidAPIKey;
+        options.FileFormat = fileFormat;
+        options.DirectorySeperator = directorySeperator;
+        options.AlwaysCheckAcoustId = alwaysCheckAcoustId;
+        options.ContinueScanError = continueScanError;
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -73,6 +88,9 @@ public class CliCommands
         Console.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
         Console.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
         Console.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
+        Console.WriteLine($"AcoustIdAPIKey: {options.AcoustIdAPIKey}");
+        Console.WriteLine($"fileFormat: {options.FileFormat}");
+        Console.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
 
         if (extrascans?.Count > 0)
         {
@@ -113,6 +131,48 @@ public class CliCommands
         }
         
         MoveProcessor moveProcessor = new MoveProcessor(options);
+
+        if (!string.IsNullOrWhiteSpace(options.FileFormat))
+        {
+            MediaFileInfo mediaFileInfo = new MediaFileInfo();
+            mediaFileInfo.Artist = "Music";
+            mediaFileInfo.SortArtist = "Music";
+            mediaFileInfo.Title = "SomeTrack";
+            mediaFileInfo.Album = "Mover";
+            mediaFileInfo.Track = 5;
+            mediaFileInfo.TrackCount = 15;
+            mediaFileInfo.AlbumArtist = "MusicMover";
+            mediaFileInfo.BitRate = 320;
+            mediaFileInfo.Disc = 10;
+
+            if (!TestFileFormatOutput(moveProcessor, mediaFileInfo, options))
+            {
+                return;
+            }
+            
+            //test again but just 1 disc
+            mediaFileInfo.Disc = 1;
+            
+            if (!TestFileFormatOutput(moveProcessor, mediaFileInfo, options))
+            {
+                return;
+            }
+        }
+        
         moveProcessor.Process();
+    }
+
+    private static bool TestFileFormatOutput(MoveProcessor moveProcessor, MediaFileInfo fileInfo, CliOptions options)
+    {
+        string[] invalidCharacters = new string[] { "?", "<", ">", "=", "{", "}" };
+            
+        string newFileName = moveProcessor.GetFormatName(fileInfo, options.FileFormat, options.DirectorySeperator);
+        if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
+        {
+            Console.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
+            return false;
+        }
+
+        return true;
     }
 }
