@@ -47,6 +47,30 @@ Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {
 Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
 FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_filepath]"
 
+# Description of arguments
+| Longname Argument  | Shortname Argument | Description | Example |
+| ------------- | ------------- | ------------- | ------------- |
+| --from | -f | From the directory. | ~/Downloads |
+| --target | -t | directory to move/copy files to. | ~/Music |
+| --create-artist-directory | -g | Create Artist directory if missing on target directory. | [no value required] |
+| --create-album-directory | -u | Create Album directory if missing on target directory. | [no value required] |
+| --parallel | -p | multi-threaded processing. | [no value required] |
+| --delete-duplicate-from | -w | Delete the song in From Directory if already found at Target. | [no value required] |
+| --dryrun | -d | Dry run, no files are moved/copied. | [no value required] |
+| --various-artists | -va | Rename "Various Artists" in the file name with First Performer. | [no value required] |
+| --extra-dir-must-exist | -AX | Artist folder must already exist in the extra scanned directories. | [no value required] |
+| --update-artist-tags | -UA | Update Artist metadata tags. | [no value required] |
+| --fix-file-corruption | -FX | Attempt fixing file corruption by using FFMpeg for from/target/scan files. | [no value required] |
+| --skip-directories | -s | Skip X amount of directories in the From directory to process. | 5 |
+| --extrascans | -A | Scan extra directories, usage, ["a","b"], besides the target directory. | [\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"] |
+| --artist-dirs-must-not-exist | -AN | Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g. | [no value required] |
+| --extrascan | -a | Scan a extra directory, besides the target directory. | ~/nfs_share/Music |
+| --acoustid-api-key | -AI | When AcoustId API Key is set, try getting the artist/album/title when needed. | xxxxxxx |
+| --file-format | -FF | rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate} | {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title} |
+| --directory-seperator | -ds | Directory Seperator replacer, replace '/' '\' to .e.g. '_'. | _ |
+| --always-check-acoust-id | -ac | Always check & Write to media with AcoustId for missing tags. | [no value required] |
+| --continue-scan-error | -CS | Continue on scan errors from the Music Libraries. | [no value required] |
+
 # Usage
 ```
 dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
