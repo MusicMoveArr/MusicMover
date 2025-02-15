@@ -16,14 +16,14 @@ public class MusicBrainzArtistReleaseModel
     public string? Disambiguation { get; set; }
     public string? Quality { get; set; }
 
-    public List<MusicBrainzReleaseMediaModel>? Media { get; set; } = new List<MusicBrainzReleaseMediaModel>();
+    public List<MusicBrainzReleaseMediaModel> Media { get; set; } = new List<MusicBrainzReleaseMediaModel>();
     
     [JsonPropertyName("release-group")]
-    public MusicBrainzReleaseGroupModel ReleaseGroup { get; set; }
+    public MusicBrainzReleaseGroupModel? ReleaseGroup { get; set; }
     
     [JsonPropertyName("text-representation")]
-    public MusicBrainzTextRepresentationModel TextRepresentation { get; set; }
+    public MusicBrainzTextRepresentationModel? TextRepresentation { get; set; }
     
     [JsonPropertyName("label-info")]
-    public List<MusicBrainzLabelInfoModel> LabeLInfo { get; set; }
+    public List<MusicBrainzLabelInfoModel>? LabeLInfo { get; set; }
 }

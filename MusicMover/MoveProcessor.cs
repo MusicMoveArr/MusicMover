@@ -186,7 +186,7 @@ public class MoveProcessor
 
     private bool ProcessFromFile(FileInfo fromFile)
     {
-        MediaFileInfo tagFile = null;
+        MediaFileInfo? tagFile = null;
 
         try
         {
@@ -625,7 +625,7 @@ public class MoveProcessor
         return similarFiles;
     }
 
-    private MediaFileInfo AddFileToCache(FileInfo fileInfo)
+    private MediaFileInfo? AddFileToCache(FileInfo fileInfo)
     {
         MediaFileInfo? cachedMediaInfo = null;
         IncrementCounter(() => scannedTargetFiles++);

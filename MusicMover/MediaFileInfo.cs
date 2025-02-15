@@ -7,17 +7,17 @@ public class MediaFileInfo
     private const string AcoustidFingerprintTag = "Acoustid Fingerprint";
     private const string AcoustidTag = "Acoustid Id";
     
-    public FileInfo FileInfo { get; set; }
+    public FileInfo? FileInfo { get; set; }
     
-    public string Artist { get; set; }
-    public string SortArtist { get; set; }
-    public string Title { get; set; }
-    public string Album { get; set; }
+    public string? Artist { get; set; }
+    public string? SortArtist { get; set; }
+    public string? Title { get; set; }
+    public string? Album { get; set; }
     public int? Track { get; set; }
     public int? TrackCount { get; set; }
-    public string AlbumArtist { get; set; }
-    public string AcoustId { get; set; }
-    public string AcoustIdFingerPrint { get; set; }
+    public string? AlbumArtist { get; set; }
+    public string? AcoustId { get; set; }
+    public string? AcoustIdFingerPrint { get; set; }
     public double BitRate { get; set; }
     public int Disc { get; set; }
 

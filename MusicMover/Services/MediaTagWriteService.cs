@@ -283,7 +283,7 @@ public class MediaTagWriteService
         var data = musicBrainzAPIService.GetRecordingById(recordingId);
         MusicBrainzArtistReleaseModel? release = data?.Releases?.FirstOrDefault();
         
-        if (release == null)
+        if (release == null || data == null)
         {
             return false;
         }

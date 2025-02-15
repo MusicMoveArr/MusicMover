@@ -6,7 +6,7 @@ public class MusicBrainzReleaseMediaTrackModelJsonConverter : JsonConverter<int>
 {
     public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        string value = reader.GetString();
+        string? value = reader.GetString();
         int.TryParse(value, out int number);
         return number;
     }
