@@ -38,6 +38,7 @@ Argument "--always-check-acoust-id" will always force reading from MusicBrainz e
 
 Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title
 Note: Discnumber in this example is only applied if discnumber is higher then 1
+
 Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}
 
 Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
