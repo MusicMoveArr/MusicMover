@@ -23,4 +23,7 @@ public class MusicBrainzArtistReleaseModel
     
     [JsonPropertyName("text-representation")]
     public MusicBrainzTextRepresentationModel TextRepresentation { get; set; }
+    
+    [JsonPropertyName("label-info")]
+    public List<MusicBrainzLabelInfoModel> LabeLInfo { get; set; }
 }

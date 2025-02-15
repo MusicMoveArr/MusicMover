@@ -10,4 +10,7 @@ public class MusicBrainzArtistModel
     public List<MusicBrainzArtistCreditModel> ArtistCredit { get; set; } = new List<MusicBrainzArtistCreditModel>();
     
     public List<MusicBrainzArtistReleaseModel> Releases { get; set; } = new List<MusicBrainzArtistReleaseModel>();
+    
+    [JsonPropertyName("isrcs")]
+    public List<string> ISRCS { get; set; } = new List<string>();
 }

@@ -291,6 +291,29 @@ public class MediaTagWriteService
         bool trackInfoUpdated = false;
         Track track = new Track(fromFile.FullName);
         
+        string? musicBrainzTrackId = release.Media?.FirstOrDefault()?.Tracks?.FirstOrDefault()?.Id;
+        string? musicBrainzReleaseArtistId = data?.ArtistCredit?.FirstOrDefault()?.Artist?.Id;
+        string? musicBrainzAlbumId = release.Id;
+        string? musicBrainzReleaseGroupId = release.ReleaseGroup.Id;
+        
+        string artists = string.Join(';', data?.ArtistCredit.Select(artist => artist.Name));
+        string musicBrainzArtistIds = string.Join(';', data?.ArtistCredit.Select(artist => artist.Artist.Id));
+        string isrcs = data?.ISRCS != null ? string.Join(';', data?.ISRCS) : string.Empty;
+
+        MusicBrainzArtistReleaseModel withLabeLInfo = musicBrainzAPIService.GetReleaseWithLabel(release.Id);
+        var label = withLabeLInfo?.LabeLInfo?.FirstOrDefault(label => label?.Label?.Type?.ToLower().Contains("production") == true);
+
+        if (label == null && withLabeLInfo?.LabeLInfo?.Count == 1)
+        {
+            label = withLabeLInfo?.LabeLInfo?.FirstOrDefault();
+        }
+
+        if (!string.IsNullOrWhiteSpace(label?.Label?.Name))
+        {
+            UpdateTag(track, "LABEL", label?.Label.Name, ref trackInfoUpdated);
+            UpdateTag(track, "CATALOGNUMBER", label?.CataLogNumber, ref trackInfoUpdated);
+        }
+
         if ((!track.Date.HasValue ||
              track.Date.Value.ToString("yyyy-MM-dd") != release.Date))
         {
@@ -304,11 +327,6 @@ public class MediaTagWriteService
             UpdateTag(track, "date", release.Date, ref trackInfoUpdated);
             UpdateTag(track, "originaldate", release.Date, ref trackInfoUpdated);
         }
-        
-        string? musicBrainzTrackId = release.Media?.FirstOrDefault()?.Tracks?.FirstOrDefault()?.Id;
-        string? musicBrainzArtistId = data?.ArtistCredit?.FirstOrDefault()?.Artist?.Id;
-        string? musicBrainzAlbumId = release.Id;
-        string? musicBrainzReleaseGroupId = release.ReleaseGroup.Id;
 
         if (string.IsNullOrWhiteSpace(track.Title))
         {
@@ -318,26 +336,28 @@ public class MediaTagWriteService
         {
             UpdateTag(track, "Album", release.Title, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.AlbumArtist))
+        if (string.IsNullOrWhiteSpace(track.AlbumArtist)  || track.AlbumArtist.ToLower().Contains("various"))
         {
             UpdateTag(track, "AlbumArtist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.Artist))
+        if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various"))
         {
             UpdateTag(track, "Artist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
         }
 
+        UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
+        UpdateTag(track, "ISRC", isrcs, ref trackInfoUpdated);
         UpdateTag(track, "SCRIPT", release?.TextRepresentation?.Script, ref trackInfoUpdated);
         UpdateTag(track, "barcode", release.Barcode, ref trackInfoUpdated);
 
-        UpdateTag(track, "MusicBrainz Artist Id", musicBrainzArtistId, ref trackInfoUpdated);
+        UpdateTag(track, "MusicBrainz Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Track Id", recordingId, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Release Track Id", musicBrainzTrackId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Release Artist Id", musicBrainzArtistId, ref trackInfoUpdated);
+        UpdateTag(track, "MusicBrainz Release Artist Id", musicBrainzReleaseArtistId, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Release Group Id", musicBrainzReleaseGroupId, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Release Id", release.Id, ref trackInfoUpdated);
 
-        UpdateTag(track, "MusicBrainz Album Artist Id", musicBrainzArtistId, ref trackInfoUpdated);
+        UpdateTag(track, "MusicBrainz Album Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Album Id", musicBrainzAlbumId, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Album Type", release.ReleaseGroup.PrimaryType, ref trackInfoUpdated);
         UpdateTag(track, "MusicBrainz Album Release Country", release.Country, ref trackInfoUpdated);

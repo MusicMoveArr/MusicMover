@@ -153,8 +153,12 @@ public class MoveProcessor
         out DirectoryInfo toArtistDirInfo,
         out DirectoryInfo toAlbumDirInfo)
     {
-        toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
-        toAlbumDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}/{SanitizeAlbumName(tagFile.Album)}");
+        DirectoryInfo musicDirInfo = new DirectoryInfo(_options.ToDirectory);
+        string artistPath = GetDirectoryCaseInsensitive(musicDirInfo,SanitizeArtistName(artist));
+        string albumPath = GetDirectoryCaseInsensitive(musicDirInfo, $"{SanitizeArtistName(artist)}/{SanitizeAlbumName(tagFile.Album)}");
+        
+        toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{artistPath}");
+        toAlbumDirInfo = new DirectoryInfo($"{_options.ToDirectory}{albumPath}");
 
         if (!toArtistDirInfo.Exists &&
             _options.CreateArtistDirectory &&
@@ -362,13 +366,6 @@ public class MoveProcessor
 
         string newFromFilePath = $"{toAlbumDirInfo.FullName}/{fromFileName}";
         
-        
-        if (toArtistDirInfo.Name.Contains(",") ||
-            toArtistDirInfo.Name.Contains(";"))
-        {
-                
-        }
-
         if (similarFiles.Count == 0)
         {
             Console.WriteLine($"No similar files found moving, {artist}/{tagFile.Album}, {newFromFilePath}");
@@ -391,11 +388,19 @@ public class MoveProcessor
             var similarFile = similarFiles.First();
 
             bool isFromHighQuality = HigherQualityMediaExtensions.Any(ext => fromFile.Extension.Contains(ext));
+            bool isFromLowerQuality = LowerQualityMediaExtensions.Any(ext => fromFile.Extension.Contains(ext));
+            bool isSimilarHighQuality = HigherQualityMediaExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
             bool isSimilarLowerQuality = LowerQualityMediaExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
-            
-            if ((fromFile.Length > similarFile.File.Length) ||
-                (tagFile.BitRate > similarFile.MediaInfo.BitRate) ||
-                (isFromHighQuality && isSimilarLowerQuality))
+
+            if (!isFromHighQuality && isSimilarHighQuality)
+            {
+                fromFile.Delete();
+                IncrementCounter(() => localDelete++);
+                Console.WriteLine($"Similar file found, deleted from file, quality is lower, {similarFiles.Count}, {artist}/{tagFile.Album}, {fromFile.FullName}");
+            }
+            else if (isFromHighQuality && isSimilarLowerQuality || //overwrite lower quality based on extension
+                     (isFromHighQuality && isSimilarHighQuality && fromFile.Length > similarFile.File.Length) || //overwrite based on filesize, both high quality
+                     (isFromLowerQuality && isSimilarLowerQuality && fromFile.Length > similarFile.File.Length)) //overwrite based on filesize, both low quality
             {
                 if (!toAlbumDirInfo.Exists)
                 {
@@ -405,9 +410,9 @@ public class MoveProcessor
                 }
 
                 UpdateArtistTag(updatedArtistName, tagFile, oldArtistName, artist, fromFile);
+                Console.WriteLine($"Moved {fromFile} >> {newFromFilePath}");
                 fromFile.MoveTo(newFromFilePath, true);
                 
-                Console.WriteLine($"Moved {fromFile} >> {newFromFilePath}");
                 
                 RemoveCacheByPath(newFromFilePath);
                 RemoveCacheByPath(similarFile.File.FullName);
@@ -416,7 +421,6 @@ public class MoveProcessor
                 {
                     similarFile.File.Delete();
                     IncrementCounter(() => remoteDelete++);
-                    Console.WriteLine($"Deleted {similarFile.File.FullName}");
                     Console.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
                 }
 
@@ -440,19 +444,15 @@ public class MoveProcessor
             }
             else
             {
-                Console.WriteLine($"Similar file found {similarFiles.Count}, {artist}/{tagFile.Album}, {similarFile.File.Extension}");
+                Console.WriteLine($"[To Be Implemented] Similar file found {similarFiles.Count}, {artist}/{tagFile.Album}, {similarFile.File.Extension}");
             }
         }
         else if (similarFiles.Count >= 2 && _options.DeleteDuplicateFrom)
         {
-            var sortedSimilarFiles = similarFiles.OrderByDescending(file => file.File.Length);
-            bool localIsBigger = sortedSimilarFiles.All(similarFile => fromFile.Length > similarFile.File.Length || tagFile.BitRate > similarFile.MediaInfo.BitRate);
-
             bool isFromHighQuality = HigherQualityMediaExtensions.Any(ext => fromFile.Extension.Contains(ext));
             bool isSimilarLowerQuality = LowerQualityMediaExtensions.Any(ext => similarFiles.Any(similarFile => similarFile.File.Extension.Contains(ext)));
             
-            if (localIsBigger ||
-                (isFromHighQuality && isSimilarLowerQuality))
+            if (isFromHighQuality && isSimilarLowerQuality)
             {
                 if (!toAlbumDirInfo.Exists)
                 {
@@ -462,15 +462,14 @@ public class MoveProcessor
                 }
 
                 UpdateArtistTag(updatedArtistName, tagFile, oldArtistName, artist, fromFile);
-                fromFile.MoveTo(newFromFilePath, true);
                 Console.WriteLine($"Moved {fromFile} >> {newFromFilePath}");
+                fromFile.MoveTo(newFromFilePath, true);
                 RemoveCacheByPath(newFromFilePath);
                 
                 similarFiles.ForEach(similarFile =>
                 {
                     if (similarFile.File.FullName != newFromFilePath)
                     {
-                        Console.WriteLine($"Deleted {similarFile.File.FullName}");
                         Console.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
 
                         RemoveCacheByPath(similarFile.File.FullName);
@@ -501,7 +500,7 @@ public class MoveProcessor
     {
         lock (_memoryCache)
         {
-            var cachedMediaInfo = _memoryCache.Get(fullPath) as CachedMediaInfo;
+            var cachedMediaInfo = _memoryCache.Get(fullPath) as MediaFileInfo;
             if (cachedMediaInfo != null)
             {
                 _memoryCache.Remove(fullPath, CacheEntryRemovedReason.Removed);
@@ -513,12 +512,30 @@ public class MoveProcessor
         DirectoryInfo toArtistDirInfo, string artistName, out bool errors)
     {
         errors = false;
-        List<SimilarFileInfo> tagFiles = new List<SimilarFileInfo>();
-        FileInfo[] toFiles = toArtistDirInfo
+        List<SimilarFileInfo> similarFiles = new List<SimilarFileInfo>();
+        List<FileInfo> toFiles = toArtistDirInfo
             .GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => file.Length > 0)
             .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
-            .ToArray();
+            .ToList();
+        
+        var dirs = System.IO.Directory.GetDirectories(toArtistDirInfo.Parent.FullName)
+            .Select(dir => new DirectoryInfo(dir))
+            .Where(dir => string.Equals(dir.Name, artistName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var dir in dirs)
+        {
+            foreach (var file in dir.GetFiles("*.*", SearchOption.AllDirectories)
+                                    .Where(file => file.Length > 0)
+                                    .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext))))
+            {
+                if (!toFiles.Any(fileInfo => fileInfo.FullName == file.FullName))
+                {
+                    toFiles.Add(file);
+                }
+            }
+        }
 
         foreach (FileInfo toFile in toFiles)
         {
@@ -529,58 +546,38 @@ public class MoveProcessor
                     continue;
                 }
                 
-                CachedMediaInfo? cachedMediaInfo = null;
+                //quick compare before caching/reading the file tags
+                if (string.Equals(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
+                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    similarFiles.Add(new SimilarFileInfo(toFile));
+                    continue;
+                }
+                
+                MediaFileInfo? cachedMediaInfo = null;
 
                 lock (_memoryCache)
                 {
-                    cachedMediaInfo = _memoryCache.Get(toFile.FullName) as CachedMediaInfo;
+                    cachedMediaInfo = _memoryCache.Get(toFile.FullName) as MediaFileInfo;
                 }
 
                 if (cachedMediaInfo == null)
                 {
-                    IncrementCounter(() => scannedTargetFiles++);
-
-                    try
-                    {
-                        cachedMediaInfo = new CachedMediaInfo(toFile);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine($"File gave read error, '{toFile.FullName}', {e.Message}");
-                        continue;
-                    }
-
-                    try
-                    {
-                        if (cachedMediaInfo is null &&
-                            _options.FixFileCorruption &&
-                            _corruptionFixer.FixCorruption(toFile))
-                        {
-                            cachedMediaInfo = new CachedMediaInfo(toFile);
-
-                            IncrementCounter(() => fixedCorruptedFiles++);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine($"File gave read error, '{toFile.FullName}', {e.Message}");
-                        continue;
-                    }
-
-                    if (cachedMediaInfo is null)
-                    {
-                        continue;
-                    }
-
-                    lock (_memoryCache)
-                    {
-                        //Debug.WriteLine($"Added to cache {toFile.FullName}");
-                        _memoryCache.Add(toFile.FullName, cachedMediaInfo, DateTimeOffset.Now.AddMinutes(CacheTime));
-                    }
+                    cachedMediaInfo = AddFileToCache(toFile);
                 }
                 else
                 {
                     IncrementCounter(() => cachedReadTargetFiles++);
+                }
+                
+                if (cachedMediaInfo == null)
+                {
+                    errors = true;
+                    if (!_options.ContinueScanError)
+                    {
+                        continue;
+                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(cachedMediaInfo.Title) || 
@@ -593,30 +590,30 @@ public class MoveProcessor
                         continue;
                     }
                 }
+
+                if (toFile.Name.Contains("Pendulum - Back 2 You - 01 - Back 2 You"))
+                {
+                    
+                }
                 
-                if (cachedMediaInfo?.Title.ToLower() == matchTagFile.Title.ToLower() &&
-                    cachedMediaInfo?.Album.ToLower() == matchTagFile.Album.ToLower() &&
-                    (cachedMediaInfo?.Track == matchTagFile.Track ||
-                     cachedMediaInfo?.TrackCount == matchTagFile.TrackCount) &&
-                    (cachedMediaInfo?.AlbumArtist?.ToLower() == matchTagFile.AlbumArtist?.ToLower() ||
-                     cachedMediaInfo?.Artist?.ToLower() == matchTagFile.Artist?.ToLower() ||
-                     GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist?.ToLower()) == GetUncoupledArtistName(matchTagFile.AlbumArtist?.ToLower()) ||
-                     GetUncoupledArtistName(cachedMediaInfo?.Artist?.ToLower()) == GetUncoupledArtistName(matchTagFile.Artist?.ToLower())))
+                if (string.Equals(cachedMediaInfo?.Title, matchTagFile.Title, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(cachedMediaInfo?.Album,  matchTagFile.Album, StringComparison.OrdinalIgnoreCase) &&
+                    cachedMediaInfo?.Track == matchTagFile.Track &&
+                   (string.Equals(cachedMediaInfo?.AlbumArtist,  matchTagFile.AlbumArtist, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(cachedMediaInfo?.Artist,  matchTagFile.Artist, StringComparison.OrdinalIgnoreCase) ||
+                    GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist?.ToLower()) == GetUncoupledArtistName(matchTagFile.AlbumArtist?.ToLower()) ||
+                    GetUncoupledArtistName(cachedMediaInfo?.Artist?.ToLower()) == GetUncoupledArtistName(matchTagFile.Artist?.ToLower())))
                 {
-                    tagFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
+                    similarFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
                 }
-                else if (!string.IsNullOrWhiteSpace(cachedMediaInfo?.AcoustIdFingerPrint) && 
-                         !string.IsNullOrWhiteSpace(matchTagFile.AcoustIdFingerPrint) &&
-                         cachedMediaInfo?.AcoustIdFingerPrint == matchTagFile.AcoustIdFingerPrint)
-                {
-                    tagFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
-                }
-                if (string.Equals(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
-                             fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty),
-                             StringComparison.CurrentCultureIgnoreCase))
-                {
-                    tagFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
-                }
+                //very tricky based on fingerprint
+                //songs can be both in e.g. "Best of ..." and in the actual album
+                //else if (!string.IsNullOrWhiteSpace(cachedMediaInfo?.AcoustIdFingerPrint) && 
+                //         !string.IsNullOrWhiteSpace(matchTagFile.AcoustIdFingerPrint) &&
+                //         cachedMediaInfo?.AcoustIdFingerPrint == matchTagFile.AcoustIdFingerPrint)
+                //{
+                //    similarFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
+                //}
             }
             catch (Exception e)
             {
@@ -625,9 +622,53 @@ public class MoveProcessor
             }
         }
 
-        return tagFiles;
+        return similarFiles;
     }
 
+    private MediaFileInfo AddFileToCache(FileInfo fileInfo)
+    {
+        MediaFileInfo? cachedMediaInfo = null;
+        IncrementCounter(() => scannedTargetFiles++);
+
+        try
+        {
+            cachedMediaInfo = new MediaFileInfo(fileInfo);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
+            return null;
+        }
+
+        try
+        {
+            if (cachedMediaInfo is null &&
+                _options.FixFileCorruption &&
+                _corruptionFixer.FixCorruption(fileInfo))
+            {
+                cachedMediaInfo = new MediaFileInfo(fileInfo);
+                IncrementCounter(() => fixedCorruptedFiles++);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
+            return null;
+        }
+
+        if (cachedMediaInfo is null)
+        {
+            return null;
+        }
+
+        lock (_memoryCache)
+        {
+            _memoryCache.Add(fileInfo.FullName, cachedMediaInfo, DateTimeOffset.Now.AddMinutes(CacheTime));
+        }
+
+        return cachedMediaInfo;
+    }
+    
     private void UpdateArtistTag(bool updatedArtistName, MediaFileInfo tagFile, string oldArtistName, string artist,
         FileInfo fromFile)
     {
@@ -739,5 +780,38 @@ public class MoveProcessor
         }
 
         return input;
+    }
+    
+    
+    private string GetDirectoryCaseInsensitive(DirectoryInfo directory, string directoryPath)
+    {
+        DirectoryInfo tempDirectory = directory;
+        string[] subDirectories = directoryPath.Split(Path.DirectorySeparatorChar);
+        List<string> newSubDirectoryNames = new List<string>();
+        foreach (string subDirectory in subDirectories)
+        {
+            if (tempDirectory == null)
+            {
+                newSubDirectoryNames.Add(subDirectory);
+                continue;
+            }
+            string dirName = GetNextDirectoryCaseInsensitive(tempDirectory, subDirectory, out tempDirectory);
+            newSubDirectoryNames.Add(dirName);
+        }
+        
+        return string.Join(Path.DirectorySeparatorChar, newSubDirectoryNames);
+    }
+
+    private string GetNextDirectoryCaseInsensitive(DirectoryInfo directory, string subDirectory, out DirectoryInfo? targetDir)
+    {
+        targetDir = directory.GetDirectories()
+            .OrderBy(dir => dir.Name)
+            .FirstOrDefault(dir => string.Equals(dir.Name, subDirectory, StringComparison.OrdinalIgnoreCase));
+
+        if (targetDir != null)
+        {
+            return targetDir.Name;
+        }
+        return subDirectory;
     }
 }
