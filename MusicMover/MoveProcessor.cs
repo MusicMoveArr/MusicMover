@@ -574,35 +574,29 @@ public class MoveProcessor
                 if (cachedMediaInfo == null)
                 {
                     errors = true;
-                    if (!_options.ContinueScanError)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 if (string.IsNullOrWhiteSpace(cachedMediaInfo.Title) || 
-                    string.IsNullOrWhiteSpace(cachedMediaInfo.Album))
+                    string.IsNullOrWhiteSpace(cachedMediaInfo.Album) || 
+                    string.IsNullOrWhiteSpace(cachedMediaInfo.Artist) || 
+                    string.IsNullOrWhiteSpace(cachedMediaInfo.AlbumArtist))
                 {
-                    Console.WriteLine($"scan error file, no Title or Album: {toFile}");
+                    Console.WriteLine($"scan error file, no Title, Album, Artist or AlbumArtist: {toFile}");
                     errors = true;
-                    if (!_options.ContinueScanError)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
-                if (toFile.Name.Contains("Pendulum - Back 2 You - 01 - Back 2 You"))
-                {
-                    
-                }
+                bool artistMatch= (string.Equals(cachedMediaInfo?.Artist,  matchTagFile.Artist, StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(GetUncoupledArtistName(cachedMediaInfo?.Artist), GetUncoupledArtistName(matchTagFile.Artist), StringComparison.OrdinalIgnoreCase));
+                
+                bool albumArtistMatch = (string.Equals(cachedMediaInfo?.AlbumArtist, matchTagFile.AlbumArtist, StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), GetUncoupledArtistName(matchTagFile.AlbumArtist), StringComparison.OrdinalIgnoreCase));
                 
                 if (string.Equals(cachedMediaInfo?.Title, matchTagFile.Title, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(cachedMediaInfo?.Album,  matchTagFile.Album, StringComparison.OrdinalIgnoreCase) &&
                     cachedMediaInfo?.Track == matchTagFile.Track &&
-                   (string.Equals(cachedMediaInfo?.AlbumArtist,  matchTagFile.AlbumArtist, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(cachedMediaInfo?.Artist,  matchTagFile.Artist, StringComparison.OrdinalIgnoreCase) ||
-                    GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist?.ToLower()) == GetUncoupledArtistName(matchTagFile.AlbumArtist?.ToLower()) ||
-                    GetUncoupledArtistName(cachedMediaInfo?.Artist?.ToLower()) == GetUncoupledArtistName(matchTagFile.Artist?.ToLower())))
+                    artistMatch && albumArtistMatch)
                 {
                     similarFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
                 }
