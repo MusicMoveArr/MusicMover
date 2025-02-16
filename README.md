@@ -11,40 +11,24 @@ I made this tool mainly because Lidarr's behavior is just a pain, I have too man
 Loving the work I do? buy me a coffee https://buymeacoffee.com/musicmovearr
 
 # Features
-Move music missing from-directory to target-directory (Check below how)
-
-Reading the target-directory is memory-cached for performance
-
-Run the process job in parallel for performance (scanning multiple files at once)
-
-with --extrascan or --extrascans you can scan besides the target-directory in other locations if you already have the music (in case you have usb harddisks, NFS/SMB shares etc)
-
-Create the Artist directory if it's missing using --create-artist-directory (if Artist directory is missing and the argument is not given the song is skipped moving)
-
-Create the Album directory if it's missing using --create-album-directory (if Album directory is missing and the argument is not given the song is skipped moving)
-
-With --extra-dir-must-exist, the Artist/Album directory must as well already exist in the extra scan directories
-
-You can delete the already owned music from the "from directory" if it already exists in the target directory
-
-Skip the first 5 directories of /home/aaa/Downloads (in case temp folders etc you don't want to move) using "--skip-directories 5"
-
-Rename the file name that constains "Various Artists" to the first performer using --various-artists, it will rename it for example from "Various Artists - Jane Album - 01 - My Song.mp3" to "John Doe - Jane Album - 01 - My Song.mp3"
-
-Update the Artist and Performers tags by using "--update-Artist-Tags", this will cleanup the tags (so to say) by saving the "Various Artists" to it's real Artist name, this includes as well changing "John Doe feat Jane Doe" in the Artist tags to just "John Doe"
-
-Apply media tags from MusicBrainz by fingerprinting using AcoustId
-Argument "--always-check-acoust-id" will always force reading from MusicBrainz even with tags available already in the media file
-
-
-Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title
-
-Note: Discnumber in this example is only applied if discnumber is higher then 1
+1. Move music missing from-directory to target-directory (Check below how)
+2. Reading the target-directory is memory-cached for performance
+3. Run the process job in parallel for performance (scanning multiple files at once)
+4. with --extrascan or --extrascans you can scan besides the target-directory in other locations if you already have the music (in case you have usb harddisks, NFS/SMB shares etc)
+5. Create the Artist directory if it's missing using --create-artist-directory (if Artist directory is missing and the argument is not given the song is skipped moving)
+6. Create the Album directory if it's missing using --create-album-directory (if Album directory is missing and the argument is not given the song is skipped moving)
+7. With --extra-dir-must-exist, the Artist/Album directory must as well already exist in the extra scan directories
+8. You can delete the already owned music from the "from directory" if it already exists in the target directory
+9. Skip the first 5 directories of /home/aaa/Downloads (in case temp folders etc you don't want to move) using "--skip-directories 5"
+10. Rename the file name that constains "Various Artists" to the first performer using --various-artists, it will rename it for example from "Various Artists - Jane Album - 01 - My Song.mp3" to "John Doe - Jane Album - 01 - My Song.mp3"
+11. Update the Artist and Performers tags by using "--update-Artist-Tags", this will cleanup the tags (so to say) by saving the "Various Artists" to it's real Artist name, this includes as well changing "John Doe feat Jane Doe" in the Artist tags to just "John Doe"
+12. Apply media tags from MusicBrainz by fingerprinting using AcoustId
+13. Argument "--always-check-acoust-id" will always force reading from MusicBrainz even with tags available already in the media file
+14. Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title, Note: Discnumber in this example is only applied if discnumber is higher then 1
 
 Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}
 
-
-Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
+14. Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
 FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_filepath]"
 
 # Description of arguments
