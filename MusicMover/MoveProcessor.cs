@@ -76,18 +76,22 @@ public class MoveProcessor
             .Skip(_options.SkipFromDirAmount)
             .ToList();
 
+        //process directories
         if (_options.Parallel)
         {
             sortedTopDirectories
                 .AsParallel()
                 .WithDegreeOfParallelism(5)
-                .ForAll(dir => ProcessDirectory(dir));
+                .ForAll(dir => ProcessDirectory(dir, SearchOption.AllDirectories));
         }
         else
         {
             sortedTopDirectories
-                .ForEach(dir => ProcessDirectory(dir));
+                .ForEach(dir => ProcessDirectory(dir, SearchOption.AllDirectories));
         }
+        
+        //process loose files in the FromDirectory
+        ProcessDirectory(_options.FromDirectory, SearchOption.TopDirectoryOnly);
 
         ShowProgress();
 
@@ -98,7 +102,7 @@ public class MoveProcessor
         }
     }
 
-    private void ProcessDirectory(string fromTopDir)
+    private void ProcessDirectory(string fromTopDir, SearchOption dirSearchOption)
     {
         if (exitProcess)
         {
@@ -108,7 +112,7 @@ public class MoveProcessor
         DirectoryInfo fromDirInfo = new DirectoryInfo(fromTopDir);
 
         FileInfo[] fromFiles = fromDirInfo
-            .GetFiles("*.*", SearchOption.AllDirectories)
+            .GetFiles("*.*", dirSearchOption)
             .Where(file => file.Length > 0)
             .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToArray();
@@ -554,6 +558,8 @@ public class MoveProcessor
                     similarFiles.Add(new SimilarFileInfo(toFile));
                     continue;
                 }
+
+                continue;
                 
                 MediaFileInfo? cachedMediaInfo = null;
 
@@ -743,6 +749,7 @@ public class MoveProcessor
         string? newArtistName = splitCharacters
             .Where(splitChar => artist.Contains(splitChar))
             .Select(splitChar => artist.Substring(0, artist.IndexOf(splitChar)).Trim())
+            .Where(split => split.Length > 0)
             .OrderBy(split => split.Length)
             .FirstOrDefault();
 

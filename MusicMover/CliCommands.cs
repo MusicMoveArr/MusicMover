@@ -22,8 +22,8 @@ public class CliCommands
     /// <param name="artistDirsMustNotExist">-AN, Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g.</param>
     /// <param name="updateArtistTags">-UA, Update Artist metadata tags.</param>
     /// <param name="fixFileCorruption">-FX, Attempt fixing file corruption by using FFMpeg for from/target/scan files.</param>
-    /// <param name="acoustidApiKey">-AI When AcoustId API Key is set, try getting the artist/album/title when needed.</param>
-    /// <param name="fileFormat">-FF rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.</param>
+    /// <param name="acoustidApiKey">-AI, When AcoustId API Key is set, try getting the artist/album/title when needed.</param>
+    /// <param name="fileFormat">-FF, rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.</param>
     /// <param name="directorySeperator">-ds, Directory Seperator replacer, replace '/' '\' to .e.g. '_'.</param>
     /// <param name="alwaysCheckAcoustId">-ac, Always check & Write to media with AcoustId for missing tags.</param>
     /// <param name="continueScanError">-CS, Continue on scan errors from the Music Libraries.</param>
