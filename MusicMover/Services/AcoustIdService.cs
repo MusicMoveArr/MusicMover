@@ -38,4 +38,37 @@ public class AcoustIdService
         }
         return null;
     }
+    
+    public JObject? LookupByAcoustId(string acoustIdApiKey, string acoustId)
+    {
+        if (string.IsNullOrWhiteSpace(acoustIdApiKey))
+        {
+            return null;
+        }
+        
+        var client = new RestClient("https://api.acoustid.org/v2/lookup");
+        var request = new RestRequest();
+        request.AddParameter("client", acoustIdApiKey);
+        request.AddParameter("meta", "recordings");
+        request.AddParameter("trackid", acoustId);
+
+        var response = client.Execute(request);
+
+        if (response.IsSuccessful)
+        {
+            var content = response.Content;
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                JObject jsonResponse = JObject.Parse(content);
+                
+                return jsonResponse;
+            }
+        }
+        else
+        {
+            Console.WriteLine("Error: " + response.ErrorMessage);
+        }
+        return null;
+    }
 }

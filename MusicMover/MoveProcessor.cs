@@ -230,7 +230,7 @@ public class MoveProcessor
              string.IsNullOrWhiteSpace(tagFile.AlbumArtist)))
         {
             MediaTagWriteService mediaTagWriteService = new MediaTagWriteService();
-            if (mediaTagWriteService.WriteTagFromAcoustId(fromFile, _options.AcoustIdAPIKey))
+            if (mediaTagWriteService.WriteTagFromAcoustId(tagFile, fromFile, _options.AcoustIdAPIKey))
             {
                 //read again the file after saving
                 tagFile = new MediaFileInfo(fromFile);

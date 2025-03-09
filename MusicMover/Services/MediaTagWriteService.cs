@@ -1,5 +1,6 @@
 using ATL;
 using MusicMover.Models;
+using Newtonsoft.Json.Linq;
 
 namespace MusicMover.Services;
 
@@ -258,23 +259,66 @@ public class MediaTagWriteService
         return success;
     }
 
-    public bool WriteTagFromAcoustId(FileInfo fromFile, string acoustIdAPIKey)
+    public bool WriteTagFromAcoustId(MediaFileInfo mediaFileInfo, FileInfo fromFile, string acoustIdAPIKey)
     {
         MusicBrainzAPIService musicBrainzAPIService = new MusicBrainzAPIService();
         AcoustIdService acoustIdService = new AcoustIdService();
         FingerPrintService fingerPrintService = new FingerPrintService();
         FpcalcOutput? fingerprint = fingerPrintService.GetFingerprint(fromFile.FullName);
 
+        JObject? acoustIdLookup = null;
+        string recordingId = string.Empty;
+        string acoustId = string.Empty;
+        
         if (fingerprint is null)
+        {
+            Console.WriteLine("Failed to generate fingerprint, corrupt file?");
+        }
+        
+        if (fingerprint is null && !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
+        {
+            Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
+            
+            //try again but with the AcoustID from the media file
+            acoustIdLookup = acoustIdService.LookupByAcoustId(acoustIdAPIKey, mediaFileInfo.AcoustId);
+            recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
+            acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
+            
+            if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
+            {
+                Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
+            }
+        }
+
+
+        if (fingerprint is null && string.IsNullOrWhiteSpace(recordingId))
         {
             return false;
         }
-        
-        var acoustIdLookup = acoustIdService.LookupAcoustId(acoustIdAPIKey, fingerprint.Fingerprint, (int)fingerprint.Duration);
-            
-        var recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
-        var acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
 
+        if (string.IsNullOrWhiteSpace(recordingId))
+        {
+            acoustIdLookup = acoustIdService.LookupAcoustId(acoustIdAPIKey, fingerprint.Fingerprint, (int)fingerprint.Duration);
+            recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
+            acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
+
+            if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
+                (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId)))
+            {
+                Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
+            
+                //try again but with the AcoustID from the media file
+                acoustIdLookup = acoustIdService.LookupByAcoustId(acoustIdAPIKey, mediaFileInfo.AcoustId);
+                recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
+                acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
+            
+                if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
+                {
+                    Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
+                }
+            }
+        }
+        
         if (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId))
         {
             return false;
@@ -328,22 +372,10 @@ public class MediaTagWriteService
             UpdateTag(track, "originaldate", release.Date, ref trackInfoUpdated);
         }
 
-        if (string.IsNullOrWhiteSpace(track.Title))
-        {
-            UpdateTag(track, "Title", release.Media?.FirstOrDefault()?.Title, ref trackInfoUpdated);
-        }
-        if (string.IsNullOrWhiteSpace(track.Album))
-        {
-            UpdateTag(track, "Album", release.Title, ref trackInfoUpdated);
-        }
-        if (string.IsNullOrWhiteSpace(track.AlbumArtist)  || track.AlbumArtist.ToLower().Contains("various"))
-        {
-            UpdateTag(track, "AlbumArtist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
-        }
-        if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various"))
-        {
-            UpdateTag(track, "Artist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
-        }
+        UpdateTag(track, "Title", release.Media?.FirstOrDefault()?.Title, ref trackInfoUpdated);
+        UpdateTag(track, "Album", release.Title, ref trackInfoUpdated);
+        UpdateTag(track, "AlbumArtist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
+        UpdateTag(track, "Artist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
 
         UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
         UpdateTag(track, "ISRC", isrcs, ref trackInfoUpdated);
