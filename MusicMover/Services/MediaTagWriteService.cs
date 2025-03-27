@@ -1,6 +1,4 @@
 using ATL;
-using MusicMover.Models;
-using Newtonsoft.Json.Linq;
 
 namespace MusicMover.Services;
 
@@ -201,6 +199,10 @@ public class MediaTagWriteService
                 track.AdditionalFields[GetFieldName(track, "Acoustid Id")] = value;
                 updated = IsDictionaryUpdated(track, oldValues, "Acoustid Id");
                 return true;
+            case "acoustid fingerprint duration":
+                track.AdditionalFields[GetFieldName(track, "Acoustid Fingerprint Duration")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Acoustid Fingerprint Duration");
+                return true;
             case "acoustid fingerprint":
                 track.AdditionalFields[GetFieldName(track, "Acoustid Fingerprint")] = value;
                 updated = IsDictionaryUpdated(track, oldValues, "Acoustid Fingerprint");
@@ -232,6 +234,17 @@ public class MediaTagWriteService
 
         return field;
     }
+
+    public string GetTagValue(Track track, string tagName)
+    {
+        string fieldName = GetFieldName(track, tagName);
+        if (track.AdditionalFields.ContainsKey(fieldName))
+        {
+            return track.AdditionalFields[fieldName];
+        }
+
+        return string.Empty;
+    }
     
     public bool SafeSave(Track track)
     {
@@ -259,181 +272,5 @@ public class MediaTagWriteService
         return success;
     }
 
-    public bool WriteTagFromAcoustId(MediaFileInfo mediaFileInfo, FileInfo fromFile, string acoustIdAPIKey)
-    {
-        MusicBrainzAPIService musicBrainzAPIService = new MusicBrainzAPIService();
-        AcoustIdService acoustIdService = new AcoustIdService();
-        FingerPrintService fingerPrintService = new FingerPrintService();
-        FpcalcOutput? fingerprint = fingerPrintService.GetFingerprint(fromFile.FullName);
-
-        JObject? acoustIdLookup = null;
-        string recordingId = string.Empty;
-        string acoustId = string.Empty;
-        
-        if (fingerprint is null)
-        {
-            Console.WriteLine("Failed to generate fingerprint, corrupt file?");
-        }
-        
-        if (fingerprint is null && !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
-        {
-            Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
-            
-            //try again but with the AcoustID from the media file
-            acoustIdLookup = acoustIdService.LookupByAcoustId(acoustIdAPIKey, mediaFileInfo.AcoustId);
-            recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
-            acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
-            
-            if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
-            {
-                Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
-            }
-        }
-
-
-        if (fingerprint is null && string.IsNullOrWhiteSpace(recordingId))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(recordingId))
-        {
-            acoustIdLookup = acoustIdService.LookupAcoustId(acoustIdAPIKey, fingerprint.Fingerprint, (int)fingerprint.Duration);
-            recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
-            acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
-
-            if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
-                (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId)))
-            {
-                Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
-            
-                //try again but with the AcoustID from the media file
-                acoustIdLookup = acoustIdService.LookupByAcoustId(acoustIdAPIKey, mediaFileInfo.AcoustId);
-                recordingId = acoustIdLookup?["results"]?.FirstOrDefault()?["recordings"]?.FirstOrDefault()?["id"]?.ToString();
-                acoustId = acoustIdLookup?["results"]?.FirstOrDefault()?["id"]?.ToString();
-            
-                if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
-                {
-                    Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
-                }
-            }
-        }
-        
-        if (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId))
-        {
-            return false;
-        }
-        
-        var data = musicBrainzAPIService.GetRecordingById(recordingId);
-        MusicBrainzArtistReleaseModel? release = data?.Releases?.FirstOrDefault();
-        
-        if (release == null || data == null)
-        {
-            return false;
-        }
-        
-        bool trackInfoUpdated = false;
-        Track track = new Track(fromFile.FullName);
-        
-        string? musicBrainzTrackId = release.Media?.FirstOrDefault()?.Tracks?.FirstOrDefault()?.Id;
-        string? musicBrainzReleaseArtistId = data?.ArtistCredit?.FirstOrDefault()?.Artist?.Id;
-        string? musicBrainzAlbumId = release.Id;
-        string? musicBrainzReleaseGroupId = release.ReleaseGroup.Id;
-        
-        string artists = string.Join(';', data?.ArtistCredit.Select(artist => artist.Name));
-        string musicBrainzArtistIds = string.Join(';', data?.ArtistCredit.Select(artist => artist.Artist.Id));
-        string isrcs = data?.ISRCS != null ? string.Join(';', data?.ISRCS) : string.Empty;
-
-        MusicBrainzArtistReleaseModel withLabeLInfo = musicBrainzAPIService.GetReleaseWithLabel(release.Id);
-        var label = withLabeLInfo?.LabeLInfo?.FirstOrDefault(label => label?.Label?.Type?.ToLower().Contains("production") == true);
-
-        if (label == null && withLabeLInfo?.LabeLInfo?.Count == 1)
-        {
-            label = withLabeLInfo?.LabeLInfo?.FirstOrDefault();
-        }
-
-        if (!string.IsNullOrWhiteSpace(label?.Label?.Name))
-        {
-            UpdateTag(track, "LABEL", label?.Label.Name, ref trackInfoUpdated);
-            UpdateTag(track, "CATALOGNUMBER", label?.CataLogNumber, ref trackInfoUpdated);
-        }
-
-        if ((!track.Date.HasValue ||
-             track.Date.Value.ToString("yyyy-MM-dd") != release.Date))
-        {
-            UpdateTag(track, "date", release.Date, ref trackInfoUpdated);
-            UpdateTag(track, "originaldate", release.Date, ref trackInfoUpdated);
-        }
-        else if (release.Date.Length == 4 &&
-                 (!track.Date.HasValue ||
-                  track.Date.Value.Year.ToString() != release.Date))
-        {
-            UpdateTag(track, "date", release.Date, ref trackInfoUpdated);
-            UpdateTag(track, "originaldate", release.Date, ref trackInfoUpdated);
-        }
-
-        UpdateTag(track, "Title", release.Media?.FirstOrDefault()?.Title, ref trackInfoUpdated);
-        UpdateTag(track, "Album", release.Title, ref trackInfoUpdated);
-        UpdateTag(track, "AlbumArtist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
-        UpdateTag(track, "Artist", data.ArtistCredit.FirstOrDefault()?.Name, ref trackInfoUpdated);
-
-        UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
-        UpdateTag(track, "ISRC", isrcs, ref trackInfoUpdated);
-        UpdateTag(track, "SCRIPT", release?.TextRepresentation?.Script, ref trackInfoUpdated);
-        UpdateTag(track, "barcode", release.Barcode, ref trackInfoUpdated);
-
-        UpdateTag(track, "MusicBrainz Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Track Id", recordingId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Release Track Id", musicBrainzTrackId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Release Artist Id", musicBrainzReleaseArtistId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Release Group Id", musicBrainzReleaseGroupId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Release Id", release.Id, ref trackInfoUpdated);
-
-        UpdateTag(track, "MusicBrainz Album Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Album Id", musicBrainzAlbumId, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Album Type", release.ReleaseGroup.PrimaryType, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Album Release Country", release.Country, ref trackInfoUpdated);
-        UpdateTag(track, "MusicBrainz Album Status", release.Status, ref trackInfoUpdated);
-
-        UpdateTag(track, "Acoustid Id", acoustId, ref trackInfoUpdated);
-
-        UpdateTag(track, "Date", release.ReleaseGroup.FirstReleaseDate, ref trackInfoUpdated);
-        UpdateTag(track, "originaldate", release.ReleaseGroup.FirstReleaseDate, ref trackInfoUpdated);
-        
-        if (release.ReleaseGroup.FirstReleaseDate.Length >= 4)
-        {
-            UpdateTag(track, "originalyear", release.ReleaseGroup.FirstReleaseDate.Substring(0, 4), ref trackInfoUpdated);
-        }
-        
-        UpdateTag(track, "Disc Number", release.Media?.FirstOrDefault()?.Position?.ToString(), ref trackInfoUpdated);
-        UpdateTag(track, "Track Number", release.Media?.FirstOrDefault()?.Tracks?.FirstOrDefault()?.Position?.ToString(), ref trackInfoUpdated);
-        UpdateTag(track, "Total Tracks", release.Media?.FirstOrDefault()?.TrackCount.ToString(), ref trackInfoUpdated);
-        UpdateTag(track, "MEDIA", release.Media?.FirstOrDefault()?.Format, ref trackInfoUpdated);
-
-        return SafeSave(track);
-    }
     
-    private void UpdateTag(Track track, string tagName, string? value, ref bool trackInfoUpdated)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return;
-        }
-
-        if (int.TryParse(value, out int intValue) && intValue == 0)
-        {
-            return;
-        }
-        
-        tagName = GetFieldName(track, tagName);
-        
-        bool tempIsUpdated = false;
-        UpdateTrackTag(track, tagName, value, ref tempIsUpdated);
-
-        if (tempIsUpdated)
-        {
-            Console.WriteLine($"Updating tag '{tagName}' => '{value}'");
-            trackInfoUpdated = true;
-        }
-    }
 }

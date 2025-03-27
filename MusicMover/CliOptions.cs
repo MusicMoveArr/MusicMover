@@ -10,6 +10,7 @@ public class CliOptions
     public bool Parallel { get; set; }
     public int SkipFromDirAmount { get; set; }
     public bool DeleteDuplicateFrom { get; set; }
+    public bool DeleteDuplicateTo { get; set; }
     public List<string> ExtraScans { get; set; } = new List<string>();
     public List<string> ArtistDirsMustNotExist { get; set; } = new List<string>();
     

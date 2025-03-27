@@ -15,6 +15,7 @@ public class CliCommands
     /// <param name="parallel">-p, multi-threaded processing.</param>
     /// <param name="skipDirectories">-s, Skip X amount of directories in the From directory to process.</param>
     /// <param name="deleteDuplicateFrom">-w, Delete the song in From Directory if already found at Target.</param>
+    /// <param name="deleteDuplicateTo">-W, Delete the song in To Directory if already found at Target (duplicates).</param>
     /// <param name="extrascans">-A, Scan extra directories, usage, ["a","b"], besides the target directory.</param>
     /// <param name="extrascan">-a, Scan a extra directory, besides the target directory.</param>
     /// <param name="variousArtists">-va, Rename "Various Artists" in the file name with First Performer.</param>
@@ -34,6 +35,7 @@ public class CliCommands
         bool createAlbumDirectory, 
         bool parallel,
         bool deleteDuplicateFrom,
+        bool deleteDuplicateTo,
         bool dryrun = false,
         bool variousArtists = false,
         bool extraDirMustExist = false,
@@ -66,6 +68,7 @@ public class CliCommands
         options.Parallel = parallel;
         options.SkipFromDirAmount = skipDirectories;
         options.DeleteDuplicateFrom = deleteDuplicateFrom;
+        options.DeleteDuplicateTo = deleteDuplicateTo;
         options.RenameVariousArtists = variousArtists;
         options.ExtraDirMustExist = extraDirMustExist;
         options.UpdateArtistTags = updateArtistTags;
@@ -84,6 +87,7 @@ public class CliCommands
         Console.WriteLine($"Parallel: {options.Parallel}");
         Console.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
         Console.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
+        Console.WriteLine($"Delete Duplicate To: {options.DeleteDuplicateTo}");
         Console.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
         Console.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
         Console.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");

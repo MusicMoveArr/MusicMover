@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MusicMover.Models;
 using Polly;
 using Polly.Retry;
@@ -38,6 +39,19 @@ public class MusicBrainzAPIService
             var response =  client.Get<MusicBrainzArtistReleaseModel>(request);
             
             return response;
+        });
+    }
+    public MusicBrainzArtistInfoModel? GetArtistInfoAsync(string musicBrainzArtistId)
+    {
+        RetryPolicy retryPolicy = GetRetryPolicy();
+        Debug.WriteLine($"Requesting MusicBrainz GetArtistInfo '{musicBrainzArtistId}'");
+        string url = $"https://musicbrainz.org/ws/2/artist/{musicBrainzArtistId}?inc=aliases&fmt=json";
+        using RestClient client = new RestClient(url);
+
+        return retryPolicy.Execute(() =>
+        {
+            RestRequest request = new RestRequest();
+            return client.Get<MusicBrainzArtistInfoModel>(request);
         });
     }
     
