@@ -22,7 +22,8 @@ public class MusicBrainzService
         
     }
     
-    public bool WriteTagFromAcoustId(MediaFileInfo mediaFileInfo, FileInfo fromFile, string acoustIdAPIKey)
+    public bool WriteTagFromAcoustId(MediaFileInfo mediaFileInfo, FileInfo fromFile, string acoustIdAPIKey,
+        bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
     {
         FpcalcOutput? fingerprint = _fingerPrintService.GetFingerprint(fromFile.FullName);
 
@@ -117,7 +118,9 @@ public class MusicBrainzService
                     release.Barcode,
                     Release = release
                 })
-                .Where(release => !string.IsNullOrWhiteSpace(release.Album) && !string.IsNullOrWhiteSpace(release.Title) && !string.IsNullOrWhiteSpace(release.Release.Country))
+                .Where(release => !string.IsNullOrWhiteSpace(release.Album))
+                .Where(release => !string.IsNullOrWhiteSpace(release.Title))
+                .Where(release => !string.IsNullOrWhiteSpace(release.Release.Country))
                 .Select(release => new
                 {
                     Release = release.Release,
@@ -130,11 +133,15 @@ public class MusicBrainzService
                 .OrderByDescending(match => match.AlbumMatch)
                 .ThenByDescending(match => match.TitleMatch)
                 .ThenByDescending(match => match.CountryMatch)
-                .ThenBy(match => match.LengthMatch)
                 .ThenByDescending(match => match.BarcodeMatch)
+                .ThenBy(match => match.LengthMatch)
                 .ToList();
 
-        MusicBrainzArtistReleaseModel? release = matchedReleases?.FirstOrDefault()?.Release;
+        MusicBrainzArtistReleaseModel? release = matchedReleases
+            ?.Where(match => match.AlbumMatch > 80)
+            ?.Where(match => match.TitleMatch > 80)
+            ?.FirstOrDefault()
+            ?.Release;
         
         if (release == null || data == null)
         {
@@ -170,19 +177,19 @@ public class MusicBrainzService
         UpdateTag(track, "date", release.Date, ref trackInfoUpdated);
         UpdateTag(track, "originaldate", release.Date, ref trackInfoUpdated);
 
-        if (string.IsNullOrWhiteSpace(track.Title))
+        if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
         {
             UpdateTag(track, "Title", release.Media?.FirstOrDefault()?.Title, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.Album))
+        if (string.IsNullOrWhiteSpace(track.Album) || overWriteAlbum)
         {
             UpdateTag(track, "Album", release.Title, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.AlbumArtist)  || track.AlbumArtist.ToLower().Contains("various"))
+        if (string.IsNullOrWhiteSpace(track.AlbumArtist)  || track.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
         {
             UpdateTag(track, "AlbumArtist", bestMatchedArtist?.Name, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various"))
+        if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various") || overWriteArtist)
         {
             UpdateTag(track, "Artist", bestMatchedArtist?.Name, ref trackInfoUpdated);
         }
@@ -241,8 +248,9 @@ public class MusicBrainzService
         
         tagName = _mediaTagWriteService.GetFieldName(track, tagName);
         
+        string orgValue = string.Empty;
         bool tempIsUpdated = false;
-        _mediaTagWriteService.UpdateTrackTag(track, tagName, value, ref tempIsUpdated);
+        _mediaTagWriteService.UpdateTrackTag(track, tagName, value, ref tempIsUpdated, ref orgValue);
 
         if (tempIsUpdated)
         {
@@ -251,7 +259,7 @@ public class MusicBrainzService
                 value = value.Substring(0, 100) + "...";
             }
             
-            Console.WriteLine($"Updating tag '{tagName}' => '{value}'");
+            Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
             trackInfoUpdated = true;
         }
     }

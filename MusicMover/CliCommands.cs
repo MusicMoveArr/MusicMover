@@ -28,6 +28,10 @@ public class CliCommands
     /// <param name="directorySeperator">-ds, Directory Seperator replacer, replace '/' '\' to .e.g. '_'.</param>
     /// <param name="alwaysCheckAcoustId">-ac, Always check & Write to media with AcoustId for missing tags.</param>
     /// <param name="continueScanError">-CS, Continue on scan errors from the Music Libraries.</param>
+    /// <param name="overwriteArtist">-OA, Overwrite the Artist name when tagging from MusicBrainz.</param>
+    /// <param name="overwriteAlbumArtist">-Oa, Overwrite the Album Artist name when tagging from MusicBrainz.</param>
+    /// <param name="overwriteAlbum">-OB, Overwrite the Album name when tagging from MusicBrainz.</param>
+    /// <param name="overwriteTrack">-OT, Overwrite the Track name when tagging from MusicBrainz.</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -49,7 +53,11 @@ public class CliCommands
         string fileFormat = "",
         string directorySeperator = "_",
         bool alwaysCheckAcoustId = false,
-        bool continueScanError = false)
+        bool continueScanError = false,
+        bool overwriteArtist = false,
+        bool overwriteAlbumArtist = false,
+        bool overwriteAlbum = false,
+        bool overwriteTrack = false)
     {
         if (!target.EndsWith('/'))
         {
@@ -78,6 +86,10 @@ public class CliCommands
         options.DirectorySeperator = directorySeperator;
         options.AlwaysCheckAcoustId = alwaysCheckAcoustId;
         options.ContinueScanError = continueScanError;
+        options.OverwriteArtist = overwriteArtist;
+        options.OverwriteAlbumArtist = overwriteAlbumArtist;
+        options.OverwriteAlbum = overwriteAlbum;
+        options.OverwriteTrack = overwriteTrack;
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -95,6 +107,10 @@ public class CliCommands
         Console.WriteLine($"AcoustIdAPIKey: {options.AcoustIdAPIKey}");
         Console.WriteLine($"fileFormat: {options.FileFormat}");
         Console.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
+        Console.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
+        Console.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
+        Console.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
+        Console.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
 
         if (extrascans?.Count > 0)
         {

@@ -16,21 +16,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="ConsoleAppFramework" Version="5.2.4">
+      <PackageReference Include="ConsoleAppFramework" Version="5.4.1">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="FFMpegCore" Version="5.1.0" />
+      <PackageReference Include="FFMpegCore" Version="5.2.0" />
       <PackageReference Include="FuzzySharp" Version="2.0.2" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Polly" Version="8.5.2" />
       <PackageReference Include="RestSharp" Version="112.1.0" />
       <PackageReference Include="ShuffleList" Version="1.0.0" />
-      <PackageReference Include="SmartFormat" Version="3.5.3" />
+      <PackageReference Include="SmartFormat" Version="3.6.0" />
       <PackageReference Include="Spectre.Console" Version="0.49.2-preview.0.44" />
       <PackageReference Include="Spectre.Console.Cli" Version="0.49.2-preview.0.44" />
-      <PackageReference Include="System.Runtime.Caching" Version="9.0.0-rc.1.24431.7" />
-      <PackageReference Include="z440.atl.core" Version="6.14.0" />
+      <PackageReference Include="System.Runtime.Caching" Version="9.0.3" />
+      <PackageReference Include="z440.atl.core" Version="6.19.0" />
     </ItemGroup>
 
 </Project>

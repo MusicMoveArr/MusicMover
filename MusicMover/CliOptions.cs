@@ -23,4 +23,8 @@ public class CliOptions
     public string DirectorySeperator { get; set; }
     public bool AlwaysCheckAcoustId { get; set; }
     public bool ContinueScanError { get; set; }
+    public bool OverwriteArtist { get; set; }
+    public bool OverwriteAlbumArtist { get; set; }
+    public bool OverwriteAlbum { get; set; }
+    public bool OverwriteTrack { get; set; }
 }

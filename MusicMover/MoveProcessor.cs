@@ -231,7 +231,8 @@ public class MoveProcessor
              string.IsNullOrWhiteSpace(tagFile.Album) ||
              string.IsNullOrWhiteSpace(tagFile.AlbumArtist)))
         {
-            if (_musicBrainzService.WriteTagFromAcoustId(tagFile, fromFile, _options.AcoustIdAPIKey))
+            if (_musicBrainzService.WriteTagFromAcoustId(tagFile, fromFile, _options.AcoustIdAPIKey,
+                    _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack, _options.OverwriteAlbumArtist))
             {
                 //read again the file after saving
                 tagFile = new MediaFileInfo(fromFile);
