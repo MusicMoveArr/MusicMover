@@ -27,4 +27,5 @@ public class CliOptions
     public bool OverwriteAlbumArtist { get; set; }
     public bool OverwriteAlbum { get; set; }
     public bool OverwriteTrack { get; set; }
+    public bool OnlyMoveWhenTagged { get; set; }
 }

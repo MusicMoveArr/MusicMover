@@ -241,6 +241,11 @@ public class MoveProcessor
             else
             {
                 Console.WriteLine($"AcoustId not found by Fingerprint for {fromFile.FullName}");
+
+                if (_options.OnlyMoveWhenTagged)
+                {
+                    return false;
+                }
             }
         }
         

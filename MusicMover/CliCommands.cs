@@ -32,6 +32,7 @@ public class CliCommands
     /// <param name="overwriteAlbumArtist">-Oa, Overwrite the Album Artist name when tagging from MusicBrainz.</param>
     /// <param name="overwriteAlbum">-OB, Overwrite the Album name when tagging from MusicBrainz.</param>
     /// <param name="overwriteTrack">-OT, Overwrite the Track name when tagging from MusicBrainz.</param>
+    /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz tagged (-AI must be used) .</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -57,7 +58,8 @@ public class CliCommands
         bool overwriteArtist = false,
         bool overwriteAlbumArtist = false,
         bool overwriteAlbum = false,
-        bool overwriteTrack = false)
+        bool overwriteTrack = false,
+        bool onlyMoveWhenTagged = false)
     {
         if (!target.EndsWith('/'))
         {
@@ -90,6 +92,7 @@ public class CliCommands
         options.OverwriteAlbumArtist = overwriteAlbumArtist;
         options.OverwriteAlbum = overwriteAlbum;
         options.OverwriteTrack = overwriteTrack;
+        options.OnlyMoveWhenTagged = onlyMoveWhenTagged;
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -111,6 +114,7 @@ public class CliCommands
         Console.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
         Console.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
         Console.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
+        Console.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
 
         if (extrascans?.Count > 0)
         {
