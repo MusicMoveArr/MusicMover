@@ -33,6 +33,7 @@ public class CliCommands
     /// <param name="overwriteAlbum">-OB, Overwrite the Album name when tagging from MusicBrainz.</param>
     /// <param name="overwriteTrack">-OT, Overwrite the Track name when tagging from MusicBrainz.</param>
     /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz tagged (-AI must be used) .</param>
+    /// <param name="onlyFileNameMatching">-MF, Only filename matching when trying to find duplicates.</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -59,7 +60,8 @@ public class CliCommands
         bool overwriteAlbumArtist = false,
         bool overwriteAlbum = false,
         bool overwriteTrack = false,
-        bool onlyMoveWhenTagged = false)
+        bool onlyMoveWhenTagged = false,
+        bool onlyFileNameMatching = false)
     {
         if (!target.EndsWith('/'))
         {
@@ -93,6 +95,7 @@ public class CliCommands
         options.OverwriteAlbum = overwriteAlbum;
         options.OverwriteTrack = overwriteTrack;
         options.OnlyMoveWhenTagged = onlyMoveWhenTagged;
+        options.OnlyFileNameMatching = onlyFileNameMatching;
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -115,6 +118,7 @@ public class CliCommands
         Console.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
         Console.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
         Console.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
+        Console.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
 
         if (extrascans?.Count > 0)
         {

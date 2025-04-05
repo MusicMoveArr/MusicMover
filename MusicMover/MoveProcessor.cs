@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Caching;
+using FuzzySharp;
 using MusicMover.Models;
 using MusicMover.Services;
 using SmartFormat;
@@ -36,6 +37,8 @@ public class MoveProcessor
     private const string VariousArtistsName = "Various Artists";
     private const string AcoustidFingerprintTag = "Acoustid Fingerprint";
     private const string AcoustidTag = "Acoustid Id";
+
+    private const int NamingAccuracy = 98;
     
     private int movedFiles = 0;
     private int localDelete = 0;
@@ -568,12 +571,16 @@ public class MoveProcessor
                     continue;
                 }
                 
-                //quick compare before caching/reading the file tags
-                if (string.Equals(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
-                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty),
-                        StringComparison.OrdinalIgnoreCase))
+                //quick compare before caching/reading the file tags, if filename matches +98%
+                if (Fuzz.Ratio(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
+                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty)) >= 98)
                 {
                     similarFiles.Add(new SimilarFileInfo(toFile));
+                    continue;
+                }
+
+                if (_options.OnlyFileNameMatching)
+                {
                     continue;
                 }
                 
@@ -609,14 +616,14 @@ public class MoveProcessor
                     continue;
                 }
 
-                bool artistMatch = (string.Equals(cachedMediaInfo?.Artist,  matchTagFile.Artist, StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(GetUncoupledArtistName(cachedMediaInfo?.Artist), GetUncoupledArtistName(matchTagFile.Artist), StringComparison.OrdinalIgnoreCase));
+                bool artistMatch = Fuzz.Ratio(cachedMediaInfo?.Artist,  matchTagFile.Artist) >= NamingAccuracy ||
+                                   Fuzz.Ratio(GetUncoupledArtistName(cachedMediaInfo?.Artist), GetUncoupledArtistName(matchTagFile.Artist)) >= NamingAccuracy;
                 
-                bool albumArtistMatch = (string.Equals(cachedMediaInfo?.AlbumArtist, matchTagFile.AlbumArtist, StringComparison.OrdinalIgnoreCase) ||
-                                         string.Equals(GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), GetUncoupledArtistName(matchTagFile.AlbumArtist), StringComparison.OrdinalIgnoreCase));
+                bool albumArtistMatch = Fuzz.Ratio(cachedMediaInfo?.AlbumArtist, matchTagFile.AlbumArtist) >= NamingAccuracy ||
+                                        Fuzz.Ratio(GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), GetUncoupledArtistName(matchTagFile.AlbumArtist)) >= NamingAccuracy;
                 
-                if (string.Equals(cachedMediaInfo?.Title, matchTagFile.Title, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(cachedMediaInfo?.Album,  matchTagFile.Album, StringComparison.OrdinalIgnoreCase) &&
+                if (Fuzz.Ratio(cachedMediaInfo?.Title, matchTagFile.Title) >= NamingAccuracy &&
+                    Fuzz.Ratio(cachedMediaInfo?.Album,  matchTagFile.Album) >= NamingAccuracy&&
                     cachedMediaInfo?.Track == matchTagFile.Track &&
                     artistMatch && albumArtistMatch)
                 {

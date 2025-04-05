@@ -28,4 +28,6 @@ public class CliOptions
     public bool OverwriteAlbum { get; set; }
     public bool OverwriteTrack { get; set; }
     public bool OnlyMoveWhenTagged { get; set; }
+    public bool OnlyFileNameMatching { get; set; }
+    
 }
