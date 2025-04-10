@@ -29,5 +29,6 @@ public class CliOptions
     public bool OverwriteTrack { get; set; }
     public bool OnlyMoveWhenTagged { get; set; }
     public bool OnlyFileNameMatching { get; set; }
+    public bool SearchByTagNames { get; set; }
     
 }

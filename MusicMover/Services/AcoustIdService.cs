@@ -1,3 +1,4 @@
+using MusicMover.Models;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 
@@ -5,7 +6,7 @@ namespace MusicMover.Services;
 
 public class AcoustIdService
 {
-    public JObject? LookupAcoustId(string acoustIdApiKey, string fingerprint, int duration)
+    public AcoustIdResponse? LookupAcoustId(string acoustIdApiKey, string fingerprint, int duration)
     {
         if (string.IsNullOrWhiteSpace(acoustIdApiKey))
         {
@@ -19,27 +20,10 @@ public class AcoustIdService
         request.AddParameter("duration", duration);
         request.AddParameter("fingerprint", fingerprint);
 
-        var response = client.Execute(request);
-
-        if (response.IsSuccessful)
-        {
-            var content = response.Content;
-
-            if (!string.IsNullOrWhiteSpace(content))
-            {
-                JObject jsonResponse = JObject.Parse(content);
-                
-                return jsonResponse;
-            }
-        }
-        else
-        {
-            Console.WriteLine("Error: " + response.ErrorMessage);
-        }
-        return null;
+        return client.Get<AcoustIdResponse>(request);
     }
     
-    public JObject? LookupByAcoustId(string acoustIdApiKey, string acoustId)
+    public AcoustIdResponse? LookupByAcoustId(string acoustIdApiKey, string acoustId)
     {
         if (string.IsNullOrWhiteSpace(acoustIdApiKey))
         {
@@ -52,23 +36,6 @@ public class AcoustIdService
         request.AddParameter("meta", "recordings");
         request.AddParameter("trackid", acoustId);
 
-        var response = client.Execute(request);
-
-        if (response.IsSuccessful)
-        {
-            var content = response.Content;
-
-            if (!string.IsNullOrWhiteSpace(content))
-            {
-                JObject jsonResponse = JObject.Parse(content);
-                
-                return jsonResponse;
-            }
-        }
-        else
-        {
-            Console.WriteLine("Error: " + response.ErrorMessage);
-        }
-        return null;
+        return client.Get<AcoustIdResponse>(request);
     }
 }
