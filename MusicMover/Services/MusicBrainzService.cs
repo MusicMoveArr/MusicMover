@@ -15,7 +15,7 @@ public class MusicBrainzService
     private readonly FingerPrintService _fingerPrintService;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private const int MatchPercentage = 80;
-    private const int MinimumArtistName = 5; //prevents very short, non-artist names for example to be used for searching/matching
+    private const int MinimumArtistName = 2; //prevents very short, non-artist names for example to be used for searching/matching
         
     public MusicBrainzService()
     {
@@ -110,7 +110,13 @@ public class MusicBrainzService
 
         if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
         {
-            UpdateTag(track, "Title", release.Media?.FirstOrDefault()?.Tracks.FirstOrDefault().Title, ref trackInfoUpdated);
+            string trackTitle = release.Media?.FirstOrDefault()?.Tracks.FirstOrDefault().Title;
+            string credits = GetArtistFeatCreditString(artistCredits, artistCredit?.Name, true);
+            if (credits.Length > 2)
+            {
+                trackTitle += " " + credits;
+            }
+            UpdateTag(track, "Title", trackTitle, ref trackInfoUpdated);
         }
         if (string.IsNullOrWhiteSpace(track.Album) || overWriteAlbum)
         {
@@ -241,6 +247,8 @@ public class MusicBrainzService
                 LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Duration ?? 100),
                 Result = result
             })
+            .Where(match => match.ArtistMatchedFor >= MatchPercentage)
+            .Where(match => match.TitleMatchedFor >= MatchPercentage)
             .OrderByDescending(result => result.ArtistMatchedFor)
             .ThenByDescending(result => result.TitleMatchedFor)
             .ThenBy(result => result.LengthMatch)
@@ -258,6 +266,7 @@ public class MusicBrainzService
                         Artist = artist,
                         MatchedFor = Fuzz.Ratio(artist.Name?.ToLower(), track.AlbumArtist?.ToLower()) + Fuzz.Ratio(artist.Name?.ToLower(), track.Artist?.ToLower())
                     })
+                    .Where(match => match.MatchedFor >= MatchPercentage)
                     .OrderByDescending(match => match.MatchedFor)
                     .Select(match => match.Artist)
                     .FirstOrDefault()
@@ -308,8 +317,8 @@ public class MusicBrainzService
                 .ToList();
         
         var potentialReleases = matchedReleases
-            .Where(match => match.AlbumMatch > MatchPercentage)
-            .Where(match => match.ArtistMatch > MatchPercentage)
+            .Where(match => match.AlbumMatch >= MatchPercentage)
+            .Where(match => match.ArtistMatch >= MatchPercentage)
             .ToList();
 
         foreach (var potentialRelease in potentialReleases)
@@ -317,7 +326,7 @@ public class MusicBrainzService
             foreach (var media in potentialRelease.Release.Media)
             {
                 var tempTracks = media.Tracks;
-                media.Tracks = GetBestMatchingTracks(tempTracks, track.Title);
+                media.Tracks = GetBestMatchingTracks(tempTracks, track.Title, string.Empty);
 
                 if (media?.Tracks?.Count == 0 && track.Title.ToLower().Contains(trackArtist.ToLower()))
                 {
@@ -325,7 +334,27 @@ public class MusicBrainzService
                     string withoutArtistName = track.Title.ToLower().Replace(trackArtist.ToLower(), string.Empty);
                     if (withoutArtistName.Length >= MinimumArtistName)
                     {
-                        media.Tracks = GetBestMatchingTracks(tempTracks, withoutArtistName);
+                        media.Tracks = GetBestMatchingTracks(tempTracks, withoutArtistName, string.Empty);
+                    }
+                }
+
+                if (media?.Tracks?.Count == 0 && data.ArtistCredit.Count > 1)
+                {
+                    //try by adding artist credit join phrase
+                    string artistCredits = GetArtistFeatCreditString(data.ArtistCredit, string.Empty, true);
+                    media.Tracks = GetBestMatchingTracks(tempTracks, track.Title, artistCredits);
+                }
+
+                if (media?.Tracks?.Count == 0 &&
+                    data.ArtistCredit.Count > 1 &&
+                    !string.IsNullOrWhiteSpace(data.ArtistCredit.First().JoinPhrase))
+                {
+                    //try by removing the join phrase
+                    string titleWithoutCredit = CleanupArtistCredit(track.Title, data.ArtistCredit.First().JoinPhrase);
+                    
+                    if (!string.IsNullOrWhiteSpace(titleWithoutCredit))
+                    {
+                        media.Tracks = GetBestMatchingTracks(tempTracks, titleWithoutCredit, string.Empty);
                     }
                 }
             }
@@ -339,16 +368,16 @@ public class MusicBrainzService
         return bestMatchRelease;
     }
 
-    private List<MusicBrainzReleaseMediaTrackModel>? GetBestMatchingTracks(List<MusicBrainzReleaseMediaTrackModel>? tracks, string trackTitle)
+    private List<MusicBrainzReleaseMediaTrackModel>? GetBestMatchingTracks(List<MusicBrainzReleaseMediaTrackModel>? tracks, string trackTitle, string artistCredit)
     {
         return tracks?
             .Select(releaseTrack => new
             {
                 Track = releaseTrack,
                 Length = releaseTrack.Length / 1000 ?? int.MaxValue,
-                TitleMatch = Fuzz.Ratio(trackTitle.ToLower(), releaseTrack.Title?.ToLower())
+                TitleMatch = Fuzz.Ratio(trackTitle.ToLower(), releaseTrack.Title?.ToLower() + artistCredit)
             })
-            .Where(match => match.TitleMatch > MatchPercentage)
+            .Where(match => match.TitleMatch >= MatchPercentage)
             .OrderByDescending(releaseTrack => releaseTrack.TitleMatch)
             .ThenBy(releaseTrack => releaseTrack.Length)
             .Select(releaseTrack => releaseTrack.Track)
@@ -388,8 +417,8 @@ public class MusicBrainzService
                 .ToList();
 
         return matchedReleases
-            .Where(match => match.AlbumMatch > MatchPercentage)
-            .Where(match => match.ArtistMatch > MatchPercentage)
+            .Where(match => match.AlbumMatch >= MatchPercentage)
+            .Where(match => match.ArtistMatch >= MatchPercentage)
             .Select(match => match.Release)
             .FirstOrDefault();
     }
@@ -400,6 +429,7 @@ public class MusicBrainzService
         ref MusicBrainzRecordingQueryEntityModel recordingQuery)
     {
         string trackArtist = IsVariousArtists(track.Artist) ? bestMatchedArtist.Name : track.Artist;
+        
 
         if (string.IsNullOrWhiteSpace(trackArtist))
         {
@@ -409,28 +439,18 @@ public class MusicBrainzService
         
         var searchResult = _musicBrainzAPIService.SearchRelease(track.Artist, track.Album, track.Title);
         
-        if (searchResult?.Recordings?.Count == 0 && 
-            (track.Title.ToLower().Contains(trackArtist.ToLower()) ||
-             track.Album.ToLower().Contains(trackArtist.ToLower())))
+        if (searchResult?.Recordings?.Count == 0)
         {
             //try without the artist name in the title for a match
             string titleWithoutArtistName = track.Title.ToLower().Replace(trackArtist.ToLower(), string.Empty);
             string albumWithoutArtistName = track.Album.ToLower().Replace(trackArtist.ToLower(), string.Empty);
 
-            if (!string.IsNullOrWhiteSpace(bestMatchedArtist?.JoinPhrase) &&
-                titleWithoutArtistName.Contains(bestMatchedArtist.JoinPhrase.Trim().ToLower()))
-            {
-                titleWithoutArtistName = titleWithoutArtistName.Substring(0, titleWithoutArtistName.IndexOf(bestMatchedArtist.JoinPhrase.Trim().ToLower()));
-            }
             
-            //cleanup some characters that might fail the search
-            titleWithoutArtistName = titleWithoutArtistName
-                .Replace("[", string.Empty)
-                .Replace("]", string.Empty)
-                .Replace("(", string.Empty)
-                .Replace(")", string.Empty)
-                .Replace(":", string.Empty)
-                .Trim();
+            
+            if (!string.IsNullOrWhiteSpace(bestMatchedArtist?.JoinPhrase))
+            {
+                titleWithoutArtistName = CleanupArtistCredit(titleWithoutArtistName, bestMatchedArtist?.JoinPhrase);
+            }
             
             if (titleWithoutArtistName.Length >= MinimumArtistName && 
                 albumWithoutArtistName.Length >= MinimumArtistName)
@@ -466,7 +486,7 @@ public class MusicBrainzService
 
                 if (bestMatchedArtist != null)
                 {
-                    musicBrainzArtistModel.ArtistCredit.Add(bestMatchedArtist);
+                    musicBrainzArtistModel.ArtistCredit.AddRange(recording.ArtistCredit);
                 }
                 
                 var release = GetBestMatchingRelease(musicBrainzArtistModel, track, artistCountry, trackArtist);
@@ -558,5 +578,76 @@ public class MusicBrainzService
         }
 
         return false;
+    }
+
+    private string GetArtistFeatCreditString(List<MusicBrainzArtistCreditModel> artists, string? trackArtist, bool addBrackets)
+    {
+        string artistName = string.Empty;
+
+        if (artists.Count > 1)
+        {
+            if (addBrackets)
+            {
+                artistName += "(";
+            }
+
+            if (!string.IsNullOrWhiteSpace(trackArtist))
+            {
+                artists = artists
+                    .Where(artist => !string.Equals(artist.Name, trackArtist))
+                    .ToList();
+            }
+
+            int index = 0;
+            string joinPhrase = artists.FirstOrDefault()?.JoinPhrase ?? string.Empty;
+
+            string[] replaceToFeat = new[] { ",", "&" };
+            if (joinPhrase.Length > 0 && replaceToFeat.Any(feat => joinPhrase.Trim() == feat))
+            {
+                joinPhrase = "feat. ";
+            }
+            
+            foreach (var artist in artists)
+            {
+                if (index == 0 && joinPhrase.StartsWith(' '))
+                {
+                    joinPhrase = joinPhrase.TrimStart();
+                }
+                
+                artistName += $"{joinPhrase}{artist.Name}";
+                joinPhrase = artist.JoinPhrase ?? string.Empty;
+                index++;
+            }
+            if (addBrackets)
+            {
+                artistName += ")";
+            }
+        }
+
+        return artistName.Trim();
+    }
+
+    private string CleanupArtistCredit(string trackName, string joinPhrase)
+    {
+        if (!string.IsNullOrWhiteSpace(joinPhrase) &&
+            trackName.ToLower().Contains(joinPhrase.Trim().ToLower()))
+        {
+            int index = trackName.ToLower().IndexOf(joinPhrase.Trim().ToLower());
+            if (index > 1)
+            {
+                trackName = trackName.ToLower().Substring(0, index);
+            }
+        }
+            
+        //cleanup some characters that might fail the search
+        trackName = trackName
+            .Replace("[", string.Empty)
+            .Replace("]", string.Empty)
+            .Replace("(", string.Empty)
+            .Replace(")", string.Empty)
+            .Replace(":", string.Empty)
+            .Trim();
+
+        return trackName;
     }
 }
