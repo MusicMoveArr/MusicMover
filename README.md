@@ -23,8 +23,9 @@ Loving the work I do? buy me a coffee https://buymeacoffee.com/musicmovearr
 10. Rename the file name that constains "Various Artists" to the first performer using --various-artists, it will rename it for example from "Various Artists - Jane Album - 01 - My Song.mp3" to "John Doe - Jane Album - 01 - My Song.mp3"
 11. Update the Artist and Performers tags by using "--update-Artist-Tags", this will cleanup the tags (so to say) by saving the "Various Artists" to it's real Artist name, this includes as well changing "John Doe feat Jane Doe" in the Artist tags to just "John Doe"
 12. Apply media tags from MusicBrainz by fingerprinting using AcoustId
-13. Argument "--always-check-acoust-id" will always force reading from MusicBrainz even with tags available already in the media file
-14. Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title, Note: Discnumber in this example is only applied if discnumber is higher then 1
+13. Apply media tags from Tidal
+14. Argument "--always-check-acoust-id" will always force reading from MusicBrainz even with tags available already in the media file
+15. Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title, Note: Discnumber in this example is only applied if discnumber is higher then 1
 
 Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}
 
@@ -40,20 +41,33 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --create-album-directory | -u | Create Album directory if missing on target directory. | [no value required] |
 | --parallel | -p | multi-threaded processing. | [no value required] |
 | --delete-duplicate-from | -w | Delete the song in From Directory if already found at Target. | [no value required] |
+| --delete-duplicate-to | -W | Delete the song in To Directory if already found at Target (duplicates). | [no value required] |
 | --dryrun | -d | Dry run, no files are moved/copied. | [no value required] |
 | --various-artists | -va | Rename "Various Artists" in the file name with First Performer. | [no value required] |
 | --extra-dir-must-exist | -AX | Artist folder must already exist in the extra scanned directories. | [no value required] |
+| --artist-dirs-must-not-exist | -AN | Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g. | [no value required] |
 | --update-artist-tags | -UA | Update Artist metadata tags. | [no value required] |
 | --fix-file-corruption | -FX | Attempt fixing file corruption by using FFMpeg for from/target/scan files. | [no value required] |
 | --skip-directories | -s | Skip X amount of directories in the From directory to process. | 5 |
 | --extrascans | -A | Scan extra directories, usage, ["a","b"], besides the target directory. | [\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"] |
-| --artist-dirs-must-not-exist | -AN | Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g. | [no value required] |
 | --extrascan | -a | Scan a extra directory, besides the target directory. | ~/nfs_share/Music |
 | --acoustid-api-key | -AI | When AcoustId API Key is set, try getting the artist/album/title when needed. | xxxxxxx |
 | --file-format | -FF | rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate} | {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title} |
 | --directory-seperator | -ds | Directory Seperator replacer, replace '/' '\' to .e.g. '_'. | _ |
 | --always-check-acoust-id | -ac | Always check & Write to media with AcoustId for missing tags. | [no value required] |
 | --continue-scan-error | -CS | Continue on scan errors from the Music Libraries. | [no value required] |
+| --overwrite-artist | -xx | xx | [no value required] |
+| --xx | -OA | Overwrite the Artist name when tagging from MusicBrainz. | [no value required] |
+| --overwrite-album-artist | -Oa | Overwrite the Album Artist name when tagging from MusicBrainz. | [no value required] |
+| --overwrite-album | -OB | Overwrite the Album name when tagging from MusicBrainz. | [no value required] |
+| --overwrite-track | -OT | Overwrite the Track name when tagging from MusicBrainz. | [no value required] |
+| --only-move-when-tagged | -MT | Only process/move the media after it was MusicBrainz or Tidal tagged (-AI must be used). | [no value required] |
+| --only-file-name-matching | -MF | Only filename matching when trying to find duplicates. | [no value required] |
+| --search-by-tag-names | -ST | Search MusicBrainz from media tag-values if AcoustId matching failed. | [no value required] |
+| --tidal-client-id | -TC | The Client Id used for Tidal's API. | [no value required] |
+| --tidal-client-secret | -TS | The Client Client used for Tidal's API. | [no value required] |
+| --tidal-country-code | -Tc | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | [no value required] |
+
 
 # Usage
 ```
