@@ -35,6 +35,9 @@ public class CliCommands
     /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz tagged (-AI must be used) .</param>
     /// <param name="onlyFileNameMatching">-MF, Only filename matching when trying to find duplicates.</param>
     /// <param name="searchByTagNames">-ST, Search MusicBrainz from media tag-values if AcoustId matching failed.</param>
+    /// <param name="tidalClientId">-TC, The Client Id used for Tidal's API.</param>
+    /// <param name="tidalClientSecret">-TS, The Client Client used for Tidal's API.</param>
+    /// <param name="tidalCountryCode">-Tc, Tidal's CountryCode (e.g. US, FR, NL, DE etc).</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -63,7 +66,10 @@ public class CliCommands
         bool overwriteTrack = false,
         bool onlyMoveWhenTagged = false,
         bool onlyFileNameMatching = false,
-        bool searchByTagNames = false)
+        bool searchByTagNames = false,
+        string tidalClientId = "",
+        string tidalClientSecret = "",
+        string tidalCountryCode = "US")
     {
         if (!target.EndsWith('/'))
         {
@@ -99,6 +105,9 @@ public class CliCommands
         options.OnlyMoveWhenTagged = onlyMoveWhenTagged;
         options.OnlyFileNameMatching = onlyFileNameMatching;
         options.SearchByTagNames = searchByTagNames;
+        options.TidalClientId = tidalClientId;
+        options.TidalClientSecret = tidalClientSecret;
+        options.TidalCountryCode = tidalCountryCode;
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");

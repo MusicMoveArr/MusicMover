@@ -30,5 +30,8 @@ public class CliOptions
     public bool OnlyMoveWhenTagged { get; set; }
     public bool OnlyFileNameMatching { get; set; }
     public bool SearchByTagNames { get; set; }
+    public string TidalClientId { get; set; }
+    public string TidalClientSecret { get; set; }
+    public string TidalCountryCode { get; set; }
     
 }

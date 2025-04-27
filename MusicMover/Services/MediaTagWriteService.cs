@@ -334,6 +334,51 @@ public class MediaTagWriteService
                 track.AdditionalFields[GetFieldName(track, "genre")] = value;
                 updated = IsDictionaryUpdated(track, oldValues, "genre");
                 return true;
+            case "tidal track id":
+                orgValue = GetDictionaryValue(track, "Tidal Track Id");
+                track.AdditionalFields[GetFieldName(track, "Tidal Track Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Track Id");
+                return true;
+            case "tidal track explicit":
+                orgValue = GetDictionaryValue(track, "Tidal Track Explicit");
+                track.AdditionalFields[GetFieldName(track, "Tidal Track Explicit")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Track Explicit");
+                return true;
+            case "tidal track href":
+                orgValue = GetDictionaryValue(track, "Tidal Track Href");
+                track.AdditionalFields[GetFieldName(track, "Tidal Track Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Track Href");
+                return true;
+            case "tidal album id":
+                orgValue = GetDictionaryValue(track, "Tidal Album Id");
+                track.AdditionalFields[GetFieldName(track, "Tidal Album Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Album Id");
+                return true;
+            case "tidal album href":
+                orgValue = GetDictionaryValue(track, "Tidal Album Href");
+                track.AdditionalFields[GetFieldName(track, "Tidal Album Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Album Href");
+                return true;
+            case "tidal album release date":
+                orgValue = GetDictionaryValue(track, "Tidal Album Release Date");
+                track.AdditionalFields[GetFieldName(track, "Tidal Album Release Date")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Album Release Date");
+                return true;
+            case "tidal artist id":
+                orgValue = GetDictionaryValue(track, "Tidal Artist Id");
+                track.AdditionalFields[GetFieldName(track, "Tidal Artist Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Artist Id");
+                return true;
+            case "tidal artist href":
+                orgValue = GetDictionaryValue(track, "Tidal Artist Href");
+                track.AdditionalFields[GetFieldName(track, "Tidal Artist Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Tidal Artist Href");
+                return true;
+            case "copyright":
+                orgValue = GetDictionaryValue(track, "Copyright");
+                track.AdditionalFields[GetFieldName(track, "Copyright")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Copyright");
+                return true;
         }
 
         return false;

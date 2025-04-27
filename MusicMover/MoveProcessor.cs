@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Caching;
 using FuzzySharp;
+using ListRandomizer;
 using MusicMover.Models;
 using MusicMover.Services;
 using SmartFormat;
@@ -60,6 +61,7 @@ public class MoveProcessor
     private readonly MemoryCache _memoryCache;
     private readonly CorruptionFixer _corruptionFixer;
     private readonly MusicBrainzService _musicBrainzService;
+    private readonly TidalService _tidalService;
     
     private List<string> ArtistsNotFound = new List<string>();
 
@@ -69,6 +71,9 @@ public class MoveProcessor
         _memoryCache = MemoryCache.Default;
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
+        _tidalService = new TidalService(options.TidalClientId, 
+            options.TidalClientSecret, 
+            options.TidalCountryCode);
     }
 
     public void Process()
@@ -152,13 +157,14 @@ public class MoveProcessor
             }
             catch (Exception e)
             {
-                Console.WriteLine($"{fromFile.FullName}, {e.Message}");
+                Console.WriteLine($"{fromFile.FullName}, {e.Message}. \r\n{e.StackTrace}");
                 IncrementCounter(() => skippedErrorFiles++);
             }
         }
     }
 
-    private bool SetToArtistDirectory(string artist, MediaFileInfo tagFile,
+    private bool SetToArtistDirectory(string artist, 
+        MediaFileInfo tagFile,
         out DirectoryInfo toArtistDirInfo,
         out DirectoryInfo toAlbumDirInfo)
     {
@@ -173,13 +179,13 @@ public class MoveProcessor
             _options.CreateArtistDirectory &&
             !_options.IsDryRun)
         {
-            bool aristExists = _options.ArtistDirsMustNotExist.Any(dir =>
+            bool artistExists = _options.ArtistDirsMustNotExist.Any(dir =>
             {
                 var extraToArtistDirInfo = new DirectoryInfo($"{dir}{SanitizeArtistName(artist)}");
                 return extraToArtistDirInfo.Exists;
             });
             
-            if (!aristExists)
+            if (!artistExists)
             {
                 toArtistDirInfo.Create();
             }
@@ -228,14 +234,20 @@ public class MoveProcessor
             return false;
         }
 
+        bool musicBrainzTaggingSuccess = false;
+        bool tidalTaggingSuccess = false;
+
         if (!string.IsNullOrWhiteSpace(_options.AcoustIdAPIKey) &&
             (_options.AlwaysCheckAcoustId ||
              string.IsNullOrWhiteSpace(tagFile.Artist) ||
              string.IsNullOrWhiteSpace(tagFile.Album) ||
              string.IsNullOrWhiteSpace(tagFile.AlbumArtist)))
         {
-            if (_musicBrainzService.WriteTagFromAcoustId(tagFile, fromFile, _options.AcoustIdAPIKey,
-                    _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack, _options.OverwriteAlbumArtist, _options.SearchByTagNames))
+            musicBrainzTaggingSuccess = _musicBrainzService.WriteTagFromAcoustId(tagFile, fromFile, _options.AcoustIdAPIKey,
+                _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist, _options.SearchByTagNames);
+            
+            if (musicBrainzTaggingSuccess)
             {
                 //read again the file after saving
                 tagFile = new MediaFileInfo(fromFile);
@@ -244,12 +256,33 @@ public class MoveProcessor
             else
             {
                 Console.WriteLine($"AcoustId not found by Fingerprint for {fromFile.FullName}");
-
-                if (_options.OnlyMoveWhenTagged)
-                {
-                    return false;
-                }
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(_options.TidalClientId) &&
+            !string.IsNullOrWhiteSpace(_options.TidalClientSecret) &&
+            !string.IsNullOrWhiteSpace(_options.TidalCountryCode))
+        {
+            tidalTaggingSuccess = _tidalService.WriteTags(tagFile, fromFile, GetUncoupledArtistName(tagFile.Artist), GetUncoupledArtistName(tagFile.AlbumArtist),
+                _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist);
+            
+            if (tidalTaggingSuccess)
+            {
+                //read again the file after saving
+                tagFile = new MediaFileInfo(fromFile);
+                Console.WriteLine($"Updated with Tidal tags {fromFile.FullName}");
+            }
+            else
+            {
+                Console.WriteLine($"Tidal record not found by MediaTag information for {fromFile.FullName}");
+            }
+        }
+        
+        if (_options.OnlyMoveWhenTagged && !musicBrainzTaggingSuccess && !tidalTaggingSuccess)
+        {
+            Console.WriteLine($"Skipped processing, tagging failed for '{fromFile.FullName}'");
+            return false;
         }
         
         string oldArtistName = tagFile.AlbumArtist;
@@ -301,6 +334,8 @@ public class MoveProcessor
                 {
                     ArtistsNotFound.Add(newArtistName);
                 }
+                
+                Console.WriteLine($"Skipped processing, Artist folder does not exist for '{fromFile.FullName}'");
                 return false;
             }
 
@@ -314,18 +349,20 @@ public class MoveProcessor
                 {
                     ArtistsNotFound.Add(artist);
                 }
+                Console.WriteLine($"Skipped processing, Artist folder does not exist for '{fromFile.FullName}'");
                 return false;
             }
         }
 
         if (!toArtistDirInfo.Exists)
         {
+            Console.WriteLine($"Skipped processing, Artist folder does not exist for '{fromFile.FullName}'");
             return false;
         }
 
         bool scanErrors = false;
 
-        List<SimilarFileInfo> similarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, toArtistDirInfo, artist, out scanErrors);
+        List<SimilarFileInfo> similarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, toAlbumDirInfo, artist, out scanErrors);
 
         if (scanErrors && !_options.ContinueScanError)
         {
@@ -336,15 +373,17 @@ public class MoveProcessor
         bool extraDirExists = true;
         foreach (string extraScaDir in _options.ExtraScans)
         {
-            DirectoryInfo extraDirInfo = new DirectoryInfo($"{extraScaDir}{SanitizeArtistName(artist)}");
+            DirectoryInfo extraScaDirInfo = new DirectoryInfo(extraScaDir);
+            string albumPath = GetDirectoryCaseInsensitive(extraScaDirInfo, $"{SanitizeArtistName(artist)}/{SanitizeAlbumName(tagFile.Album)}");
+            DirectoryInfo albumDirInfo = new DirectoryInfo(Path.Join(extraScaDir, albumPath));
 
-            if (!extraDirInfo.Exists)
+            if (!albumDirInfo.Exists)
             {
                 extraDirExists = false;
                 continue;
             }
 
-            var extraSimilarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, extraDirInfo, artist, out scanErrors);
+            var extraSimilarFiles = GetSimilarFileFromTagsArtist(tagFile, fromFile, albumDirInfo, artist, out scanErrors);
 
             if (scanErrors && !_options.ContinueScanError)
             {
@@ -533,18 +572,28 @@ public class MoveProcessor
         }
     }
 
-    private List<SimilarFileInfo> GetSimilarFileFromTagsArtist(MediaFileInfo matchTagFile, FileInfo fromFileInfo,
-        DirectoryInfo toArtistDirInfo, string artistName, out bool errors)
+    private List<SimilarFileInfo> GetSimilarFileFromTagsArtist(
+        MediaFileInfo matchTagFile, 
+        FileInfo fromFileInfo,
+        DirectoryInfo toAlbumDirInfo, 
+        string artistName, 
+        out bool errors)
     {
         errors = false;
         List<SimilarFileInfo> similarFiles = new List<SimilarFileInfo>();
-        List<FileInfo> toFiles = toArtistDirInfo
+
+        if (!toAlbumDirInfo.Exists)
+        {
+            return similarFiles;
+        }
+        
+        List<FileInfo> toFiles = toAlbumDirInfo
             .GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => file.Length > 0)
             .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToList();
         
-        var dirs = System.IO.Directory.GetDirectories(toArtistDirInfo.Parent.FullName)
+        var dirs = System.IO.Directory.GetDirectories(toAlbumDirInfo.Parent.FullName)
             .Select(dir => new DirectoryInfo(dir))
             .Where(dir => string.Equals(dir.Name, artistName, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -571,9 +620,9 @@ public class MoveProcessor
                     continue;
                 }
                 
-                //quick compare before caching/reading the file tags, if filename matches +98%
+                //quick compare before caching/reading the file tags, if filename matches +90%
                 if (Fuzz.Ratio(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
-                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty)) >= 98)
+                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty)) >= 95)
                 {
                     similarFiles.Add(new SimilarFileInfo(toFile));
                     continue;
@@ -623,7 +672,7 @@ public class MoveProcessor
                                         Fuzz.Ratio(GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), GetUncoupledArtistName(matchTagFile.AlbumArtist)) >= NamingAccuracy;
                 
                 if (Fuzz.Ratio(cachedMediaInfo?.Title, matchTagFile.Title) >= NamingAccuracy &&
-                    Fuzz.Ratio(cachedMediaInfo?.Album,  matchTagFile.Album) >= NamingAccuracy&&
+                    Fuzz.Ratio(cachedMediaInfo?.Album,  matchTagFile.Album) >= NamingAccuracy &&
                     cachedMediaInfo?.Track == matchTagFile.Track &&
                     artistMatch && albumArtistMatch)
                 {
