@@ -32,7 +32,7 @@ public class CliCommands
     /// <param name="overwriteAlbumArtist">-Oa, Overwrite the Album Artist name when tagging from MusicBrainz.</param>
     /// <param name="overwriteAlbum">-OB, Overwrite the Album name when tagging from MusicBrainz.</param>
     /// <param name="overwriteTrack">-OT, Overwrite the Track name when tagging from MusicBrainz.</param>
-    /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz tagged (-AI must be used) .</param>
+    /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz or Tidal tagged (-AI must be used).</param>
     /// <param name="onlyFileNameMatching">-MF, Only filename matching when trying to find duplicates.</param>
     /// <param name="searchByTagNames">-ST, Search MusicBrainz from media tag-values if AcoustId matching failed.</param>
     /// <param name="tidalClientId">-TC, The Client Id used for Tidal's API.</param>
