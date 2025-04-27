@@ -56,8 +56,7 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --directory-seperator | -ds | Directory Seperator replacer, replace '/' '\' to .e.g. '_'. | _ |
 | --always-check-acoust-id | -ac | Always check & Write to media with AcoustId for missing tags. | [no value required] |
 | --continue-scan-error | -CS | Continue on scan errors from the Music Libraries. | [no value required] |
-| --overwrite-artist | -xx | xx | [no value required] |
-| --xx | -OA | Overwrite the Artist name when tagging from MusicBrainz. | [no value required] |
+| --overwrite-artist | -OA | Overwrite the Artist name when tagging from MusicBrainz. | [no value required] |
 | --overwrite-album-artist | -Oa | Overwrite the Album Artist name when tagging from MusicBrainz. | [no value required] |
 | --overwrite-album | -OB | Overwrite the Album name when tagging from MusicBrainz. | [no value required] |
 | --overwrite-track | -OT | Overwrite the Track name when tagging from MusicBrainz. | [no value required] |
