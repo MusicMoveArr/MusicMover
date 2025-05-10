@@ -9,7 +9,7 @@ public class MediaFileInfo
     private const string AcoustIdIdTag = "AcoustidId";
     private const string AcoustIdTag = "AcoustId";
     
-    public FileInfo? FileInfo { get; set; }
+    public FileInfo FileInfo { get; set; }
     
     public string? Artist { get; set; }
     public string? SortArtist { get; set; }

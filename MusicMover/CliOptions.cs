@@ -3,8 +3,8 @@ namespace MusicMover;
 public class CliOptions
 {
     public bool IsDryRun { get; set; }
-    public string FromDirectory { get; set; }
-    public string ToDirectory { get; set; }
+    public required string FromDirectory { get; init; }
+    public required string ToDirectory { get; init; }
     public bool CreateArtistDirectory { get; set; }
     public bool CreateAlbumDirectory { get; set; }
     public bool Parallel { get; set; }
@@ -18,9 +18,9 @@ public class CliOptions
     public bool ExtraDirMustExist { get; set; }
     public bool UpdateArtistTags { get; set; }
     public bool FixFileCorruption { get; set; }
-    public string AcoustIdAPIKey { get; set; }
-    public string FileFormat { get; set; }
-    public string DirectorySeperator { get; set; }
+    public required string? AcoustIdApiKey { get; init; }
+    public required string FileFormat { get; init; }
+    public required string DirectorySeperator { get; init; }
     public bool AlwaysCheckAcoustId { get; set; }
     public bool ContinueScanError { get; set; }
     public bool OverwriteArtist { get; set; }
@@ -30,8 +30,10 @@ public class CliOptions
     public bool OnlyMoveWhenTagged { get; set; }
     public bool OnlyFileNameMatching { get; set; }
     public bool SearchByTagNames { get; set; }
-    public string TidalClientId { get; set; }
-    public string TidalClientSecret { get; set; }
-    public string TidalCountryCode { get; set; }
+    public required string TidalClientId { get; init; }
+    public required string TidalClientSecret { get; init; }
+    public required string TidalCountryCode { get; init; }
+    public required string MetadataApiBaseUrl { get; init; }
+    public required string MetadataApiProvider { get; init; }
     
 }

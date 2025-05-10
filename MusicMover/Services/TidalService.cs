@@ -14,18 +14,15 @@ public class TidalService
     private readonly string VariousArtistsVA = "VA";
     
     private readonly MediaTagWriteService _mediaTagWriteService;
-    private readonly TidalAPIService _tidalAPIService;
-    private const int ApiDelay = 5000;
     private const int MatchPercentage = 80;
     private const int SlidingCacheExpiration = 120;
-    private MemoryCache _memoryCache;
     private Stopwatch _apiStopwatch = Stopwatch.StartNew();
+    private readonly TidalAPICacheLayerService _tidalAPIService;
     
     public TidalService(string tidalClientId, string tidalClientSecret, string countryCode)
     {
-        _memoryCache = MemoryCache.Default;
         _mediaTagWriteService = new MediaTagWriteService();
-        _tidalAPIService = new TidalAPIService(tidalClientId, tidalClientSecret, countryCode);
+        _tidalAPIService = new TidalAPICacheLayerService(tidalClientId, tidalClientSecret, countryCode);
     }
     
     public bool WriteTags(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName, string uncoupledAlbumArtist,
@@ -37,41 +34,48 @@ public class TidalService
         {
             _tidalAPIService.Authenticate();
         }
+
+        List<string> artistSearch = new List<string>();
+        artistSearch.Add(mediaFileInfo.Artist);
+        artistSearch.Add(mediaFileInfo.AlbumArtist);
+        artistSearch.Add(uncoupledArtistName);
+        artistSearch.Add(uncoupledAlbumArtist);
         
-        Console.WriteLine($"Need to match artist: '{mediaFileInfo.Artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
-        Console.WriteLine($"Searching for tidal artist by Artist tag '{mediaFileInfo.Artist}'");
-        if (TryArtist(mediaFileInfo.Artist, mediaFileInfo, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+        artistSearch = artistSearch
+            .Where(artist => !string.IsNullOrWhiteSpace(artist))
+            .DistinctBy(artist => artist)
+            .ToList();
+
+        if (!artistSearch.Any())
         {
-            return true;
+            return false;
         }
-        
-        if (!string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist) &&
-            !string.Equals(mediaFileInfo.AlbumArtist, mediaFileInfo.Artist))
+
+        foreach (var artist in artistSearch)
         {
-            Console.WriteLine($"Searching for tidal artist by AlbumArtist tag '{mediaFileInfo.AlbumArtist}'");
-            if (TryArtist(mediaFileInfo.AlbumArtist, mediaFileInfo, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+            Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
+            Console.WriteLine($"Searching for tidal artist '{artist}'");
+            if (TryArtist(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
             {
                 return true;
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(uncoupledArtistName) &&
-            !string.Equals(uncoupledArtistName, mediaFileInfo.Artist))
+        //try again without numbers at the start of the track name
+        //some like to add the TrackNumber to the title tag...
+        //we need to check again in case it wasn't a TrackNumber but a year number etc
+        if (Regex.IsMatch(mediaFileInfo.Title, "^[0-9]*"))
         {
-            Console.WriteLine($"Searching for tidal artist by a single artist from Artist tag '{uncoupledArtistName}'");
-            if (TryArtist(uncoupledArtistName, mediaFileInfo, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+            mediaFileInfo.Title = Regex.Replace(mediaFileInfo.Title, "^[0-9]*", string.Empty).TrimStart();
+            
+            foreach (var artist in artistSearch)
             {
-                return true;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(uncoupledAlbumArtist) &&
-            !string.Equals(uncoupledAlbumArtist, mediaFileInfo.AlbumArtist))
-        {
-            Console.WriteLine($"Searching for tidal artist by a single artist from AlbumArtist tag '{uncoupledArtistName}'");
-            if (TryArtist(uncoupledAlbumArtist, mediaFileInfo, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
-            {
-                return true;
+                Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
+                Console.WriteLine($"Searching for tidal artist '{artist}'");
+                if (TryArtist(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                {
+                    return true;
+                }
             }
         }
         
@@ -79,7 +83,8 @@ public class TidalService
     }
 
     private bool TryArtist(string? artistName, 
-        MediaFileInfo mediaFileInfo,
+        string targetTrackTitle,
+        string targetAlbumTitle,
         FileInfo fromFile,
         bool overWriteArtist, 
         bool overWriteAlbum, 
@@ -93,26 +98,11 @@ public class TidalService
         }
         
         TidalSearchResponse? searchResult;
-        string artistCacheKey = $"TidalArtistSearchCacheKey_{artistName.ToLower()}";
+        searchResult = _tidalAPIService.SearchResultsArtists(artistName);
 
-        if (_memoryCache.Contains(artistCacheKey))
+        if (searchResult?.Included == null)
         {
-            Console.WriteLine($"Grabbing artist search from cache {artistCacheKey}");
-            searchResult = _memoryCache.Get(artistCacheKey) as TidalSearchResponse;
-        }
-        else
-        {
-            ApiDelaySleep();
-            searchResult = _tidalAPIService.SearchResultsArtists(artistName);
-
-            if (searchResult?.Included == null)
-            {
-                return false;
-            }
-            
-            CacheItemPolicy policy = new CacheItemPolicy();
-            policy.SlidingExpiration = TimeSpan.FromMinutes(SlidingCacheExpiration);
-            _memoryCache.Add(artistCacheKey, searchResult, policy);
+            return false;
         }
 
         if (searchResult?.Included == null)
@@ -128,7 +118,7 @@ public class TidalService
                 MatchedFor = Fuzz.Ratio(artistName, artist.Attributes.Name),
                 Artist = artist
             })
-            .Where(match => FuzzyHelper.ExactNumberMatch(mediaFileInfo.Artist, match.Artist.Attributes.Name))
+            .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Attributes.Name))
             .Where(match => match.MatchedFor >= MatchPercentage)
             .OrderByDescending(result => result.MatchedFor)
             .ThenByDescending(result => result.Artist.Attributes.Popularity)
@@ -143,7 +133,7 @@ public class TidalService
                 TidalSearchDataEntity? foundTrack = null;
                 TidalSearchResponse? albumTracks = null;
                 List<string>? artistNames = null;
-                if (ProcessArtist(artist, mediaFileInfo, ref foundAlbum, ref foundTrack, ref artistNames, ref albumTracks))
+                if (ProcessArtist(artist, targetTrackTitle, targetAlbumTitle, ref foundAlbum, ref foundTrack, ref artistNames, ref albumTracks))
                 {
                     return WriteTagsToFile(fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist,
                         artist, foundAlbum, foundTrack, artistNames, albumTracks);
@@ -159,20 +149,22 @@ public class TidalService
     }
 
     private bool ProcessArtist(TidalSearchDataEntity artist, 
-        MediaFileInfo mediaFileInfo, 
+        string targetTrackTitle, 
+        string targetAlbumTitle, 
         ref TidalSearchDataEntity? foundAlbum,
         ref TidalSearchDataEntity? foundTrack,
         ref List<string>? artistNames,
         ref TidalSearchResponse? albumTracks)
     {
-        Console.WriteLine($"Tidal search query: {artist.Attributes.Name} - {mediaFileInfo.Title}");
-        var results = _tidalAPIService.SearchResultsTracks($"{artist.Attributes.Name} - {mediaFileInfo.Title}");
-        results = GetAllTracksFromSearch(results);
+        Console.WriteLine($"Tidal search query: {artist.Attributes.Name} - {targetTrackTitle}");
+
+        TidalSearchResponse? searchResult = _tidalAPIService.SearchResultsTracks($"{artist.Attributes.Name} - {targetTrackTitle}");
+        searchResult = GetAllTracksFromSearch(searchResult);
 
         List<TidalMatchFound> matchesFound = new List<TidalMatchFound>();
-        if (results?.Included != null)
+        if (searchResult?.Included != null)
         {
-            List<TidalSearchDataEntity> bestTrackMatches = FindBestMatchingTracks(results?.Included, mediaFileInfo, MatchPercentage);
+            List<TidalSearchDataEntity> bestTrackMatches = FindBestMatchingTracks(searchResult?.Included, targetTrackTitle, MatchPercentage);
             bestTrackMatches = bestTrackMatches
                 .Where(track => !string.IsNullOrWhiteSpace(track.RelationShips.Albums.Links.Self))
                 .DistinctBy(track => new
@@ -190,12 +182,11 @@ public class TidalService
             foreach (var result in bestTrackMatches)
             {
                 if (matchesFound.Count >= 1 &&
-                    string.IsNullOrWhiteSpace(mediaFileInfo.Album))
+                    string.IsNullOrWhiteSpace(targetAlbumTitle))
                 {
                     break;
                 }
 
-                ApiDelaySleep();
                 artistNames = GetTrackArtists(int.Parse(result.Id));
 
                 bool containsArtist = artistNames.Any(artistName =>
@@ -207,11 +198,11 @@ public class TidalService
                     continue;
                 }
 
-                ApiDelaySleep();
                 var album = _tidalAPIService.GetAlbumSelfInfo(result.RelationShips.Albums.Links.Self);
                 var albumIds = album.Data
                     .Where(a => a.Type == "albums")
                     .Select(a => int.Parse(a.Id))
+                    .Distinct()
                     .ToList();
 
                 foreach (var albumId in albumIds)
@@ -223,14 +214,14 @@ public class TidalService
                         continue;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(mediaFileInfo.Album) &&
-                        (Fuzz.Ratio(mediaFileInfo.Album, albumTracks?.Data.Attributes.Title) < MatchPercentage ||
-                         !FuzzyHelper.ExactNumberMatch(mediaFileInfo.Album, albumTracks?.Data.Attributes.Title)))
+                    if (!string.IsNullOrWhiteSpace(targetAlbumTitle) &&
+                        (Fuzz.Ratio(targetAlbumTitle, albumTracks?.Data.Attributes.Title) < MatchPercentage ||
+                         !FuzzyHelper.ExactNumberMatch(targetAlbumTitle, albumTracks?.Data.Attributes.Title)))
                     {
                         continue;
                     }
 
-                    var trackMatches = FindBestMatchingTracks(albumTracks?.Included, mediaFileInfo, MatchPercentage);
+                    var trackMatches = FindBestMatchingTracks(albumTracks?.Included, targetTrackTitle, MatchPercentage);
 
                     foreach (var trackMatch in trackMatches)
                     {
@@ -241,7 +232,7 @@ public class TidalService
                         matchesFound.Add(new TidalMatchFound(tempFoundTrack, tempAlbumTracks, tempAlbum, tempArtistNames));
                     }
 
-                    if (string.IsNullOrWhiteSpace(mediaFileInfo.Album))
+                    if (string.IsNullOrWhiteSpace(targetAlbumTitle))
                     {
                         //first match wins, unable to compare album to anything
                         break;
@@ -251,7 +242,7 @@ public class TidalService
         }
 
         //try by fetching all albums and going through them...
-        if (matchesFound.Count == 0 && !string.IsNullOrWhiteSpace(mediaFileInfo.Album))
+        if (matchesFound.Count == 0 && !string.IsNullOrWhiteSpace(targetAlbumTitle))
         {
             var tempArtistInfo = _tidalAPIService.GetArtistInfoById(int.Parse(artist.Id));
 
@@ -263,19 +254,20 @@ public class TidalService
                     .Where(album => album.Type == "albums")
                     ?.Select(album => new
                     {
-                        TitleMatchedFor = Fuzz.Ratio(mediaFileInfo.Album?.ToLower(), album.Attributes.Title.ToLower()),
+                        TitleMatchedFor = Fuzz.Ratio(targetAlbumTitle.ToLower(), album.Attributes.Title.ToLower()),
                         Album = album
                     })
-                    .Where(match => FuzzyHelper.ExactNumberMatch(mediaFileInfo.Album, match.Album.Attributes.Title))
+                    .Where(match => FuzzyHelper.ExactNumberMatch(targetAlbumTitle, match.Album.Attributes.Title))
                     .Where(match => match.TitleMatchedFor >= MatchPercentage)
                     .OrderByDescending(result => result.TitleMatchedFor)
                     .Select(result => result.Album)
+                    .DistinctBy(album => album.Id)
                     .ToList();
 
                 foreach (var album in matchedAlbums)
                 {
                     albumTracks = GetAllTracksByAlbumId(int.Parse(album.Id));
-                    foundTrack = FindBestMatchingTracks(albumTracks.Included, mediaFileInfo, MatchPercentage)
+                    foundTrack = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, MatchPercentage)
                         .FirstOrDefault();
 
                     if (foundTrack != null)
@@ -293,8 +285,8 @@ public class TidalService
         var bestMatches = matchesFound
             .Select(match => new
             {
-                TitleMatchedFor = Fuzz.Ratio(mediaFileInfo.Title, match.FoundTrack.Attributes.Title),
-                AlbumMatchedFor = Fuzz.Ratio(mediaFileInfo.Album, match.Album.Attributes.Title),
+                TitleMatchedFor = Fuzz.Ratio(targetTrackTitle, match.FoundTrack.Attributes.Title),
+                AlbumMatchedFor = Fuzz.Ratio(targetAlbumTitle, match.Album.Attributes.Title),
                 Match = match
             })
             .OrderByDescending(result => result.TitleMatchedFor)
@@ -328,13 +320,6 @@ public class TidalService
             return new List<string>();
         }
         
-        string trackArtistsCacheKey = $"TidalTrackArtistsCacheKey_{trackId}";
-
-        if (_memoryCache.Contains(trackArtistsCacheKey))
-        {
-            return _memoryCache.Get(trackArtistsCacheKey) as List<string>;
-        }
-        
         var trackArtists = _tidalAPIService.GetTrackArtistsByTrackId([trackId]);
 
         if (trackArtists?.Included == null)
@@ -353,11 +338,6 @@ public class TidalService
                 .Where(artistName => !string.Equals(artistName, primaryArtistName))
                 .ToList();
         }
-        
-        CacheItemPolicy policy = new CacheItemPolicy();
-        policy.SlidingExpiration = TimeSpan.FromMinutes(SlidingCacheExpiration);
-        _memoryCache.Add(trackArtistsCacheKey, artistNames, policy);
-
         return artistNames;
     }
 
@@ -372,7 +352,6 @@ public class TidalService
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
                 Console.WriteLine($"Fetching next albums... {artist.Data.RelationShips.Albums.Data.Count}");
-                ApiDelaySleep();
                 var nextArtistInfo = _tidalAPIService.GetArtistNextInfoById(int.Parse(artist.Data.Id), nextPage);
 
                 if (nextArtistInfo?.Data?.Count > 0)
@@ -394,7 +373,7 @@ public class TidalService
 
     private List<TidalSearchDataEntity> FindBestMatchingTracks(
         List<TidalSearchDataEntity> searchResults, 
-        MediaFileInfo mediaFileInfo,
+        string targetTrackTitle,
         int matchRatioPercentage)
     {
         //strict name matching
@@ -402,10 +381,10 @@ public class TidalService
             ?.Where(t => t.Type == "tracks")
             ?.Select(t => new
             {
-                TitleMatchedFor = Fuzz.Ratio(mediaFileInfo.Title?.ToLower(), t.Attributes.FullTrackName.ToLower()),
+                TitleMatchedFor = Fuzz.Ratio(targetTrackTitle?.ToLower(), t.Attributes.FullTrackName.ToLower()),
                 Track = t
             })
-            .Where(match => FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.Track.Attributes.FullTrackName))
+            .Where(match => FuzzyHelper.ExactNumberMatch(targetTrackTitle, match.Track.Attributes.FullTrackName))
             .Where(match => match.TitleMatchedFor >= matchRatioPercentage)
             .OrderByDescending(result => result.TitleMatchedFor)
             .Select(result => result.Track)
@@ -506,16 +485,6 @@ public class TidalService
 
     private TidalSearchResponse? GetAllTracksByAlbumId(int albumId)
     {
-        string albumTracksCacheKey = $"TidalAlbumTracksCacheKey_{albumId}";
-
-        if (_memoryCache.Contains(albumTracksCacheKey))
-        {
-            var cachedTracks = _memoryCache.Get(albumTracksCacheKey) as TidalSearchResponse;
-            Console.WriteLine($"Getting tracks of album '{cachedTracks?.Data.Attributes.Title}', album id '{albumId}'");
-            return cachedTracks;
-        }
-        
-        ApiDelaySleep();
         var tracks = _tidalAPIService.GetTracksByAlbumId(albumId);
         Console.WriteLine($"Getting tracks of album '{tracks?.Data.Attributes.Title}', album id '{albumId}'");
         if (tracks?.Data.Attributes.NumberOfItems >= 20)
@@ -523,7 +492,6 @@ public class TidalService
             string? nextPage = tracks.Data.RelationShips?.Items?.Links?.Next;
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
-                ApiDelaySleep();
                 var tempTracks = _tidalAPIService.GetTracksNextByAlbumId(albumId, nextPage);
 
                 if (tempTracks?.Included?.Count > 0)
@@ -542,23 +510,15 @@ public class TidalService
                 nextPage = tempTracks?.Links?.Next;
             }
         }
-        
-        CacheItemPolicy policy = new CacheItemPolicy();
-        policy.SlidingExpiration = TimeSpan.FromMinutes(SlidingCacheExpiration);
-        _memoryCache.Add(albumTracksCacheKey, tracks, policy);
-
         return tracks;
     }
     private TidalSearchResponse? GetAllTracksFromSearch(TidalSearchResponse searchResults)
     {
-        ApiDelaySleep();
-        
         if (searchResults?.Included?.Count >= 20)
         {
             string? nextPage = searchResults.Data.RelationShips?.Tracks?.Links?.Next;
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
-                ApiDelaySleep();
                 var tempTracks = _tidalAPIService.GetTracksNextFromSearch(nextPage);
 
                 if (tempTracks?.Included?.Count > 0)
@@ -613,14 +573,5 @@ public class TidalService
             Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
             trackInfoUpdated = true;
         }
-    }
-
-    private void ApiDelaySleep()
-    {
-        if (_apiStopwatch.ElapsedMilliseconds < ApiDelay)
-        {
-            Thread.Sleep(ApiDelay);
-        }
-        _apiStopwatch.Restart();
     }
 }

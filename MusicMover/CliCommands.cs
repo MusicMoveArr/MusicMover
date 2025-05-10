@@ -38,6 +38,8 @@ public class CliCommands
     /// <param name="tidalClientId">-TC, The Client Id used for Tidal's API.</param>
     /// <param name="tidalClientSecret">-TS, The Client Client used for Tidal's API.</param>
     /// <param name="tidalCountryCode">-Tc, Tidal's CountryCode (e.g. US, FR, NL, DE etc).</param>
+    /// <param name="metadataApiBaseUrl">-MB, MiniMedia's Metadata API Base Url.</param>
+    /// <param name="metadataApiProvider">-MP, MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -69,7 +71,9 @@ public class CliCommands
         bool searchByTagNames = false,
         string tidalClientId = "",
         string tidalClientSecret = "",
-        string tidalCountryCode = "US")
+        string tidalCountryCode = "US",
+        string metadataApiBaseUrl = "",
+        string metadataApiProvider = "Any")
     {
         if (!target.EndsWith('/'))
         {
@@ -79,35 +83,39 @@ public class CliCommands
         {
             from += '/';
         }
-        
-        CliOptions options = new CliOptions();
-        options.FromDirectory = from;
-        options.ToDirectory = target;
-        options.CreateAlbumDirectory = createAlbumDirectory;
-        options.CreateArtistDirectory = createArtistDirectory;
-        options.Parallel = parallel;
-        options.SkipFromDirAmount = skipDirectories;
-        options.DeleteDuplicateFrom = deleteDuplicateFrom;
-        options.DeleteDuplicateTo = deleteDuplicateTo;
-        options.RenameVariousArtists = variousArtists;
-        options.ExtraDirMustExist = extraDirMustExist;
-        options.UpdateArtistTags = updateArtistTags;
-        options.FixFileCorruption = fixFileCorruption;
-        options.AcoustIdAPIKey = acoustidApiKey;
-        options.FileFormat = fileFormat;
-        options.DirectorySeperator = directorySeperator;
-        options.AlwaysCheckAcoustId = alwaysCheckAcoustId;
-        options.ContinueScanError = continueScanError;
-        options.OverwriteArtist = overwriteArtist;
-        options.OverwriteAlbumArtist = overwriteAlbumArtist;
-        options.OverwriteAlbum = overwriteAlbum;
-        options.OverwriteTrack = overwriteTrack;
-        options.OnlyMoveWhenTagged = onlyMoveWhenTagged;
-        options.OnlyFileNameMatching = onlyFileNameMatching;
-        options.SearchByTagNames = searchByTagNames;
-        options.TidalClientId = tidalClientId;
-        options.TidalClientSecret = tidalClientSecret;
-        options.TidalCountryCode = tidalCountryCode;
+
+        CliOptions options = new CliOptions
+        {
+            FromDirectory = from,
+            ToDirectory = target,
+            AcoustIdApiKey = acoustidApiKey,
+            FileFormat = fileFormat,
+            DirectorySeperator = directorySeperator,
+            TidalClientId = tidalClientId,
+            TidalClientSecret = tidalClientSecret,
+            TidalCountryCode = tidalCountryCode,
+            MetadataApiBaseUrl = metadataApiBaseUrl,
+            MetadataApiProvider = metadataApiProvider,
+            CreateAlbumDirectory = createAlbumDirectory,
+            CreateArtistDirectory = createArtistDirectory,
+            Parallel = parallel,
+            SkipFromDirAmount = skipDirectories,
+            DeleteDuplicateFrom = deleteDuplicateFrom,
+            DeleteDuplicateTo = deleteDuplicateTo,
+            RenameVariousArtists = variousArtists,
+            ExtraDirMustExist = extraDirMustExist,
+            UpdateArtistTags = updateArtistTags,
+            FixFileCorruption = fixFileCorruption,
+            AlwaysCheckAcoustId = alwaysCheckAcoustId,
+            ContinueScanError = continueScanError,
+            OverwriteArtist = overwriteArtist,
+            OverwriteAlbumArtist = overwriteAlbumArtist,
+            OverwriteAlbum = overwriteAlbum,
+            OverwriteTrack = overwriteTrack,
+            OnlyMoveWhenTagged = onlyMoveWhenTagged,
+            OnlyFileNameMatching = onlyFileNameMatching,
+            SearchByTagNames = searchByTagNames,
+        };
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -122,7 +130,7 @@ public class CliCommands
         Console.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
         Console.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
         Console.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
-        Console.WriteLine($"AcoustIdAPIKey: {options.AcoustIdAPIKey}");
+        Console.WriteLine($"AcoustIdAPIKey: {options.AcoustIdApiKey}");
         Console.WriteLine($"fileFormat: {options.FileFormat}");
         Console.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
         Console.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
@@ -132,6 +140,8 @@ public class CliCommands
         Console.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
         Console.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
         Console.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
+        Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
+        Console.WriteLine($"metadata API Provider: {options.MetadataApiProvider}");
 
         if (extrascans?.Count > 0)
         {
