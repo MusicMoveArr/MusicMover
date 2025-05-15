@@ -21,6 +21,7 @@ public class SearchTrackEntity
     public List<SearchTrackArtistEntity>? Artists { get; set; }
     public List<SearchTrackImageEntity>? Images { get; set; }
     public SearchTrackAlbumEntity  Album { get; set; }
+    public SearchTrackMusicBrainzEntity  MusicBrainz { get; set; }
     
     public string ProviderType { get; set; }
 }

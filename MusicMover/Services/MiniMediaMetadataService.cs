@@ -13,11 +13,14 @@ public class MiniMediaMetadataService
     private readonly MiniMediaMetadataAPIService _miniMediaMetadataApiService;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private const int MatchPercentage = 80;
+
+    private readonly List<string> _providerTypes;
     
-    public MiniMediaMetadataService(string baseUrl, string providerType)
+    public MiniMediaMetadataService(string baseUrl, List<string> providerTypes)
     {
+        _providerTypes = providerTypes;
         _mediaTagWriteService = new MediaTagWriteService();
-        _miniMediaMetadataApiService = new MiniMediaMetadataAPIService(baseUrl, providerType);
+        _miniMediaMetadataApiService = new MiniMediaMetadataAPIService(baseUrl, providerTypes);
     }
 
     public bool WriteTags(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName,
@@ -117,25 +120,35 @@ public class MiniMediaMetadataService
             .ThenByDescending(result => result.Artist.Popularity)
             .Select(result => result.Artist)
             .ToList();
+
+        bool tagged = false;
         
-        foreach (var artist in artists)
+        foreach (string provider in _providerTypes)
         {
-            try
+            foreach (var artist in artists.Where(artist => artist.ProviderType == provider))
             {
-                SearchTrackEntity? foundTrack = null;
-                List<string>? artistNames = null;
-                if (ProcessArtist(artist, targetTrackTitle, targetAlbumTitle, ref foundTrack))
+                try
                 {
-                    return WriteTagsToFile(foundTrack, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist);
+                    SearchTrackEntity? foundTrack = null;
+                    List<string>? artistNames = null;
+                    if (ProcessArtist(artist, targetTrackTitle, targetAlbumTitle, ref foundTrack))
+                    {
+                        if (WriteTagsToFile(foundTrack, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                        {
+                            tagged = true;
+                            break;
+                        }
+                    }
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"{e.Message}, {e.StackTrace}");
+                catch (Exception e)
+                {
+                    Console.WriteLine($"{e.Message}, {e.StackTrace}");
+                }
             }
         }
 
-        return false;
+
+        return tagged;
     }
 
     private bool ProcessArtist(SearchArtistEntity artist,
@@ -144,7 +157,7 @@ public class MiniMediaMetadataService
         ref SearchTrackEntity? foundTrack)
     {
         Console.WriteLine($"MiniMedia Metadata API, search query: {artist.Name} - {targetTrackTitle}");
-        var searchResultTracks = _miniMediaMetadataApiService.SearchTracks(targetTrackTitle, artist.Id);
+        var searchResultTracks = _miniMediaMetadataApiService.SearchTracks(targetTrackTitle, artist.Id, artist.ProviderType);
 
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
         List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchResultTracks.Tracks, targetTrackTitle, MatchPercentage);
@@ -203,14 +216,13 @@ public class MiniMediaMetadataService
             .ThenByDescending(result => result.AlbumMatchedFor)
             .ToList();
         
-        Console.WriteLine("Tracks to match with:");
-        Console.WriteLine($"Match with, Title '{targetTrackTitle}', Album '{targetAlbumTitle}', Artist: '{artist.Name}'");
-        foreach (var match in searchResultTracks.Tracks)
-        {
-            string? mainArtist = match.Artists.FirstOrDefault(artist => artist.Id == match.Album.ArtistId)?.Name;
-            Console.WriteLine($"Title '{match.Name}', Album '{match.Album.Name}', Artist: '{mainArtist}'");
-        }
-
+        //Console.WriteLine("Tracks to match with:");
+        //Console.WriteLine($"Match with, Title '{targetTrackTitle}', Album '{targetAlbumTitle}', Artist: '{artist.Name}'");
+        //foreach (var match in searchResultTracks.Tracks)
+        //{
+        //    string? mainArtist = match.Artists.FirstOrDefault(artist => artist.Id == match.Album.ArtistId)?.Name;
+        //    Console.WriteLine($"Title '{match.Name}', Album '{match.Album.Name}', Artist: '{mainArtist}'");
+        //}
         
         Console.WriteLine("Matches:");
         foreach (var match in bestMatches)
@@ -279,23 +291,38 @@ public class MiniMediaMetadataService
         }
         
         Console.WriteLine($"Filpath: {fromFile.FullName}");
-        Console.WriteLine($"Tidal Artist: {mainArtist}");
-        Console.WriteLine($"Tidal Album: {foundTrack.Album.Name}");
-        Console.WriteLine($"Tidal TrackName: {foundTrack.Name}");
+        Console.WriteLine($"API Artist: {mainArtist}");
+        Console.WriteLine($"API Album: {foundTrack.Album.Name}");
+        Console.WriteLine($"API TrackName: {foundTrack.Name}");
         Console.WriteLine($"Media Artist: {track.Artist}");
         Console.WriteLine($"Media AlbumArtist: {track.AlbumArtist}");
         Console.WriteLine($"Media Album: {track.Album}");
         Console.WriteLine($"Media TrackName: {track.Title}");
-        
-        UpdateTag(track, "Tidal Track Id", foundTrack.Id, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Track Href", foundTrack.Url, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-        
-        UpdateTag(track, "Tidal Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
-        //UpdateTag(track, "Tidal Artist Href", artistHref, ref trackInfoUpdated);
+
+        if (foundTrack.ProviderType == "Tidal")
+        {
+            UpdateTag(track, "Tidal Track Id", foundTrack.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Track Href", foundTrack.Url, ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            UpdateTag(track, "Tidal Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+        }
+        else if (foundTrack.ProviderType == "MusicBrainz")
+        {
+            UpdateTag(track, "MusicBrainz Artist Id", foundTrack.MusicBrainz.ArtistId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Track Id", foundTrack.MusicBrainz.RecordingId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Release Track Id", foundTrack.MusicBrainz.ReleaseTrackId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Release Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Release Group Id", foundTrack.MusicBrainz.ReleaseGroupId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Release Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Album Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Album Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Album Type", foundTrack.MusicBrainz.AlbumType?.ToLower(), ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Album Release Country", foundTrack.MusicBrainz.AlbumReleaseCountry, ref trackInfoUpdated);
+            UpdateTag(track, "MusicBrainz Album Status", foundTrack.MusicBrainz.AlbumStatus?.ToLower(), ref trackInfoUpdated);
+        }
         
         if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
         {

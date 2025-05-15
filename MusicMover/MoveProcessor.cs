@@ -73,7 +73,7 @@ public class MoveProcessor
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
-        _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProvider);
+        _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
     }
 
     public void Process()
@@ -85,6 +85,7 @@ public class MoveProcessor
             .Where(file => Directory.Exists(file))
             .Where(dir => !dir.Contains(".Trash"))
             .Skip(_options.SkipFromDirAmount)
+            .OrderBy(dir => dir)
             .ToList();
         
         filesToProcess.AddRange(GetMediaFileList(_options.FromDirectory, SearchOption.TopDirectoryOnly));

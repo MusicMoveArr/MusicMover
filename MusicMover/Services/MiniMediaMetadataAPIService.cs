@@ -13,15 +13,12 @@ namespace MusicMover.Services;
 public class MiniMediaMetadataAPIService
 {
     private readonly string _baseUrl;
-    private readonly ProviderType _providerType;
+    private readonly List<string> _providerTypes;
     
-    public MiniMediaMetadataAPIService(string baseUrl, string providerType)
+    public MiniMediaMetadataAPIService(string baseUrl, List<string> providerTypes)
     {
         _baseUrl = baseUrl;
-        if (!Enum.TryParse<ProviderType>(providerType,  out _providerType))
-        {
-            _providerType = ProviderType.Any;
-        }
+        _providerTypes = providerTypes;
     }
 
     public SearchArtistResponse? SearchArtists(string searchTerm)
@@ -29,31 +26,19 @@ public class MiniMediaMetadataAPIService
         RetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
         
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } // or .Default for "Album", etc.
-        };
-        
         using RestClient client = new RestClient(_baseUrl + "/api/SearchArtist");
 
         return retryPolicy.Execute(() =>
         {
             RestRequest request = new RestRequest();
-            request.AddParameter("Provider", _providerType.ToString());
+            request.AddParameter("Provider", _providerTypes.Count > 1 ? "Any" : _providerTypes.First());
             request.AddParameter("Name", searchTerm);
             request.AddParameter("Offset", 0);
-            
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-            };
             
             return client.Get<SearchArtistResponse>(request);
         });
     }
-    public SearchTrackResponse? SearchTracks(string searchTerm, string  artistId)
+    public SearchTrackResponse? SearchTracks(string searchTerm, string artistId, string providerType)
     {
         RetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
@@ -62,7 +47,7 @@ public class MiniMediaMetadataAPIService
         return retryPolicy.Execute(() =>
         {
             RestRequest request = new RestRequest();
-            request.AddParameter("Provider", _providerType.ToString());
+            request.AddParameter("Provider", providerType);
             request.AddParameter("TrackName", searchTerm);
             request.AddParameter("ArtistId", artistId);
             request.AddParameter("Offset", 0);

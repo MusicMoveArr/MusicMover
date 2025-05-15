@@ -34,6 +34,6 @@ public class CliOptions
     public required string TidalClientSecret { get; init; }
     public required string TidalCountryCode { get; init; }
     public required string MetadataApiBaseUrl { get; init; }
-    public required string MetadataApiProvider { get; init; }
+    public required List<string> MetadataApiProviders { get; init; }
     
 }

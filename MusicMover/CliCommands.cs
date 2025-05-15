@@ -39,7 +39,7 @@ public class CliCommands
     /// <param name="tidalClientSecret">-TS, The Client Client used for Tidal's API.</param>
     /// <param name="tidalCountryCode">-Tc, Tidal's CountryCode (e.g. US, FR, NL, DE etc).</param>
     /// <param name="metadataApiBaseUrl">-MB, MiniMedia's Metadata API Base Url.</param>
-    /// <param name="metadataApiProvider">-MP, MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).</param>
+    /// <param name="metadataApiProviders">-MP, MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).</param>
     [Command("")]
     public static void Root(string from, 
         string target, 
@@ -73,7 +73,7 @@ public class CliCommands
         string tidalClientSecret = "",
         string tidalCountryCode = "US",
         string metadataApiBaseUrl = "",
-        string metadataApiProvider = "Any")
+        List<string> metadataApiProviders = null)
     {
         if (!target.EndsWith('/'))
         {
@@ -95,7 +95,7 @@ public class CliCommands
             TidalClientSecret = tidalClientSecret,
             TidalCountryCode = tidalCountryCode,
             MetadataApiBaseUrl = metadataApiBaseUrl,
-            MetadataApiProvider = metadataApiProvider,
+            MetadataApiProviders = metadataApiProviders,
             CreateAlbumDirectory = createAlbumDirectory,
             CreateArtistDirectory = createArtistDirectory,
             Parallel = parallel,
@@ -116,6 +116,14 @@ public class CliCommands
             OnlyFileNameMatching = onlyFileNameMatching,
             SearchByTagNames = searchByTagNames,
         };
+
+        string[] supportedProviderTypes = new[] { "Tidal", "MusicBrainz", "Spotify", "Any" };
+        if (!string.IsNullOrWhiteSpace(metadataApiBaseUrl) && (metadataApiProviders?.Count == 0 ||
+            !metadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
+        {
+            Console.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
+            return;
+        }
         
         Console.WriteLine("Options used:");
         Console.WriteLine($"From Directory: {options.FromDirectory}");
@@ -141,7 +149,7 @@ public class CliCommands
         Console.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
         Console.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
         Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
-        Console.WriteLine($"metadata API Provider: {options.MetadataApiProvider}");
+        Console.WriteLine($"metadata API Provider: {options.MetadataApiProviders}");
 
         if (extrascans?.Count > 0)
         {
