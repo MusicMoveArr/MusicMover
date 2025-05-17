@@ -281,21 +281,35 @@ public class MusicBrainzService
 
     private MusicBrainzArtistCreditModel? GetBestMatchingArtist(List<MusicBrainzArtistCreditModel>? artists, Track track)
     {
-        return !string.IsNullOrWhiteSpace(track.AlbumArtist)
-                ? artists
+        string[] splitTrackArtists = !string.IsNullOrWhiteSpace(track.AlbumArtist) ? 
+                                        track.AlbumArtist.Split([',', ';', '&'], StringSplitOptions.RemoveEmptyEntries) : [];
+
+        if (splitTrackArtists.Length > 0)
+        {
+            foreach (string splitArtist in splitTrackArtists)
+            {
+                var foundArtist = artists
                     ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
                     .Select(artist => new
                     {
                         Artist = artist,
-                        MatchedFor = Fuzz.Ratio(artist.Name?.ToLower(), track.AlbumArtist?.ToLower()) + Fuzz.Ratio(artist.Name?.ToLower(), track.Artist?.ToLower())
+                        MatchedFor = Fuzz.Ratio(artist.Name?.ToLower(), splitArtist.ToLower())
                     })
                     .Where(match => match.MatchedFor >= MatchPercentage)
                     .OrderByDescending(match => match.MatchedFor)
                     .Select(match => match.Artist)
-                    .FirstOrDefault()
-                : artists
-                    ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
                     .FirstOrDefault();
+
+                if (foundArtist != null)
+                {
+                    return foundArtist;
+                }
+            }
+        }
+        
+        return artists
+            ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
     }
 
     private MusicBrainzArtistReleaseModel? GetBestMatchingRelease(MusicBrainzArtistModel? data, 
@@ -309,7 +323,6 @@ public class MusicBrainzService
             return null;
         }
 
-        string trackArtist = IsVariousArtists(track.Artist) ? targetArtist : track.Artist;
         string trackAlbum = IsVariousArtists(track.Album) ? string.Empty : track.Album;
         string trackBarcode = _mediaTagWriteService.GetTagValue(track, "barcode");
         
@@ -331,11 +344,11 @@ public class MusicBrainzService
                     AlbumMatch = !string.IsNullOrWhiteSpace(trackAlbum) ? Math.Max(
                         relaxedFiltering ? Fuzz.PartialTokenSortRatio($"{release.Album?.ToLower()} {release.Release.Disambiguation}", trackAlbum?.ToLower()) : Fuzz.Ratio($"{release.Album?.ToLower()} {release.Release.Disambiguation}", trackAlbum?.ToLower()), //search with added "deluxe edition" etc
                         relaxedFiltering ? Fuzz.PartialTokenSortRatio(release.Album?.ToLower(), trackAlbum?.ToLower()) : Fuzz.Ratio(release.Album?.ToLower(), trackAlbum?.ToLower())) : 100,
-                    ArtistMatch = !string.IsNullOrWhiteSpace(trackArtist) ? data.ArtistCredit.Sum(artist => Fuzz.Ratio(trackArtist?.ToLower(), artist.Name?.ToLower())) : 100,
+                    ArtistMatch = !string.IsNullOrWhiteSpace(targetArtist) ? data.ArtistCredit.Sum(artist => Fuzz.Ratio(targetArtist.ToLower(), artist.Name?.ToLower())) : 100,
                     CountryMatch = !string.IsNullOrWhiteSpace(artistCountry) ? relaxedFiltering ? Fuzz.PartialTokenSortRatio(release.Release.Country?.ToLower(), artistCountry?.ToLower()) : Fuzz.Ratio(release.Release.Country?.ToLower(), artistCountry?.ToLower()) : 0,
                     BarcodeMatch = !string.IsNullOrWhiteSpace(release.Barcode) ? relaxedFiltering ? Fuzz.PartialTokenSortRatio(release.Barcode?.ToLower(), trackBarcode?.ToLower()) : Fuzz.Ratio(release.Barcode?.ToLower(), trackBarcode?.ToLower()) : 0
                 })
-                .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackAlbum, match.AlbumName))
+                //.Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackAlbum, match.AlbumName))
                 .OrderByDescending(match => match.AlbumMatch)
                 .ThenByDescending(match => match.CountryMatch)
                 .ThenByDescending(match => match.BarcodeMatch)
@@ -354,11 +367,11 @@ public class MusicBrainzService
                 media.Tracks = GetBestMatchingTracks(tempTracks, track.Title, string.Empty, relaxedFiltering);
 
                 if (media?.Tracks?.Count == 0 && 
-                    !string.IsNullOrWhiteSpace(trackArtist) &&
-                    track.Title.ToLower().Contains(trackArtist.ToLower()))
+                    !string.IsNullOrWhiteSpace(targetArtist) &&
+                    track.Title.ToLower().Contains(targetArtist.ToLower()))
                 {
                     //try without the artist name in the title for a match
-                    string withoutArtistName = track.Title.ToLower().Replace(trackArtist.ToLower(), string.Empty);
+                    string withoutArtistName = track.Title.ToLower().Replace(targetArtist.ToLower(), string.Empty);
                     if (withoutArtistName.Length >= MinimumArtistName)
                     {
                         media.Tracks = GetBestMatchingTracks(tempTracks, withoutArtistName, string.Empty, relaxedFiltering);
@@ -468,7 +481,7 @@ public class MusicBrainzService
         ref MusicBrainzRecordingQueryEntityModel recordingQuery,
         bool relaxedFiltering)
     {
-        string trackArtist = IsVariousArtists(track.Artist) && !string.IsNullOrWhiteSpace(bestMatchedArtist?.Name) 
+        string trackArtist = IsVariousArtists(track.Artist) || !string.IsNullOrWhiteSpace(bestMatchedArtist?.Name) 
                                 ? bestMatchedArtist.Name : track.Artist;
 
         if (string.IsNullOrWhiteSpace(trackArtist))
@@ -477,7 +490,7 @@ public class MusicBrainzService
             return null;
         }
         
-        var searchResult = _musicBrainzAPIService.SearchRelease(track.Artist, track.Album, track.Title);
+        var searchResult = _musicBrainzAPIService.SearchRelease(trackArtist, track.Album, track.Title);
         
         if (searchResult?.Recordings?.Count == 0)
         {
