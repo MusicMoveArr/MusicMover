@@ -262,9 +262,12 @@ public class MoveProcessor
         }
 
         IncrementCounter(() => scannedFromFiles++);
-
         Debug.WriteLine($"File: {mediaFileInfo.FileInfo.FullName}");
-        
+
+        if (mediaFileInfo.GenerateSaveFingerprint())
+        {
+            mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
+        }
 
         bool metadataApiTaggingSuccess = false;
         bool musicBrainzTaggingSuccess = false;
@@ -649,24 +652,6 @@ public class MoveProcessor
             .Where(file => file.Length > 0)
             .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToList();
-        
-        var dirs = System.IO.Directory.GetDirectories(toAlbumDirInfo.Parent.FullName)
-            .Select(dir => new DirectoryInfo(dir))
-            .Where(dir => string.Equals(dir.Name, artistName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        foreach (var dir in dirs)
-        {
-            foreach (var file in dir.GetFiles("*.*", SearchOption.AllDirectories)
-                                    .Where(file => file.Length > 0)
-                                    .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext))))
-            {
-                if (!toFiles.Any(fileInfo => fileInfo.FullName == file.FullName))
-                {
-                    toFiles.Add(file);
-                }
-            }
-        }
 
         foreach (FileInfo toFile in toFiles)
         {
@@ -677,7 +662,7 @@ public class MoveProcessor
                     continue;
                 }
                 
-                //quick compare before caching/reading the file tags, if filename matches +90%
+                //quick compare before caching/reading the file tags, if filename matches +95%
                 if (Fuzz.Ratio(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
                         fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty)) >= 95)
                 {

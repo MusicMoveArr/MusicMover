@@ -1,15 +1,20 @@
+using System.Globalization;
 using ATL;
 using FFMpegCore;
+using MusicMover.Models;
+using MusicMover.Services;
 
 namespace MusicMover;
 
 public class MediaFileInfo
 {
     private const string AcoustidFingerprintTag = "Acoustid Fingerprint";
+    private const string AcoustidFingerprintDurationTag = "Acoustid Fingerprint Duration";
     private const string AcoustIdIdTag = "AcoustidId";
     private const string AcoustIdTag = "AcoustId";
     
     public FileInfo FileInfo { get; set; }
+    private FingerPrintService _fingerPrintService;
     
     public string? Artist { get; set; }
     public string? SortArtist { get; set; }
@@ -20,6 +25,7 @@ public class MediaFileInfo
     public string? AlbumArtist { get; set; }
     public string? AcoustId { get; set; }
     public string? AcoustIdFingerPrint { get; set; }
+    public float? AcoustIdFingerPrintDuration { get; set; }
     public double BitRate { get; set; }
     public int Disc { get; set; }
     public int Duration { get; set; }
@@ -32,6 +38,7 @@ public class MediaFileInfo
     public MediaFileInfo(FileInfo fileInfo)
     {
         this.FileInfo = fileInfo;
+        this._fingerPrintService = new FingerPrintService();
         
         Track trackInfo = new Track(fileInfo.FullName);
         var mediaTags = trackInfo.AdditionalFields
@@ -109,10 +116,52 @@ public class MediaFileInfo
 
         this.BitRate = trackInfo.Bitrate;
         AcoustIdFingerPrint = mediaTags.FirstOrDefault(tag => string.Equals(tag.Key,AcoustidFingerprintTag, StringComparison.OrdinalIgnoreCase)).Value;
+
+        float fingerprintDuration = 0;
+        if(float.TryParse(mediaTags.FirstOrDefault(tag => 
+               string.Equals(tag.Key,AcoustidFingerprintDurationTag, StringComparison.OrdinalIgnoreCase)).Value, CultureInfo.InvariantCulture, out fingerprintDuration))
+        {
+            AcoustIdFingerPrintDuration = fingerprintDuration;
+        }
+        
         AcoustId = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdIdTag, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdTag, StringComparison.OrdinalIgnoreCase)
             ).Value;
+    }
+
+    public bool GenerateSaveFingerprint()
+    {
+        if (!string.IsNullOrWhiteSpace(AcoustIdFingerPrint) &&
+            AcoustIdFingerPrintDuration > 0)
+        {
+            return false;
+        }
+
+        FpcalcOutput? fingerprint = _fingerPrintService.GetFingerprint(FileInfo.FullName);
+        if (string.IsNullOrWhiteSpace(fingerprint?.Fingerprint))
+        {
+            return false;
+        }
+
+        Track track = new Track(FileInfo.FullName);
+        MediaTagWriteService mediaTagWriteService = new MediaTagWriteService();
+
+        bool updated = false;
+        string originalValue = string.Empty;
+        mediaTagWriteService.UpdateTrackTag(track,
+            AcoustidFingerprintTag,
+            fingerprint.Fingerprint,
+            ref updated,
+            ref originalValue);
+        
+        mediaTagWriteService.UpdateTrackTag(track,
+            AcoustidFingerprintDurationTag,
+            (fingerprint?.Duration ?? 0).ToString(),
+            ref updated,
+            ref originalValue);
+
+        return mediaTagWriteService.SafeSave(track);
     }
 
     public void Save(string artist)

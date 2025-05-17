@@ -149,7 +149,7 @@ public class CliCommands
         Console.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
         Console.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
         Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
-        Console.WriteLine($"metadata API Provider: {options.MetadataApiProviders}");
+        Console.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
 
         if (extrascans?.Count > 0)
         {
