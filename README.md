@@ -29,28 +29,29 @@ Loving the work I do? buy me a coffee https://buymeacoffee.com/musicmovearr
 
 Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}
 
-14. Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
+16. Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
 FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_filepath]"
+17. Apply media tags from MusicBrainz, Tidal using the self-hosted MiniMedia Metadata API 
 
 # Description of arguments
 | Longname Argument  | Shortname Argument | Description | Example |
 | ------------- | ------------- | ------------- | ------------- |
 | --from | -f | From the directory. | ~/Downloads |
 | --target | -t | directory to move/copy files to. | ~/Music |
+| --dryrun | -d | Dry run, no files are moved/copied. | [no value required] |
 | --create-artist-directory | -g | Create Artist directory if missing on target directory. | [no value required] |
 | --create-album-directory | -u | Create Album directory if missing on target directory. | [no value required] |
 | --parallel | -p | multi-threaded processing. | [no value required] |
+| --skip-directories | -s | Skip X amount of directories in the From directory to process. | 5 |
 | --delete-duplicate-from | -w | Delete the song in From Directory if already found at Target. | [no value required] |
 | --delete-duplicate-to | -W | Delete the song in To Directory if already found at Target (duplicates). | [no value required] |
-| --dryrun | -d | Dry run, no files are moved/copied. | [no value required] |
+| --extrascans | -A | Scan extra directories, usage, ["a","b"], besides the target directory. | [\"\~/Some/Directory/Music\", \"\~/Some/Directory2/Music\", \"\~/Some/Directory3/Music\", \"\~/Some/Directory4/Music\"] |
+| --extrascan | -a | Scan a extra directory, besides the target directory. | ~/nfs_share/Music |
 | --various-artists | -va | Rename "Various Artists" in the file name with First Performer. | [no value required] |
 | --extra-dir-must-exist | -AX | Artist folder must already exist in the extra scanned directories. | [no value required] |
 | --artist-dirs-must-not-exist | -AN | Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g. | [no value required] |
 | --update-artist-tags | -UA | Update Artist metadata tags. | [no value required] |
 | --fix-file-corruption | -FX | Attempt fixing file corruption by using FFMpeg for from/target/scan files. | [no value required] |
-| --skip-directories | -s | Skip X amount of directories in the From directory to process. | 5 |
-| --extrascans | -A | Scan extra directories, usage, ["a","b"], besides the target directory. | [\"~/Some/Directory/Music\", \"~/Some/Directory2/Music\", \"~/Some/Directory3/Music\", \"~/Some/Directory4/Music\"] |
-| --extrascan | -a | Scan a extra directory, besides the target directory. | ~/nfs_share/Music |
 | --acoustid-api-key | -AI | When AcoustId API Key is set, try getting the artist/album/title when needed. | xxxxxxx |
 | --file-format | -FF | rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate} | {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title} |
 | --directory-seperator | -ds | Directory Seperator replacer, replace '/' '\' to .e.g. '_'. | _ |
@@ -66,6 +67,8 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --tidal-client-id | -TC | The Client Id used for Tidal's API. | [no value required] |
 | --tidal-client-secret | -TS | The Client Client used for Tidal's API. | [no value required] |
 | --tidal-country-code | -Tc | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | [no value required] |
+| --metadata-api-base-url | -MB | MiniMedia's Metadata API Base Url. | http://localhost:8080 |
+| --metadata-api-providers | -MP | MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz). | [\\"Tidal\\",\\"MusicBrainz\\"] |
 
 
 # Usage
@@ -77,8 +80,8 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --target "~/Music" \
 --create-album-directory \
 --create-artist-directory \
---parallel \
 --delete-duplicate-from \
+--parallel \
 --skip-directories 5 \
 --various-artists \
 --update-Artist-Tags \
@@ -86,7 +89,17 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --acoustid-api-key "xxxxxxxx" \
 --file-format "{Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}" \
 --always-check-acoust-id \
---continue-scan-error
+--continue-scan-error \
+--only-move-when-tagged \
+--only-file-name-matching \
+--overwrite-artist \
+--overwrite-album-artist \
+--overwrite-album \
+--overwrite-track \
+--tidal-country-code "US" \
+--metadata-api-base-url "http://localhost:8080" \
+--metadata-api-providers "[\"Tidal\",\"MusicBrainz\"]"
+
 ```
 ```
 dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
