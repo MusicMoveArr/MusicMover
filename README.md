@@ -52,7 +52,7 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --artist-dirs-must-not-exist | Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g. | [no value required] |
 | --update-artist-tags | Update Artist metadata tags. | [no value required] |
 | --fix-file-corruption | Attempt fixing file corruption by using FFMpeg for from/target/scan files. | [no value required] |
-| --acoustid-api-key | When AcoustId API Key is set, try getting the artist/album/title when needed. | xxxxxxx |
+| --acoustid-api-key | When AcoustId API Key is set, try getting the artist/album/title when needed. | "xxxxxxxxxxx" |
 | --file-format | rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate} | {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title} |
 | --directory-seperator | Directory Seperator replacer, replace '/' '\' to .e.g. '_'. | _ |
 | --always-check-acoustid | Always check & Write to media with AcoustId for missing tags. | [no value required] |
@@ -64,9 +64,9 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --only-move-when-tagged | Only process/move the media after it was MusicBrainz or Tidal tagged (-AI must be used). | [no value required] |
 | --only-filename-matching | Only filename matching when trying to find duplicates. | [no value required] |
 | --search-by-tag-names | Search MusicBrainz from media tag-values if AcoustId matching failed. | [no value required] |
-| --tidal-client-id | The Client Id used for Tidal's API. | [no value required] |
-| --tidal-client-secret | The Client Client used for Tidal's API. | [no value required] |
-| --tidal-country-code | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | [no value required] |
+| --tidal-client-id | The Client Id used for Tidal's API. | "xxxxxxxxxxx" |
+| --tidal-client-secret | The Client Client used for Tidal's API. | "xxxxxxxxxxx" |
+| --tidal-country-code | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | "US" |
 | --metadata-api-base-url | MiniMedia's Metadata API Base Url. | http://localhost:8080 |
 | --metadata-api-providers | MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz). | "Tidal" "MusicBrainz" |
 
