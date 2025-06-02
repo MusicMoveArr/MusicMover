@@ -7,7 +7,7 @@ public class CorruptionFixer
     private const string FileExtensionPostfix = "___fixed";
     private const int FfMpegSuccessCode = 0;
     
-    public bool FixCorruption(FileInfo input)
+    public async Task<bool> FixCorruptionAsync(FileInfo input)
     {
         string tempFile = $"{input.FullName}{FileExtensionPostfix}{input.Extension}";
         
@@ -22,7 +22,7 @@ public class CorruptionFixer
         };
         Process ffmpegProcess = Process.Start(ffmpegStartInfo);
         
-        ffmpegProcess.WaitForExit();
+        await ffmpegProcess.WaitForExitAsync();
         
         if (ffmpegProcess.ExitCode != FfMpegSuccessCode)
         {

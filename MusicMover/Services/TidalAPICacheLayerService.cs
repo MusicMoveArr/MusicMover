@@ -30,12 +30,12 @@ public class TidalAPICacheLayerService
         }
     }
 
-    public TidalAuthenticationResponse? Authenticate()
+    public async Task<TidalAuthenticationResponse?> AuthenticateAsync()
     {
-        return _tidalAPIService.Authenticate();
+        return await _tidalAPIService.AuthenticateAsync();
     }
 
-    public TidalSearchResponse? SearchResultsArtists(string searchTerm)
+    public async Task<TidalSearchResponse?> SearchResultsArtistsAsync(string searchTerm)
     {
         string cacheKey = $"SearchResultsArtists_{searchTerm}";
 
@@ -45,12 +45,12 @@ public class TidalAPICacheLayerService
         }
         
         ApiDelaySleep();
-        var result = _tidalAPIService.SearchResultsArtists(searchTerm);
+        var result = await _tidalAPIService.SearchResultsArtistsAsync(searchTerm);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchResponse? SearchResultsTracks(string searchTerm)
+    public async Task<TidalSearchResponse?> SearchResultsTracksAsync(string searchTerm)
     {
         string cacheKey = $"SearchResultsTracks_{searchTerm}";
 
@@ -60,12 +60,12 @@ public class TidalAPICacheLayerService
         }
         
         ApiDelaySleep();
-        var result = _tidalAPIService.SearchResultsTracks(searchTerm);
+        var result = await _tidalAPIService.SearchResultsTracksAsync(searchTerm);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchResponse? GetArtistInfoById(int artistId)
+    public async Task<TidalSearchResponse?> GetArtistInfoByIdAsync(int artistId)
     {
         string cacheKey = $"GetArtistInfoById_{artistId}";
 
@@ -75,12 +75,12 @@ public class TidalAPICacheLayerService
         }
         
         ApiDelaySleep();
-        var result = _tidalAPIService.GetArtistInfoById(artistId);
+        var result = await _tidalAPIService.GetArtistInfoByIdAsync(artistId);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchArtistNextResponse? GetArtistNextInfoById(int artistId, string next)
+    public async Task<TidalSearchArtistNextResponse?> GetArtistNextInfoByIdAsync(int artistId, string next)
     {
         string cacheKey = $"GetArtistNextInfoById_{artistId}_{next}";
 
@@ -89,12 +89,12 @@ public class TidalAPICacheLayerService
             return (TidalSearchArtistNextResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetArtistNextInfoById(artistId, next);
+        var result = await _tidalAPIService.GetArtistNextInfoByIdAsync(artistId, next);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchResponse? GetTracksByAlbumId(int albumId)
+    public async Task<TidalSearchResponse?> GetTracksByAlbumIdAsync(int albumId)
     {
         string cacheKey = $"GetTracksByAlbumId_{albumId}";
 
@@ -103,12 +103,12 @@ public class TidalAPICacheLayerService
             return (TidalSearchResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetTracksByAlbumId(albumId);
+        var result = await _tidalAPIService.GetTracksByAlbumIdAsync(albumId);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchTracksNextResponse? GetTracksNextByAlbumId(int albumId, string next)
+    public async Task<TidalSearchTracksNextResponse?> GetTracksNextByAlbumIdAsync(int albumId, string next)
     {
         string cacheKey = $"GetTracksNextByAlbumId_{albumId}_{next}";
 
@@ -117,12 +117,12 @@ public class TidalAPICacheLayerService
             return (TidalSearchTracksNextResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetTracksNextByAlbumId(albumId, next);
+        var result = await _tidalAPIService.GetTracksNextByAlbumIdAsync(albumId, next);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalTrackArtistResponse? GetTrackArtistsByTrackId(int[] trackIds)
+    public async Task<TidalTrackArtistResponse?> GetTrackArtistsByTrackIdAsync(int[] trackIds)
     {
         string joinedTrackIds = string.Join(",", trackIds);
         string cacheKey = $"GetTrackArtistsByTrackId_{joinedTrackIds}";
@@ -132,12 +132,12 @@ public class TidalAPICacheLayerService
             return (TidalTrackArtistResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetTrackArtistsByTrackId(trackIds);
+        var result = await _tidalAPIService.GetTrackArtistsByTrackIdAsync(trackIds);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchArtistNextResponse? GetAlbumSelfInfo(string selfLink)
+    public async Task<TidalSearchArtistNextResponse?> GetAlbumSelfInfoAsync(string selfLink)
     {
         string cacheKey = $"GetAlbumSelfInfo_{selfLink}";
 
@@ -146,12 +146,12 @@ public class TidalAPICacheLayerService
             return (TidalSearchArtistNextResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetAlbumSelfInfo(selfLink);
+        var result = await _tidalAPIService.GetAlbumSelfInfoAsync(selfLink);
         AddToCache(cacheKey, result);
         return result;
     }
 
-    public TidalSearchTracksNextResponse? GetTracksNextFromSearch(string next)
+    public async Task<TidalSearchTracksNextResponse?> GetTracksNextFromSearchAsync(string next)
     {
         string cacheKey = $"GetTracksNextFromSearch_{next}";
 
@@ -160,7 +160,7 @@ public class TidalAPICacheLayerService
             return (TidalSearchTracksNextResponse?)_cache.Get(cacheKey);
         }
         ApiDelaySleep();
-        var result = _tidalAPIService.GetTracksNextFromSearch(next);
+        var result = await _tidalAPIService.GetTracksNextFromSearchAsync(next);
         AddToCache(cacheKey, result);
         return result;
     }

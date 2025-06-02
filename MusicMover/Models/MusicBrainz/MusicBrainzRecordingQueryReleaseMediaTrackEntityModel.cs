@@ -1,5 +1,6 @@
-namespace MusicMover.Models;
+namespace MusicMover.Models.MusicBrainz;
 
+#pragma warning disable CS8618
 public class MusicBrainzRecordingQueryReleaseMediaTrackEntityModel
 {
     public string Id { get; set; }

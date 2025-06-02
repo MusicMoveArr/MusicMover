@@ -1,125 +1,257 @@
-using ConsoleAppFramework;
+using CliFx;
+using CliFx.Attributes;
+using CliFx.Infrastructure;
 
 namespace MusicMover;
 
-public class CliCommands
+[Command("", Description = "Move missing music to directories to complete your collection")]
+public class CliCommands : ICommand
 {
-    /// <summary>
-    /// Music Mover, Move missing music to directories to complete your collection
-    /// </summary>
-    /// <param name="from">-f, From the directory.</param>
-    /// <param name="target">-t, directory to move/copy files to.</param>
-    /// <param name="dryrun">-d, Dry run, no files are moved/copied.</param>
-    /// <param name="createArtistDirectory">-g, Create Artist directory if missing on target directory.</param>
-    /// <param name="createAlbumDirectory">-u, Create Album directory if missing on target directory.</param>
-    /// <param name="parallel">-p, multi-threaded processing.</param>
-    /// <param name="skipDirectories">-s, Skip X amount of directories in the From directory to process.</param>
-    /// <param name="deleteDuplicateFrom">-w, Delete the song in From Directory if already found at Target.</param>
-    /// <param name="deleteDuplicateTo">-W, Delete the song in To Directory if already found at Target (duplicates).</param>
-    /// <param name="extrascans">-A, Scan extra directories, usage, ["a","b"], besides the target directory.</param>
-    /// <param name="extrascan">-a, Scan a extra directory, besides the target directory.</param>
-    /// <param name="variousArtists">-va, Rename "Various Artists" in the file name with First Performer.</param>
-    /// <param name="extraDirMustExist">-AX, Artist folder must already exist in the extra scanned directories.</param>
-    /// <param name="artistDirsMustNotExist">-AN, Artist folder must not exist in the extra scanned directories, only meant for --createArtistDirectory, -g.</param>
-    /// <param name="updateArtistTags">-UA, Update Artist metadata tags.</param>
-    /// <param name="fixFileCorruption">-FX, Attempt fixing file corruption by using FFMpeg for from/target/scan files.</param>
-    /// <param name="acoustidApiKey">-AI, When AcoustId API Key is set, try getting the artist/album/title when needed.</param>
-    /// <param name="fileFormat">-FF, rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.</param>
-    /// <param name="directorySeperator">-ds, Directory Seperator replacer, replace '/' '\' to .e.g. '_'.</param>
-    /// <param name="alwaysCheckAcoustId">-ac, Always check & Write to media with AcoustId for missing tags.</param>
-    /// <param name="continueScanError">-CS, Continue on scan errors from the Music Libraries.</param>
-    /// <param name="overwriteArtist">-OA, Overwrite the Artist name when tagging from MusicBrainz.</param>
-    /// <param name="overwriteAlbumArtist">-Oa, Overwrite the Album Artist name when tagging from MusicBrainz.</param>
-    /// <param name="overwriteAlbum">-OB, Overwrite the Album name when tagging from MusicBrainz.</param>
-    /// <param name="overwriteTrack">-OT, Overwrite the Track name when tagging from MusicBrainz.</param>
-    /// <param name="onlyMoveWhenTagged">-MT, Only process/move the media after it was MusicBrainz or Tidal tagged (-AI must be used).</param>
-    /// <param name="onlyFileNameMatching">-MF, Only filename matching when trying to find duplicates.</param>
-    /// <param name="searchByTagNames">-ST, Search MusicBrainz from media tag-values if AcoustId matching failed.</param>
-    /// <param name="tidalClientId">-TC, The Client Id used for Tidal's API.</param>
-    /// <param name="tidalClientSecret">-TS, The Client Client used for Tidal's API.</param>
-    /// <param name="tidalCountryCode">-Tc, Tidal's CountryCode (e.g. US, FR, NL, DE etc).</param>
-    /// <param name="metadataApiBaseUrl">-MB, MiniMedia's Metadata API Base Url.</param>
-    /// <param name="metadataApiProviders">-MP, MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).</param>
-    [Command("")]
-    public static void Root(string from, 
-        string target, 
-        bool createArtistDirectory, 
-        bool createAlbumDirectory, 
-        bool parallel,
-        bool deleteDuplicateFrom,
-        bool deleteDuplicateTo,
-        bool dryrun = false,
-        bool variousArtists = false,
-        bool extraDirMustExist = false,
-        bool updateArtistTags = false,
-        bool fixFileCorruption = false,
-        int skipDirectories = 0,
-        List<string>? extrascans = null,
-        List<string>? artistDirsMustNotExist = null,
-        string? extrascan = null,
-        string? acoustidApiKey = "",
-        string fileFormat = "",
-        string directorySeperator = "_",
-        bool alwaysCheckAcoustId = false,
-        bool continueScanError = false,
-        bool overwriteArtist = false,
-        bool overwriteAlbumArtist = false,
-        bool overwriteAlbum = false,
-        bool overwriteTrack = false,
-        bool onlyMoveWhenTagged = false,
-        bool onlyFileNameMatching = false,
-        bool searchByTagNames = false,
-        string tidalClientId = "",
-        string tidalClientSecret = "",
-        string tidalCountryCode = "US",
-        string metadataApiBaseUrl = "",
-        List<string> metadataApiProviders = null)
+    [CommandOption("from", 
+        Description = "From the directory.", 
+        EnvironmentVariable = "MOVE_FROM",
+        IsRequired = true)]
+    public string From { get; set; }
+    
+    [CommandOption("target", 
+        Description = "directory to move/copy files to.", 
+        EnvironmentVariable = "MOVE_TARGET",
+        IsRequired = true)]
+    public string Target { get; set; }
+    
+    [CommandOption("dryrun", 
+        Description = "Dry run, no files are moved/copied.", 
+        EnvironmentVariable = "MOVE_DRYRUN",
+        IsRequired = false)]
+    public bool Dryrun { get; set; }
+    
+    [CommandOption("create-artist-directory", 
+        Description = "Create Artist directory if missing on target directory.", 
+        EnvironmentVariable = "MOVE_CREATEARTISTDIRECTORY",
+        IsRequired = false)]
+    public bool CreateArtistDirectory { get; set; }
+    
+    [CommandOption("create-album-directory", 
+        Description = "Create Album directory if missing on target directory.", 
+        EnvironmentVariable = "MOVE_CREATEALBUMDIRECTORY",
+        IsRequired = false)]
+    public bool CreateAlbumDirectory { get; set; }
+    
+    [CommandOption("parallel", 
+        Description = "multi-threaded processing.", 
+        EnvironmentVariable = "MOVE_PARALLEL",
+        IsRequired = false)]
+    public bool Parallel { get; set; }
+    
+    [CommandOption("skip-directories", 
+        Description = "Skip X amount of directories in the From directory to process.", 
+        EnvironmentVariable = "MOVE_SKIPDIRECTORIES",
+        IsRequired = false)]
+    public int SkipDirectories { get; set; }
+    
+    [CommandOption("delete-duplicate-from", 
+        Description = "Delete the song in From Directory if already found at Target.", 
+        EnvironmentVariable = "MOVE_DELETEDUPLICATEFROM",
+        IsRequired = false)]
+    public bool DeleteDuplicateFrom { get; set; }
+    
+    [CommandOption("delete-duplicate-to", 
+        Description = "Delete the song in To Directory if already found at Target (duplicates).", 
+        EnvironmentVariable = "MOVE_DELETEDUPLICATETO",
+        IsRequired = false)]
+    public bool DeleteDuplicateTo { get; set; }
+    
+    [CommandOption("extra-scans", 
+        Description = "Scan extra directories, usage, \"a\",\"b\", besides the target directory.", 
+        EnvironmentVariable = "MOVE_EXTRASCANS",
+        IsRequired = false)]
+    public List<string> ExtraScans { get; set; }
+    
+    [CommandOption("extra-scan", 
+        Description = "Scan a extra directory, besides the target directory.", 
+        EnvironmentVariable = "MOVE_EXTRASCAN",
+        IsRequired = false)]
+    public string? ExtraScan { get; set; }
+    
+    [CommandOption("various-artists", 
+        Description = "Rename \"Various Artists\" in the file name with First Performer.", 
+        EnvironmentVariable = "MOVE_VARIOUSARTISTS",
+        IsRequired = false)]
+    public bool VariousArtists { get; set; }
+    
+    [CommandOption("extra-dir-must-exist", 
+        Description = "Artist folder must already exist in the extra scanned directories.", 
+        EnvironmentVariable = "MOVE_EXTRADIRMUSTEXIST",
+        IsRequired = false)]
+    public bool ExtraDirMustExist { get; set; }
+    
+    [CommandOption("artist-dirs-must-not-exist", 
+        Description = "Artist folder must not exist in the extra scanned directories, only meant for --create-artist-directory", 
+        EnvironmentVariable = "MOVE_EXTRADIRMUSTNOTEXIST",
+        IsRequired = false)]
+    public List<string> ArtistDirsMustNotExist { get; set; }
+    
+    [CommandOption("update-artist-tags", 
+        Description = "Update Artist metadata tags", 
+        EnvironmentVariable = "MOVE_UPDATEARTISTTAGS",
+        IsRequired = false)]
+    public bool UpdateArtistTags { get; set; }
+    
+    [CommandOption("fix-file-corruption", 
+        Description = "Attempt fixing file corruption by using FFMpeg for from/target/scan files.", 
+        EnvironmentVariable = "MOVE_FIXFILECORRUPTION",
+        IsRequired = false)]
+    public bool FixFileCorruption { get; set; }
+    
+    [CommandOption("acoustid-api-key", 
+        Description = "When AcoustId API Key is set, try getting the artist/album/title when needed.", 
+        EnvironmentVariable = "MOVE_ACOUSTIDAPIKEY",
+        IsRequired = false)]
+    public string AcoustidApiKey { get; set; }
+    
+    [CommandOption("file-format", 
+        Description = "rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.", 
+        EnvironmentVariable = "MOVE_FILEFORMAT",
+        IsRequired = false)]
+    public string FileFormat { get; set; }
+
+    [CommandOption("directory-seperator",
+        Description = "Directory Seperator replacer, replace '/' '\\' to .e.g. '_'.",
+        EnvironmentVariable = "MOVE_DIRECTORYSEPERATOR",
+        IsRequired = false)]
+    public string DirectorySeperator { get; set; } = "_";
+    
+    [CommandOption("always-check-acoustid", 
+        Description = "Always check & Write to media with AcoustId for missing tags.", 
+        EnvironmentVariable = "MOVE_ALWAYSCHECKACOUSTID",
+        IsRequired = false)]
+    public bool AlwaysCheckAcoustId { get; set; }
+    
+    [CommandOption("continue-scan-error", 
+        Description = "Continue on scan errors from the Music Libraries.", 
+        EnvironmentVariable = "MOVE_CONTINUESCANERROR",
+        IsRequired = false)]
+    public bool ContinueScanError { get; set; }
+    
+    [CommandOption("overwrite-artist", 
+        Description = "Overwrite the Artist name when tagging from MusicBrainz.", 
+        EnvironmentVariable = "MOVE_OVERWRITEARTIST",
+        IsRequired = false)]
+    public bool OverwriteArtist { get; set; }
+    
+    [CommandOption("overwrite-album-artist", 
+        Description = "Overwrite the Album Artist name when tagging from MusicBrainz.", 
+        EnvironmentVariable = "MOVE_OVERWRITEALBUMARTIST",
+        IsRequired = false)]
+    public bool OverwriteAlbumArtist { get; set; }
+    
+    [CommandOption("overwrite-album", 
+        Description = "Overwrite the Album name when tagging from MusicBrainz.", 
+        EnvironmentVariable = "MOVE_OVERWRITEALBUM",
+        IsRequired = false)]
+    public bool OverwriteAlbum { get; set; }
+    
+    [CommandOption("overwrite-track", 
+        Description = "Overwrite the Track name when tagging from MusicBrainz.", 
+        EnvironmentVariable = "MOVE_OVERWRITETRACK",
+        IsRequired = false)]
+    public bool OverwriteTrack { get; set; }
+    
+    [CommandOption("only-move-when-tagged", 
+        Description = "Only process/move the media after it was MusicBrainz or Tidal tagged.", 
+        EnvironmentVariable = "MOVE_ONLYMOVEWHENTAGGED",
+        IsRequired = false)]
+    public bool OnlyMoveWhenTagged { get; set; }
+    
+    [CommandOption("only-filename-matching", 
+        Description = "Only filename matching when trying to find duplicates.", 
+        EnvironmentVariable = "MOVE_ONLYFILEMATCHING",
+        IsRequired = false)]
+    public bool OnlyFileNameMatching { get; set; }
+    
+    [CommandOption("search-by-tag-names", 
+        Description = "Search MusicBrainz from media tag-values if AcoustId matching failed.", 
+        EnvironmentVariable = "MOVE_SEARCHBYTAGNAMES",
+        IsRequired = false)]
+    public bool SearchByTagNames { get; set; }
+    
+    [CommandOption("tidal-clientid", 
+        Description = "The Client Id used for Tidal's API.", 
+        EnvironmentVariable = "MOVE_TIDALCLIENTID",
+        IsRequired = false)]
+    public string TidalClientId { get; set; }
+    
+    [CommandOption("tidal-client-secret", 
+        Description = "The Client Client used for Tidal's API.", 
+        EnvironmentVariable = "MOVE_TIDALCLIENTSECRET",
+        IsRequired = false)]
+    public string TidalClientSecret { get; set; }
+
+    [CommandOption("tidal-country-code",
+        Description = "Tidal's CountryCode (e.g. US, FR, NL, DE etc).",
+        EnvironmentVariable = "MOVE_TIDALCOUNTRYCODE",
+        IsRequired = false)]
+    public string TidalCountryCode { get; set; } = "US";
+
+    [CommandOption("metadata-api-base-url",
+        Description = "MiniMedia's Metadata API Base Url.",
+        EnvironmentVariable = "MOVE_METADATAAPIBASEURL",
+        IsRequired = false)]
+    public string MetadataApiBaseUrl { get; set; } = string.Empty;
+    
+    [CommandOption("metadata-api-providers", 
+        Description = "MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).", 
+        EnvironmentVariable = "MOVE_METADATAAPIPROVIDERS",
+        IsRequired = false)]
+    public List<string> MetadataApiProviders { get; set; }
+    
+    public async ValueTask ExecuteAsync(IConsole console)
     {
-        if (!target.EndsWith('/'))
+        if (!Target.EndsWith('/'))
         {
-            target += '/';
+            Target += '/';
         }
-        if (!from.EndsWith('/'))
+        if (!From.EndsWith('/'))
         {
-            from += '/';
+            From += '/';
         }
 
         CliOptions options = new CliOptions
         {
-            FromDirectory = from,
-            ToDirectory = target,
-            AcoustIdApiKey = acoustidApiKey,
-            FileFormat = fileFormat,
-            DirectorySeperator = directorySeperator,
-            TidalClientId = tidalClientId,
-            TidalClientSecret = tidalClientSecret,
-            TidalCountryCode = tidalCountryCode,
-            MetadataApiBaseUrl = metadataApiBaseUrl,
-            MetadataApiProviders = metadataApiProviders,
-            CreateAlbumDirectory = createAlbumDirectory,
-            CreateArtistDirectory = createArtistDirectory,
-            Parallel = parallel,
-            SkipFromDirAmount = skipDirectories,
-            DeleteDuplicateFrom = deleteDuplicateFrom,
-            DeleteDuplicateTo = deleteDuplicateTo,
-            RenameVariousArtists = variousArtists,
-            ExtraDirMustExist = extraDirMustExist,
-            UpdateArtistTags = updateArtistTags,
-            FixFileCorruption = fixFileCorruption,
-            AlwaysCheckAcoustId = alwaysCheckAcoustId,
-            ContinueScanError = continueScanError,
-            OverwriteArtist = overwriteArtist,
-            OverwriteAlbumArtist = overwriteAlbumArtist,
-            OverwriteAlbum = overwriteAlbum,
-            OverwriteTrack = overwriteTrack,
-            OnlyMoveWhenTagged = onlyMoveWhenTagged,
-            OnlyFileNameMatching = onlyFileNameMatching,
-            SearchByTagNames = searchByTagNames,
+            FromDirectory = From,
+            ToDirectory = Target,
+            AcoustIdApiKey = AcoustidApiKey,
+            FileFormat = FileFormat,
+            DirectorySeperator = DirectorySeperator,
+            TidalClientId = TidalClientId,
+            TidalClientSecret = TidalClientSecret,
+            TidalCountryCode = TidalCountryCode,
+            MetadataApiBaseUrl = MetadataApiBaseUrl,
+            MetadataApiProviders = MetadataApiProviders,
+            CreateAlbumDirectory = CreateAlbumDirectory,
+            CreateArtistDirectory = CreateArtistDirectory,
+            Parallel = Parallel,
+            SkipFromDirAmount = SkipDirectories,
+            DeleteDuplicateFrom = DeleteDuplicateFrom,
+            DeleteDuplicateTo = DeleteDuplicateTo,
+            RenameVariousArtists = VariousArtists,
+            ExtraDirMustExist = ExtraDirMustExist,
+            UpdateArtistTags = UpdateArtistTags,
+            FixFileCorruption = FixFileCorruption,
+            AlwaysCheckAcoustId = AlwaysCheckAcoustId,
+            ContinueScanError = ContinueScanError,
+            OverwriteArtist = OverwriteArtist,
+            OverwriteAlbumArtist = OverwriteAlbumArtist,
+            OverwriteAlbum = OverwriteAlbum,
+            OverwriteTrack = OverwriteTrack,
+            OnlyMoveWhenTagged = OnlyMoveWhenTagged,
+            OnlyFileNameMatching = OnlyFileNameMatching,
+            SearchByTagNames = SearchByTagNames,
         };
 
         string[] supportedProviderTypes = new[] { "Tidal", "MusicBrainz", "Spotify", "Any" };
-        if (!string.IsNullOrWhiteSpace(metadataApiBaseUrl) && (metadataApiProviders?.Count == 0 ||
-            !metadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
+        if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
+            !MetadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
         {
             Console.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
             return;
@@ -151,9 +283,9 @@ public class CliCommands
         Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
         Console.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
 
-        if (extrascans?.Count > 0)
+        if (ExtraScans?.Count > 0)
         {
-            foreach (string extraDir in extrascans)
+            foreach (string extraDir in ExtraScans)
             {
                 string extra = extraDir;
                 if (!extra.EndsWith('/'))
@@ -165,9 +297,9 @@ public class CliCommands
             }
         }
         
-        if (artistDirsMustNotExist?.Count > 0)
+        if (ArtistDirsMustNotExist?.Count > 0)
         {
-            foreach (string artistDir in artistDirsMustNotExist)
+            foreach (string artistDir in ArtistDirsMustNotExist)
             {
                 string directory = artistDir;
                 if (!directory.EndsWith('/'))
@@ -179,14 +311,14 @@ public class CliCommands
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(extrascan))
+        if (!string.IsNullOrWhiteSpace(ExtraScan))
         {
-            if (!extrascan.EndsWith('/'))
+            if (!ExtraScan.EndsWith('/'))
             {
-                extrascan += '/';
+                ExtraScan += '/';
             }
-            options.ExtraScans.Add(extrascan);
-            Console.WriteLine($"Extra scan, {extrascan}");
+            options.ExtraScans.Add(ExtraScan);
+            Console.WriteLine($"Extra scan, {ExtraScan}");
         }
         
         MoveProcessor moveProcessor = new MoveProcessor(options);
@@ -218,7 +350,7 @@ public class CliCommands
             }
         }
         
-        moveProcessor.Process();
+        await moveProcessor.ProcessAsync();
     }
 
     private static bool TestFileFormatOutput(MoveProcessor moveProcessor, MediaFileInfo fileInfo, CliOptions options)

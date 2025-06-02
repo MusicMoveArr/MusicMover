@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-namespace MusicMover.Models;
+namespace MusicMover.Models.MusicBrainz;
 
 public class MusicBrainzArtistModel
 {

@@ -23,7 +23,7 @@ public class MiniMediaMetadataService
         _miniMediaMetadataApiService = new MiniMediaMetadataAPIService(baseUrl, providerTypes);
     }
 
-    public bool WriteTags(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName,
+    public async Task<bool> WriteTagsAsync(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName,
         string uncoupledAlbumArtist,
         bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
     {
@@ -60,13 +60,15 @@ public class MiniMediaMetadataService
         {
             Console.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'");
             Console.WriteLine($"Searching for tidal artist '{artist}'");
-            if (TryArtist(artist, mediaFileInfo.Title, targetAlbum, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+            
+            if (await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, fromFile, 
+                    overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
             {
                 return true;
             }
         }
 
-        string artistInAlbumName = artistSearch.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
+        string? artistInAlbumName = artistSearch.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
         if (!string.IsNullOrWhiteSpace(artistInAlbumName))
         {
             string withoutArtistInAlbum = targetAlbum.ToLower().Replace(artistInAlbumName.ToLower(), string.Empty);
@@ -74,18 +76,18 @@ public class MiniMediaMetadataService
             {
                 Console.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'");
                 Console.WriteLine($"Searching for tidal artist '{artist}'");
-                if (TryArtist(artist, mediaFileInfo.Title, withoutArtistInAlbum, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                
+                if (await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, fromFile, 
+                        overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
                 {
                     return true;
                 }
             }
         }
-
-
         return false;
     }
     
-    private bool TryArtist(string? artistName, 
+    private async Task<bool> TryArtistAsync(string? artistName, 
         string targetTrackTitle,
         string targetAlbumTitle,
         FileInfo fromFile,
@@ -100,7 +102,7 @@ public class MiniMediaMetadataService
             return false;
         }
 
-        var searchResult = _miniMediaMetadataApiService.SearchArtists(artistName);
+        var searchResult = await _miniMediaMetadataApiService.SearchArtistsAsync(artistName);
 
         if (!searchResult.Artists.Any())
         {
@@ -129,15 +131,12 @@ public class MiniMediaMetadataService
             {
                 try
                 {
-                    SearchTrackEntity? foundTrack = null;
-                    List<string>? artistNames = null;
-                    if (ProcessArtist(artist, targetTrackTitle, targetAlbumTitle, ref foundTrack))
+                    SearchTrackEntity? foundTrack = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle);
+                    
+                    if (foundTrack != null && await WriteTagsToFileAsync(foundTrack, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
                     {
-                        if (WriteTagsToFile(foundTrack, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
-                        {
-                            tagged = true;
-                            break;
-                        }
+                        tagged = true;
+                        break;
                     }
                 }
                 catch (Exception e)
@@ -151,13 +150,12 @@ public class MiniMediaMetadataService
         return tagged;
     }
 
-    private bool ProcessArtist(SearchArtistEntity artist,
+    private async Task<SearchTrackEntity?> ProcessArtistAsync(SearchArtistEntity artist,
         string targetTrackTitle,
-        string targetAlbumTitle,
-        ref SearchTrackEntity? foundTrack)
+        string targetAlbumTitle)
     {
         Console.WriteLine($"MiniMedia Metadata API, search query: {artist.Name} - {targetTrackTitle}");
-        var searchResultTracks = _miniMediaMetadataApiService.SearchTracks(targetTrackTitle, artist.Id, artist.ProviderType);
+        var searchResultTracks = await _miniMediaMetadataApiService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
 
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
         List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchResultTracks.Tracks, targetTrackTitle, MatchPercentage);
@@ -194,7 +192,6 @@ public class MiniMediaMetadataService
 
             if(trackMatches.Count > 0)
             {
-                foundTrack = result;
                 matchesFound.Add(result);
             }
 
@@ -234,11 +231,10 @@ public class MiniMediaMetadataService
 
         if (bestMatch != null)
         {
-            foundTrack = bestMatch.Match;
-            return true;
+            return bestMatch.Match;
         }
 
-        return false;
+        return null;
     }
     
     private List<SearchTrackEntity> FindBestMatchingTracks(
@@ -275,7 +271,7 @@ public class MiniMediaMetadataService
         return false;
     }
     
-    private bool WriteTagsToFile(SearchTrackEntity foundTrack, FileInfo fromFile,
+    private async Task<bool> WriteTagsToFileAsync(SearchTrackEntity foundTrack, FileInfo fromFile,
         bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
     {
         Track track = new Track(fromFile.FullName);
@@ -351,7 +347,7 @@ public class MiniMediaMetadataService
         UpdateTag(track, "Track Number", foundTrack.TrackNumber.ToString(), ref trackInfoUpdated);
         UpdateTag(track, "Total Tracks", foundTrack.Album.TotalTracks.ToString(), ref trackInfoUpdated);
 
-        return _mediaTagWriteService.SafeSave(track);
+        return await _mediaTagWriteService.SafeSaveAsync(track);
     }
     
     private void UpdateTag(Track track, string tagName, string? value, ref bool trackInfoUpdated)

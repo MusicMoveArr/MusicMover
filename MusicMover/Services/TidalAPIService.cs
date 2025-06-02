@@ -30,13 +30,13 @@ public class TidalAPIService
         _countryCode = countryCode;
     }
     
-    public TidalAuthenticationResponse? Authenticate()
+    public async Task<TidalAuthenticationResponse?> AuthenticateAsync()
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal Authenticate");
         using RestClient client = new RestClient(AuthTokenUrl);
 
-        var token = retryPolicy.Execute(() =>
+        var token = await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_clientId}:{_clientSecret}"));
@@ -44,7 +44,7 @@ public class TidalAPIService
             request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
             request.AddParameter("grant_type", "client_credentials");
             
-            return client.Post<TidalAuthenticationResponse>(request);
+            return await client.PostAsync<TidalAuthenticationResponse>(request);
         });
 
         if (token != null)
@@ -54,13 +54,13 @@ public class TidalAPIService
         return token;
     }
     
-    public TidalSearchResponse? SearchResultsArtists(string searchTerm)
+    public async Task<TidalSearchResponse?> SearchResultsArtistsAsync(string searchTerm)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
         using RestClient client = new RestClient(SearchResultArtistsUrl + Uri.EscapeDataString(searchTerm));
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
@@ -69,17 +69,17 @@ public class TidalAPIService
             request.AddParameter("countryCode", _countryCode);
             request.AddParameter("include", "artists");
             
-            return client.Get<TidalSearchResponse>(request);
+            return await client.GetAsync<TidalSearchResponse>(request);
         });
     }
     
-    public TidalSearchResponse? SearchResultsTracks(string searchTerm)
+    public async Task<TidalSearchResponse?> SearchResultsTracksAsync(string searchTerm)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
         using RestClient client = new RestClient(SearchResultArtistsUrl + Uri.EscapeDataString(searchTerm));
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
@@ -88,17 +88,17 @@ public class TidalAPIService
             request.AddParameter("countryCode", _countryCode);
             request.AddParameter("include", "tracks,artists,albums");
             
-            return client.Get<TidalSearchResponse>(request);
+            return await client.GetAsync<TidalSearchResponse>(request);
         });
     }
     
-    public TidalSearchResponse? GetArtistInfoById(int artistId)
+    public async Task<TidalSearchResponse?> GetArtistInfoByIdAsync(int artistId)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetArtistById '{artistId}'");
         using RestClient client = new RestClient(string.Format(ArtistsIdUrl, artistId));
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
@@ -107,30 +107,30 @@ public class TidalAPIService
             request.AddParameter("countryCode", _countryCode);
             request.AddParameter("include", "albums,profileArt");
 
-            return client.Get<TidalSearchResponse>(request);
+            return await client.GetAsync<TidalSearchResponse>(request);
         });
     }
-    public TidalSearchArtistNextResponse? GetAlbumSelfInfo(string selfLink)
+    public async Task<TidalSearchArtistNextResponse?> GetAlbumSelfInfoAsync(string selfLink)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetAlbumSelfInfo ");
 
         string url = $"{TidalApiPrefix}{selfLink}";
         using RestClient client = new RestClient(url);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
             request.AddHeader("Accept", "application/vnd.api+json");
             request.AddHeader("Content-Type", "application/vnd.api+json");
-            return client.Get<TidalSearchArtistNextResponse>(request);
+            return await client.GetAsync<TidalSearchArtistNextResponse>(request);
         });
     }
     
-    public TidalSearchArtistNextResponse? GetArtistNextInfoById(int artistId, string next)
+    public async Task<TidalSearchArtistNextResponse?> GetArtistNextInfoByIdAsync(int artistId, string next)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetArtistNextInfoById '{artistId}'");
 
         string url = $"{TidalApiPrefix}{next}";
@@ -141,24 +141,24 @@ public class TidalAPIService
         }
         using RestClient client = new RestClient(url);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
             request.AddHeader("Accept", "application/vnd.api+json");
             request.AddHeader("Content-Type", "application/vnd.api+json");
             
-            return client.Get<TidalSearchArtistNextResponse>(request);
+            return await client.GetAsync<TidalSearchArtistNextResponse>(request);
         });
     }
     
-    public TidalSearchResponse? GetTracksByAlbumId(int albumId)
+    public async Task<TidalSearchResponse?> GetTracksByAlbumIdAsync(int albumId)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetTracksByAlbumId '{albumId}'");
         using RestClient client = new RestClient(string.Format(TracksByAlbumIdUrl, albumId));
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
@@ -167,13 +167,13 @@ public class TidalAPIService
             request.AddParameter("countryCode", _countryCode);
             request.AddParameter("include", "artists,coverArt,items,providers");
             
-            return client.Get<TidalSearchResponse>(request);
+            return await client.GetAsync<TidalSearchResponse>(request);
         });
     }
     
-    public TidalSearchTracksNextResponse? GetTracksNextByAlbumId(int albumId, string next)
+    public async Task<TidalSearchTracksNextResponse?> GetTracksNextByAlbumIdAsync(int albumId, string next)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetTracksNextByAlbumId '{albumId}'");
         
         string url = $"{TidalApiPrefix}{next}";
@@ -184,20 +184,20 @@ public class TidalAPIService
         }
         using RestClient client = new RestClient(url);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
             request.AddHeader("Accept", "application/vnd.api+json");
             request.AddHeader("Content-Type", "application/vnd.api+json");
 
-            return client.Get<TidalSearchTracksNextResponse>(request);
+            return await client.GetAsync<TidalSearchTracksNextResponse>(request);
         });
     }
     
-    public TidalSearchTracksNextResponse? GetTracksNextFromSearch(string next)
+    public async Task<TidalSearchTracksNextResponse?> GetTracksNextFromSearchAsync(string next)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetTracksNextFromSearch");
         
         string url = $"{TidalApiPrefix}{next}";
@@ -208,20 +208,20 @@ public class TidalAPIService
         }
         using RestClient client = new RestClient(url);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
             request.AddHeader("Accept", "application/vnd.api+json");
             request.AddHeader("Content-Type", "application/vnd.api+json");
             
-            return client.Get<TidalSearchTracksNextResponse>(request);
+            return await client.GetAsync<TidalSearchTracksNextResponse>(request);
         });
     }
     
-    public TidalSearchTracksNextResponse? GetAlbumById(int albumId)
+    public async Task<TidalSearchTracksNextResponse?> GetAlbumByIdAsync(int albumId)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetTracksNextByAlbumId '{albumId}'");
         
         string url = $"{TidalApiPrefix}";
@@ -232,24 +232,24 @@ public class TidalAPIService
         }
         using RestClient client = new RestClient(url);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
             request.AddHeader("Accept", "application/vnd.api+json");
             request.AddHeader("Content-Type", "application/vnd.api+json");
 
-            return client.Get<TidalSearchTracksNextResponse>(request);
+            return await client.GetAsync<TidalSearchTracksNextResponse>(request);
         });
     }
     
-    public TidalTrackArtistResponse? GetTrackArtistsByTrackId(int[] trackIds)
+    public async Task<TidalTrackArtistResponse?> GetTrackArtistsByTrackIdAsync(int[] trackIds)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal GetTrackArtistsByTrackId for {trackIds.Length} tracks");
         using RestClient client = new RestClient(TracksUrl);
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddHeader("Authorization", $"Bearer {this.AuthenticationResponse.AccessToken}");
@@ -259,16 +259,16 @@ public class TidalAPIService
             request.AddParameter("include", "artists");
             request.AddParameter("countryCode", _countryCode);
             
-            return client.Get<TidalTrackArtistResponse>(request);
+            return await client.GetAsync<TidalTrackArtistResponse>(request);
         });
     }
     
-    private RetryPolicy GetRetryPolicy()
+    private AsyncRetryPolicy GetRetryPolicy()
     {
-        RetryPolicy retryPolicy = Policy
+        AsyncRetryPolicy retryPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutException>()
-            .WaitAndRetry(5, retryAttempt => 
+            .WaitAndRetryAsync(5, retryAttempt => 
                     TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (exception, timeSpan, retryCount, context) => {
                     Debug.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");

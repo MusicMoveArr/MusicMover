@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace MusicMover.Models.Tidal;
 
+#pragma warning disable CS8618
 public class TidalAuthenticationResponse
 {
     public string Scope { get; set; }

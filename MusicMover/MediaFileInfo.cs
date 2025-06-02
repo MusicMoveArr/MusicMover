@@ -13,7 +13,7 @@ public class MediaFileInfo
     private const string AcoustIdIdTag = "AcoustidId";
     private const string AcoustIdTag = "AcoustId";
     
-    public FileInfo FileInfo { get; set; }
+    public FileInfo? FileInfo { get; set; }
     private FingerPrintService _fingerPrintService;
     
     public string? Artist { get; set; }
@@ -32,13 +32,13 @@ public class MediaFileInfo
 
     public MediaFileInfo()
     {
-        
+        this._fingerPrintService = new FingerPrintService();
     }
     
     public MediaFileInfo(FileInfo fileInfo)
+    : this()
     {
         this.FileInfo = fileInfo;
-        this._fingerPrintService = new FingerPrintService();
         
         Track trackInfo = new Track(fileInfo.FullName);
         var mediaTags = trackInfo.AdditionalFields
@@ -130,7 +130,7 @@ public class MediaFileInfo
             ).Value;
     }
 
-    public bool GenerateSaveFingerprint()
+    public async Task<bool> GenerateSaveFingerprintAsync()
     {
         if (!string.IsNullOrWhiteSpace(AcoustIdFingerPrint) &&
             AcoustIdFingerPrintDuration > 0)
@@ -138,7 +138,7 @@ public class MediaFileInfo
             return false;
         }
 
-        FpcalcOutput? fingerprint = _fingerPrintService.GetFingerprint(FileInfo.FullName);
+        FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(FileInfo.FullName);
         if (string.IsNullOrWhiteSpace(fingerprint?.Fingerprint))
         {
             return false;
@@ -161,7 +161,7 @@ public class MediaFileInfo
             ref updated,
             ref originalValue);
 
-        return mediaTagWriteService.SafeSave(track);
+        return await mediaTagWriteService.SafeSaveAsync(track);
     }
 
     public void Save(string artist)

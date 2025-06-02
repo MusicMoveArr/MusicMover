@@ -1,10 +1,14 @@
-﻿using ConsoleAppFramework;
-using MusicMover;
+﻿using CliFx;
 
 class Program
 {
-    static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        ConsoleApp.Run(args, CliCommands.Root);
+        ATL.Settings.OutputStacktracesToConsole = false;
+
+        await new CliApplicationBuilder()
+            .AddCommandsFromThisAssembly()
+            .Build()
+            .RunAsync(args);
     }
 }

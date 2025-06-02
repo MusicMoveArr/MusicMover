@@ -6,7 +6,7 @@ namespace MusicMover.Services;
 
 public class FingerPrintService
 {
-    public FpcalcOutput? GetFingerprint(string filePath)
+    public async Task<FpcalcOutput?> GetFingerprintAsync(string filePath)
     {
         // Start a new process for fpcalc
         var process = new Process
@@ -23,8 +23,8 @@ public class FingerPrintService
 
         // Start the process and read the output
         process.Start();
-        string output = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
+        string output = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync();
 
         // Check if fingerprint was successfully generated
         if (process.ExitCode != 0)

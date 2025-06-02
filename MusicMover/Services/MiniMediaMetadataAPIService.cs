@@ -1,12 +1,8 @@
 using System.Diagnostics;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using MusicMover.Models.MetadataAPI;
-using MusicMover.Models.MetadataAPI.Enums;
 using Polly;
 using Polly.Retry;
 using RestSharp;
-using RestSharp.Serializers.Json;
 
 namespace MusicMover.Services;
 
@@ -21,30 +17,30 @@ public class MiniMediaMetadataAPIService
         _providerTypes = providerTypes;
     }
 
-    public SearchArtistResponse? SearchArtists(string searchTerm)
+    public async Task<SearchArtistResponse?> SearchArtistsAsync(string searchTerm)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
         
         using RestClient client = new RestClient(_baseUrl + "/api/SearchArtist");
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddParameter("Provider", _providerTypes.Count > 1 ? "Any" : _providerTypes.First());
             request.AddParameter("Name", searchTerm);
             request.AddParameter("Offset", 0);
             
-            return client.Get<SearchArtistResponse>(request);
+            return await client.GetAsync<SearchArtistResponse>(request);
         });
     }
-    public SearchTrackResponse? SearchTracks(string searchTerm, string artistId, string providerType)
+    public async Task<SearchTrackResponse?> SearchTracksAsync(string searchTerm, string artistId, string providerType)
     {
-        RetryPolicy retryPolicy = GetRetryPolicy();
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
         using RestClient client = new RestClient(_baseUrl + "/api/SearchTrack");
 
-        return retryPolicy.Execute(() =>
+        return await retryPolicy.ExecuteAsync(async () =>
         {
             RestRequest request = new RestRequest();
             request.AddParameter("Provider", providerType);
@@ -52,16 +48,16 @@ public class MiniMediaMetadataAPIService
             request.AddParameter("ArtistId", artistId);
             request.AddParameter("Offset", 0);
             
-            return client.Get<SearchTrackResponse>(request);
+            return await client.GetAsync<SearchTrackResponse>(request);
         });
     }
     
-    private RetryPolicy GetRetryPolicy()
+    private AsyncRetryPolicy GetRetryPolicy()
     {
-        RetryPolicy retryPolicy = Policy
+        AsyncRetryPolicy retryPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutException>()
-            .WaitAndRetry(5, retryAttempt => 
+            .WaitAndRetryAsync(5, retryAttempt => 
                     TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (exception, timeSpan, retryCount, context) => {
                     Debug.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");

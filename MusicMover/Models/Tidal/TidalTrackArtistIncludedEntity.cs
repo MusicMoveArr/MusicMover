@@ -1,5 +1,6 @@
 namespace MusicMover.Models.Tidal;
 
+#pragma warning disable CS8618
 public class TidalTrackArtistIncludedEntity
 {
     public string Id { get; set; }

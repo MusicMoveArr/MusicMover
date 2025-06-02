@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using ATL;
 using FuzzySharp;
 using MusicMover.Helpers;
+using MusicMover.Models;
 using MusicMover.Models.Tidal;
 
 namespace MusicMover.Services;
@@ -25,17 +26,17 @@ public class TidalService
         _tidalAPIService = new TidalAPICacheLayerService(tidalClientId, tidalClientSecret, countryCode);
     }
     
-    public bool WriteTags(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName, string uncoupledAlbumArtist,
+    public async Task<bool> WriteTagsAsync(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName, string uncoupledAlbumArtist,
         bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
     {
         if (string.IsNullOrWhiteSpace(_tidalAPIService.AuthenticationResponse?.AccessToken) ||
             (_tidalAPIService.AuthenticationResponse?.ExpiresIn > 0 &&
              DateTime.Now > _tidalAPIService.AuthenticationResponse?.ExpiresAt))
         {
-            _tidalAPIService.Authenticate();
+            await _tidalAPIService.AuthenticateAsync();
         }
 
-        List<string> artistSearch = new List<string>();
+        List<string?> artistSearch = new List<string?>();
         artistSearch.Add(mediaFileInfo.Artist);
         artistSearch.Add(mediaFileInfo.AlbumArtist);
         artistSearch.Add(uncoupledArtistName);
@@ -55,7 +56,7 @@ public class TidalService
         {
             Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
             Console.WriteLine($"Searching for tidal artist '{artist}'");
-            if (TryArtist(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+            if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
             {
                 return true;
             }
@@ -72,7 +73,7 @@ public class TidalService
             {
                 Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
                 Console.WriteLine($"Searching for tidal artist '{artist}'");
-                if (TryArtist(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
                 {
                     return true;
                 }
@@ -82,9 +83,9 @@ public class TidalService
         return false;
     }
 
-    private bool TryArtist(string? artistName, 
+    private async Task<bool> TryArtistAsync(string? artistName, 
         string targetTrackTitle,
-        string targetAlbumTitle,
+        string? targetAlbumTitle,
         FileInfo fromFile,
         bool overWriteArtist, 
         bool overWriteAlbum, 
@@ -98,7 +99,7 @@ public class TidalService
         }
         
         TidalSearchResponse? searchResult;
-        searchResult = _tidalAPIService.SearchResultsArtists(artistName);
+        searchResult = await _tidalAPIService.SearchResultsArtistsAsync(artistName);
 
         if (searchResult?.Included == null)
         {
@@ -129,14 +130,12 @@ public class TidalService
         {
             try
             {
-                TidalSearchDataEntity? foundAlbum = null;
-                TidalSearchDataEntity? foundTrack = null;
-                TidalSearchResponse? albumTracks = null;
-                List<string>? artistNames = null;
-                if (ProcessArtist(artist, targetTrackTitle, targetAlbumTitle, ref foundAlbum, ref foundTrack, ref artistNames, ref albumTracks))
+                TidalProcessArtistResult processResult = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle);
+                
+                if (processResult.Success)
                 {
-                    return WriteTagsToFile(fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist,
-                        artist, foundAlbum, foundTrack, artistNames, albumTracks);
+                    return await WriteTagsToFileAsync(fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist,
+                        artist, processResult.FoundAlbum, processResult.FoundTrack, processResult.ArtistNames, processResult.AlbumTracks);
                 }
             }
             catch (Exception e)
@@ -148,18 +147,19 @@ public class TidalService
         return false;
     }
 
-    private bool ProcessArtist(TidalSearchDataEntity artist, 
+    private async Task<TidalProcessArtistResult> ProcessArtistAsync(TidalSearchDataEntity artist, 
         string targetTrackTitle, 
-        string targetAlbumTitle, 
-        ref TidalSearchDataEntity? foundAlbum,
-        ref TidalSearchDataEntity? foundTrack,
-        ref List<string>? artistNames,
-        ref TidalSearchResponse? albumTracks)
+        string? targetAlbumTitle)
     {
+        TidalSearchDataEntity? foundAlbum;
+        TidalSearchDataEntity? foundTrack;
+        List<string>? artistNames;
+        TidalSearchResponse? albumTracks;
+        
         Console.WriteLine($"Tidal search query: {artist.Attributes.Name} - {targetTrackTitle}");
 
-        TidalSearchResponse? searchResult = _tidalAPIService.SearchResultsTracks($"{artist.Attributes.Name} - {targetTrackTitle}");
-        searchResult = GetAllTracksFromSearch(searchResult);
+        TidalSearchResponse? searchResult = await _tidalAPIService.SearchResultsTracksAsync($"{artist.Attributes.Name} - {targetTrackTitle}");
+        searchResult = await GetAllTracksFromSearchAsync(searchResult);
 
         List<TidalMatchFound> matchesFound = new List<TidalMatchFound>();
         if (searchResult?.Included != null)
@@ -187,18 +187,18 @@ public class TidalService
                     break;
                 }
 
-                artistNames = GetTrackArtists(int.Parse(result.Id));
+                artistNames = await GetTrackArtistsAsync(int.Parse(result.Id));
 
                 bool containsArtist = artistNames.Any(artistName =>
                                           Fuzz.TokenSortRatio(artist.Attributes.Name, artistName) > MatchPercentage) ||
-                                          Fuzz.TokenSortRatio(artist.Attributes.Name, string.Join(' ', artistNames)) > MatchPercentage; //maybe collab?
+                                      Fuzz.TokenSortRatio(artist.Attributes.Name, string.Join(' ', artistNames)) > MatchPercentage; //maybe collab?
 
                 if (!containsArtist)
                 {
                     continue;
                 }
 
-                var album = _tidalAPIService.GetAlbumSelfInfo(result.RelationShips.Albums.Links.Self);
+                var album = await _tidalAPIService.GetAlbumSelfInfoAsync(result.RelationShips.Albums.Links.Self);
                 var albumIds = album.Data
                     .Where(a => a.Type == "albums")
                     .Select(a => int.Parse(a.Id))
@@ -207,7 +207,7 @@ public class TidalService
 
                 foreach (var albumId in albumIds)
                 {
-                    albumTracks = GetAllTracksByAlbumId(albumId);
+                    albumTracks = await GetAllTracksByAlbumIdAsync(albumId);
 
                     if (albumTracks?.Included == null)
                     {
@@ -215,13 +215,13 @@ public class TidalService
                     }
 
                     if (!string.IsNullOrWhiteSpace(targetAlbumTitle) &&
-                        (Fuzz.Ratio(targetAlbumTitle, albumTracks?.Data.Attributes.Title) < MatchPercentage ||
+                        (Fuzz.Ratio(targetAlbumTitle, albumTracks.Data.Attributes.Title) < MatchPercentage ||
                          !FuzzyHelper.ExactNumberMatch(targetAlbumTitle, albumTracks?.Data.Attributes.Title)))
                     {
                         continue;
                     }
 
-                    var trackMatches = FindBestMatchingTracks(albumTracks?.Included, targetTrackTitle, MatchPercentage);
+                    var trackMatches = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, MatchPercentage);
 
                     foreach (var trackMatch in trackMatches)
                     {
@@ -244,12 +244,12 @@ public class TidalService
         //try by fetching all albums and going through them...
         if (matchesFound.Count == 0 && !string.IsNullOrWhiteSpace(targetAlbumTitle))
         {
-            var tempArtistInfo = _tidalAPIService.GetArtistInfoById(int.Parse(artist.Id));
+            var tempArtistInfo = await _tidalAPIService.GetArtistInfoByIdAsync(int.Parse(artist.Id));
 
             if (tempArtistInfo?.Included != null &&
                 tempArtistInfo?.Data != null)
             {
-                tempArtistInfo = GetAllAlbumsForArtist(tempArtistInfo);
+                tempArtistInfo = await GetAllAlbumsForArtistAsync(tempArtistInfo);
                 var matchedAlbums = tempArtistInfo.Included
                     .Where(album => album.Type == "albums")
                     ?.Select(album => new
@@ -266,14 +266,14 @@ public class TidalService
 
                 foreach (var album in matchedAlbums)
                 {
-                    albumTracks = GetAllTracksByAlbumId(int.Parse(album.Id));
+                    albumTracks = await GetAllTracksByAlbumIdAsync(int.Parse(album.Id));
                     foundTrack = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, MatchPercentage)
                         .FirstOrDefault();
 
                     if (foundTrack != null)
                     {
-                        foundAlbum = album;
-                        artistNames = GetTrackArtists(int.Parse(foundTrack.Id));
+                        foundTrack = album;
+                        artistNames = await GetTrackArtistsAsync(int.Parse(foundTrack.Id));
 
                         matchesFound.Add(new TidalMatchFound(foundTrack, albumTracks, album, artistNames));
                     }
@@ -301,26 +301,27 @@ public class TidalService
         }
 
         var bestMatch = bestMatches.FirstOrDefault();
-
+        TidalProcessArtistResult processRresult = new TidalProcessArtistResult();
+        
         if (bestMatch != null)
         {
-            foundTrack = bestMatch.Match.FoundTrack;
-            albumTracks = bestMatch.Match.AlbumTracks;
-            foundAlbum = bestMatch.Match.Album;
-            artistNames = bestMatch.Match.ArtistNames;
-            return true;
+            processRresult.FoundTrack = bestMatch.Match.FoundTrack;
+            processRresult.AlbumTracks = bestMatch.Match.AlbumTracks;
+            processRresult.FoundAlbum = bestMatch.Match.Album;
+            processRresult.ArtistNames = bestMatch.Match.ArtistNames;
+            processRresult.Success = true;
         }
-        return false;
+        return processRresult;
     }
 
-    private List<string> GetTrackArtists(int trackId, string primaryArtistName = "", bool onlyAssociated = false)
+    private async Task<List<string>> GetTrackArtistsAsync(int trackId, string primaryArtistName = "", bool onlyAssociated = false)
     {
         if (trackId == 0)
         {
             return new List<string>();
         }
         
-        var trackArtists = _tidalAPIService.GetTrackArtistsByTrackId([trackId]);
+        var trackArtists = await _tidalAPIService.GetTrackArtistsByTrackIdAsync([trackId]);
 
         if (trackArtists?.Included == null)
         {
@@ -341,7 +342,7 @@ public class TidalService
         return artistNames;
     }
 
-    private TidalSearchResponse GetAllAlbumsForArtist(TidalSearchResponse artist)
+    private async Task<TidalSearchResponse> GetAllAlbumsForArtistAsync(TidalSearchResponse artist)
     {
         //fetch all the albums available of the artist
         //by going through the next page cursor
@@ -352,7 +353,7 @@ public class TidalService
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
                 Console.WriteLine($"Fetching next albums... {artist.Data.RelationShips.Albums.Data.Count}");
-                var nextArtistInfo = _tidalAPIService.GetArtistNextInfoById(int.Parse(artist.Data.Id), nextPage);
+                var nextArtistInfo = await _tidalAPIService.GetArtistNextInfoByIdAsync(int.Parse(artist.Data.Id), nextPage);
 
                 if (nextArtistInfo?.Data?.Count > 0)
                 {
@@ -391,7 +392,7 @@ public class TidalService
             .ToList() ?? [];
     }
 
-    private bool WriteTagsToFile(FileInfo fromFile,
+    private async Task<bool> WriteTagsToFileAsync(FileInfo fromFile,
         bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist, 
         TidalSearchDataEntity tidalArtist,
         TidalSearchDataEntity tidalAlbum,
@@ -463,8 +464,7 @@ public class TidalService
             UpdateTag(track, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
         }
         
-        _mediaTagWriteService.SafeSave(track);
-        return true;
+        return await _mediaTagWriteService.SafeSaveAsync(track);
     }
     
     private bool IsVariousArtists(string? name)
@@ -483,16 +483,16 @@ public class TidalService
     }
     
 
-    private TidalSearchResponse? GetAllTracksByAlbumId(int albumId)
+    private async Task<TidalSearchResponse?> GetAllTracksByAlbumIdAsync(int albumId)
     {
-        var tracks = _tidalAPIService.GetTracksByAlbumId(albumId);
+        var tracks = await _tidalAPIService.GetTracksByAlbumIdAsync(albumId);
         Console.WriteLine($"Getting tracks of album '{tracks?.Data.Attributes.Title}', album id '{albumId}'");
         if (tracks?.Data.Attributes.NumberOfItems >= 20)
         {
             string? nextPage = tracks.Data.RelationShips?.Items?.Links?.Next;
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
-                var tempTracks = _tidalAPIService.GetTracksNextByAlbumId(albumId, nextPage);
+                var tempTracks = await _tidalAPIService.GetTracksNextByAlbumIdAsync(albumId, nextPage);
 
                 if (tempTracks?.Included?.Count > 0)
                 {
@@ -512,14 +512,14 @@ public class TidalService
         }
         return tracks;
     }
-    private TidalSearchResponse? GetAllTracksFromSearch(TidalSearchResponse searchResults)
+    private async Task<TidalSearchResponse?> GetAllTracksFromSearchAsync(TidalSearchResponse searchResults)
     {
         if (searchResults?.Included?.Count >= 20)
         {
             string? nextPage = searchResults.Data.RelationShips?.Tracks?.Links?.Next;
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
-                var tempTracks = _tidalAPIService.GetTracksNextFromSearch(nextPage);
+                var tempTracks = await _tidalAPIService.GetTracksNextFromSearchAsync(nextPage);
 
                 if (tempTracks?.Included?.Count > 0)
                 {

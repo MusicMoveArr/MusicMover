@@ -2,6 +2,7 @@ using MusicMover.Models.MetadataAPI.Enums;
 
 namespace MusicMover.Models.MetadataAPI.Entities;
 
+#pragma warning disable CS8618
 public class SearchTrackAlbumEntity
 {
     public string Id { get; set; }

@@ -1,4 +1,4 @@
-namespace MusicMover.Models;
+namespace MusicMover.Models.MusicBrainz;
 
 public class MusicBrainzTextRepresentationModel
 {
