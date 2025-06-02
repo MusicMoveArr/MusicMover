@@ -68,7 +68,7 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --tidal-client-secret | The Client Client used for Tidal's API. | [no value required] |
 | --tidal-country-code | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | [no value required] |
 | --metadata-api-base-url | MiniMedia's Metadata API Base Url. | http://localhost:8080 |
-| --metadata-api-providers | MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz). | [\\"Tidal\\",\\"MusicBrainz\\"] |
+| --metadata-api-providers | MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz). | "Tidal" "MusicBrainz" |
 
 
 # Usage
