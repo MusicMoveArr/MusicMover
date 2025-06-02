@@ -35,7 +35,7 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 
 # Description of arguments
 | Longname Argument  | Description | Example |
-| ------------- | ------------- | ------------- | ------------- |
+| ------------- | ------------- | ------------- |
 | --from | From the directory. | ~/Downloads |
 | --target | directory to move/copy files to. | ~/Music |
 | --dryrun | Dry run, no files are moved/copied. | [no value required] |
