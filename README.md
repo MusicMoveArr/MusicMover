@@ -45,7 +45,7 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --skip-directories | Skip X amount of directories in the From directory to process. | 5 |
 | --delete-duplicate-from | Delete the song in From Directory if already found at Target. | [no value required] |
 | --delete-duplicate-to | Delete the song in To Directory if already found at Target (duplicates). | [no value required] |
-| --extra-scans | Scan extra directories, usage, ["a","b"], besides the target directory. | [\"\~/Some/Directory/Music\", \"\~/Some/Directory2/Music\", \"\~/Some/Directory3/Music\", \"\~/Some/Directory4/Music\"] |
+| --extra-scans | Scan extra directories, usage, ["a","b"], besides the target directory. | "\~/Some/Directory/Music" "\~/Some/Directory2/Music" "\~/Some/Directory3/Music" "\~/Some/Directory4/Music" |
 | --extra-scan| Scan a extra directory, besides the target directory. | ~/nfs_share/Music |
 | --various-artists | Rename "Various Artists" in the file name with First Performer. | [no value required] |
 | --extra-dir-must-exist | Artist folder must already exist in the extra scanned directories. | [no value required] |
