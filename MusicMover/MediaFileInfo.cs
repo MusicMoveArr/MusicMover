@@ -13,6 +13,7 @@ public class MediaFileInfo
     private const string AcoustIdIdTag = "AcoustidId";
     private const string AcoustIdTag = "AcoustId";
     
+    public Track TrackInfo { get; private set; }
     public FileInfo? FileInfo { get; set; }
     private FingerPrintService _fingerPrintService;
     
@@ -40,37 +41,40 @@ public class MediaFileInfo
     {
         this.FileInfo = fileInfo;
         
-        Track trackInfo = new Track(fileInfo.FullName);
-        var mediaTags = trackInfo.AdditionalFields
+        this.TrackInfo = new Track(fileInfo.FullName);
+        var mediaTags = TrackInfo.AdditionalFields
             .GroupBy(pair => pair.Key.ToLower())
             .Select(pair => pair.First())
             .ToDictionary(StringComparer.OrdinalIgnoreCase);
         
         //add all non-AdditionalFields
-        trackInfo
+        TrackInfo
             .GetType()
             .GetProperties()
             .ToList()
             .ForEach(prop =>
             {
-                object? value = prop.GetValue(trackInfo);
+                object? value = prop.GetValue(TrackInfo);
                 
                 if (value is not null &&
                     (value is string || (value is int val && val > 0)) &&
                     !mediaTags.ContainsKey(prop.Name))
                 {
-                    mediaTags[prop.Name] = value.ToString();
+                    mediaTags[prop.Name] = value.ToString().Trim();
                 }
             });
         
-        this.Title = mediaTags.FirstOrDefault(tag => string.Equals(tag.Key, "title", StringComparison.OrdinalIgnoreCase)).Value;
-        this.Album = mediaTags.FirstOrDefault(tag => string.Equals(tag.Key, "album", StringComparison.OrdinalIgnoreCase)).Value;
-        this.Duration = trackInfo.Duration;
+        this.Title = mediaTags.FirstOrDefault(tag => 
+            string.Equals(tag.Key, "title", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
         
-        string track = mediaTags.FirstOrDefault(tag => 
+        this.Album = mediaTags.FirstOrDefault(tag => 
+            string.Equals(tag.Key, "album", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
+        this.Duration = TrackInfo.Duration;
+        
+        string? track = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key, "track", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key, "tracknumber", StringComparison.OrdinalIgnoreCase)
-            ).Value;
+            ).Value?.Trim();
         
         if (track?.Contains('/') == true)
         {
@@ -79,7 +83,9 @@ public class MediaFileInfo
         }
         else
         {
-            int.TryParse(mediaTags.FirstOrDefault(tag => string.Equals(tag.Key, "tracktotal", StringComparison.OrdinalIgnoreCase)).Value, out int trackTotal);
+            int.TryParse(mediaTags.FirstOrDefault(tag => 
+                string.Equals(tag.Key, "tracktotal", StringComparison.OrdinalIgnoreCase)).Value, out int trackTotal);
+            
             int.TryParse(mediaTags.FirstOrDefault(tag => 
                 string.Equals(tag.Key, "track", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(tag.Key, "tracknumber", StringComparison.OrdinalIgnoreCase)).Value, out int trackValue);
@@ -105,21 +111,24 @@ public class MediaFileInfo
         
         this.AlbumArtist = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key, "album_artist", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(tag.Key, "albumartist", StringComparison.OrdinalIgnoreCase)).Value;
+            string.Equals(tag.Key, "albumartist", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
         
         this.SortArtist = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key, "artistsort", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key, "artist_sort", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(tag.Key, "sortartist", StringComparison.OrdinalIgnoreCase)).Value;
+            string.Equals(tag.Key, "sortartist", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
         
-        this.Artist = mediaTags.FirstOrDefault(tag => string.Equals(tag.Key, "artist", StringComparison.OrdinalIgnoreCase)).Value;
+        this.Artist = mediaTags.FirstOrDefault(tag => 
+            string.Equals(tag.Key, "artist", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
 
-        this.BitRate = trackInfo.Bitrate;
-        AcoustIdFingerPrint = mediaTags.FirstOrDefault(tag => string.Equals(tag.Key,AcoustidFingerprintTag, StringComparison.OrdinalIgnoreCase)).Value;
+        this.BitRate = TrackInfo.Bitrate;
+        AcoustIdFingerPrint = mediaTags.FirstOrDefault(tag => 
+            string.Equals(tag.Key,AcoustidFingerprintTag, StringComparison.OrdinalIgnoreCase)).Value?.Trim();
 
         float fingerprintDuration = 0;
         if(float.TryParse(mediaTags.FirstOrDefault(tag => 
-               string.Equals(tag.Key,AcoustidFingerprintDurationTag, StringComparison.OrdinalIgnoreCase)).Value, CultureInfo.InvariantCulture, out fingerprintDuration))
+               string.Equals(tag.Key,AcoustidFingerprintDurationTag, StringComparison.OrdinalIgnoreCase)).Value, 
+               CultureInfo.InvariantCulture, out fingerprintDuration))
         {
             AcoustIdFingerPrintDuration = fingerprintDuration;
         }
@@ -127,7 +136,7 @@ public class MediaFileInfo
         AcoustId = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdIdTag, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdTag, StringComparison.OrdinalIgnoreCase)
-            ).Value;
+            ).Value?.Trim();
     }
 
     public async Task<bool> GenerateSaveFingerprintAsync()

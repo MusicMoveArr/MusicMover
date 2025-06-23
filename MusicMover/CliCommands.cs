@@ -200,7 +200,7 @@ public class CliCommands : ICommand
     public string MetadataApiBaseUrl { get; set; } = string.Empty;
     
     [CommandOption("metadata-api-providers", 
-        Description = "MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz).", 
+        Description = "MiniMedia's Metadata API Provider (Any, Deezer, MusicBrainz, Spotify, Tidal).", 
         EnvironmentVariable = "MOVE_METADATAAPIPROVIDERS",
         IsRequired = false)]
     public List<string> MetadataApiProviders { get; set; }
@@ -249,7 +249,7 @@ public class CliCommands : ICommand
             SearchByTagNames = SearchByTagNames,
         };
 
-        string[] supportedProviderTypes = new[] { "Tidal", "MusicBrainz", "Spotify", "Any" };
+        string[] supportedProviderTypes = new[] { "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" };
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
             !MetadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
         {

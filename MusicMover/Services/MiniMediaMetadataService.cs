@@ -319,6 +319,26 @@ public class MiniMediaMetadataService
             UpdateTag(track, "MusicBrainz Album Release Country", foundTrack.MusicBrainz.AlbumReleaseCountry, ref trackInfoUpdated);
             UpdateTag(track, "MusicBrainz Album Status", foundTrack.MusicBrainz.AlbumStatus?.ToLower(), ref trackInfoUpdated);
         }
+        else if (foundTrack.ProviderType == "Deezer")
+        {
+            UpdateTag(track, "Deezer Track Id", foundTrack.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Track Href", foundTrack.Url, ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            UpdateTag(track, "Deezer Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+        }
+        else if (foundTrack.ProviderType == "Spotify")
+        {
+            UpdateTag(track, "Spotify Track Id", foundTrack.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Track Href", foundTrack.Url, ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            UpdateTag(track, "Spotify Artist Href", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+        }
         
         if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
         {
@@ -368,7 +388,7 @@ public class MiniMediaMetadataService
         bool tempIsUpdated = false;
         _mediaTagWriteService.UpdateTrackTag(track, tagName, value, ref tempIsUpdated, ref orgValue);
 
-        if (tempIsUpdated)
+        if (tempIsUpdated&& !string.Equals(orgValue, value))
         {
             if (value.Length > 100)
             {

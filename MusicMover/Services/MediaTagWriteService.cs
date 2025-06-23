@@ -1,4 +1,5 @@
 using ATL;
+using ATL.AudioData;
 
 namespace MusicMover.Services;
 
@@ -383,6 +384,46 @@ public class MediaTagWriteService
                 orgValue = GetDictionaryValue(track, "Copyright");
                 track.AdditionalFields[GetFieldName(track, "Copyright")] = value;
                 updated = IsDictionaryUpdated(track, oldValues, "Copyright");
+                return true;
+            case "deezer track id":
+                orgValue = GetDictionaryValue(track, "Deezer Track Id");
+                track.AdditionalFields[GetFieldName(track, "Deezer Track Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Track Id");
+                return true;
+            case "deezer track explicit":
+                orgValue = GetDictionaryValue(track, "Deezer Track Explicit");
+                track.AdditionalFields[GetFieldName(track, "Deezer Track Explicit")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Track Explicit");
+                return true;
+            case "deezer track href":
+                orgValue = GetDictionaryValue(track, "Deezer Track Href");
+                track.AdditionalFields[GetFieldName(track, "Deezer Track Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Track Href");
+                return true;
+            case "deezer album id":
+                orgValue = GetDictionaryValue(track, "Deezer Album Id");
+                track.AdditionalFields[GetFieldName(track, "Deezer Album Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Album Id");
+                return true;
+            case "deezer album href":
+                orgValue = GetDictionaryValue(track, "Deezer Album Href");
+                track.AdditionalFields[GetFieldName(track, "Deezer Album Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Album Href");
+                return true;
+            case "deezer album release date":
+                orgValue = GetDictionaryValue(track, "Deezer Album Release Date");
+                track.AdditionalFields[GetFieldName(track, "Deezer Album Release Date")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Album Release Date");
+                return true;
+            case "deezer artist id":
+                orgValue = GetDictionaryValue(track, "Deezer Artist Id");
+                track.AdditionalFields[GetFieldName(track, "Deezer Artist Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Artist Id");
+                return true;
+            case "deezer artist href":
+                orgValue = GetDictionaryValue(track, "Deezer Artist Href");
+                track.AdditionalFields[GetFieldName(track, "Deezer Artist Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Deezer Artist Href");
                 return true;
         }
 
