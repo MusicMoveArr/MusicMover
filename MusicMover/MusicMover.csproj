@@ -13,6 +13,7 @@
         <Product>MusicMover</Product>
         <AssemblyVersion>1.1.0</AssemblyVersion>
         <FileVersion>1.1.0</FileVersion>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -33,6 +34,7 @@
       <PackageReference Include="FuzzySharp" Version="2.0.2" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Polly" Version="8.6.1" />
+      <PackageReference Include="Quartz" Version="3.14.0" />
       <PackageReference Include="RestSharp" Version="112.1.0" />
       <PackageReference Include="ShuffleList" Version="1.0.0" />
       <PackageReference Include="SmartFormat" Version="3.6.0" />
@@ -40,6 +42,12 @@
       <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
       <PackageReference Include="System.Runtime.Caching" Version="9.0.6" />
       <PackageReference Include="z440.atl.core" Version="6.26.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
