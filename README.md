@@ -152,7 +152,7 @@ services:
       - MOVE_UPDATEARTISTTAGS
       - MOVE_FIXFILECORRUPTION
       - MOVE_ACOUSTIDAPIKEY=xxxxxxxxxxxxxxxxx
-      - MOVE_FILEFORMAT="{Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}"
+      - MOVE_FILEFORMAT={Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}
       - MOVE_DIRECTORYSEPERATOR=_
       - MOVE_ALWAYSCHECKACOUSTID
       - MOVE_CONTINUESCANERROR
