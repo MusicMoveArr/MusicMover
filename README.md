@@ -118,6 +118,62 @@ dotnet "MusicMover/bin/Debug/net8.0/MusicMover.dll" \
 --fix-file-corruption
 ```
 
+# Docker Compose example
+Keep note of multie-value seperator ":"
+
+This process will run every 6 hours based on the quartz cronjob format which includes seconds
+
+Environment variables with a missing "=" are a boolean, no value is needed, you set the "true" without "=true"
+
+```
+services:
+  musicmover:
+    image: musicmovearr/musicmover:latest
+    container_name: musicmover
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - CRON=0 0 */6 ? * *
+      - MOVE_FROM=/Downloads
+      - MOVE_TARGET=/Music
+      - MOVE_DRYRUN
+      - MOVE_CREATEARTISTDIRECTORY
+      - MOVE_CREATEALBUMDIRECTORY
+      - MOVE_PARALLEL
+      - MOVE_SKIPDIRECTORIES=0
+      - MOVE_DELETEDUPLICATEFROM
+      - MOVE_DELETEDUPLICATETO
+      - MOVE_EXTRASCANS=/nfs_share/music1:/nfs_share/music2
+      - MOVE_EXTRASCAN=/nfs_share/music
+      - MOVE_VARIOUSARTISTS
+      - MOVE_EXTRADIRMUSTEXIST
+      - MOVE_EXTRADIRMUSTNOTEXIST=/nfs_share/music1:/nfs_share/music2
+      - MOVE_UPDATEARTISTTAGS
+      - MOVE_FIXFILECORRUPTION
+      - MOVE_ACOUSTIDAPIKEY=xxxxxxxxxxxxxxxxx
+      - MOVE_FILEFORMAT="{Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {Title}"
+      - MOVE_DIRECTORYSEPERATOR=_
+      - MOVE_ALWAYSCHECKACOUSTID
+      - MOVE_CONTINUESCANERROR
+      - MOVE_OVERWRITEARTIST
+      - MOVE_OVERWRITEALBUMARTIST
+      - MOVE_OVERWRITEALBUM
+      - MOVE_OVERWRITETRACK
+      - MOVE_ONLYMOVEWHENTAGGED
+      - MOVE_ONLYFILEMATCHING
+      - MOVE_SEARCHBYTAGNAMES
+      - MOVE_TIDALCLIENTID=xxxxxxxxxxxxxxxxx
+      - MOVE_TIDALCLIENTSECRET=xxxxxxxxxxxxxxxxx
+      - MOVE_TIDALCOUNTRYCODE=US
+      - MOVE_METADATAAPIBASEURL=http://192.168.1.1:8080
+      - MOVE_METADATAAPIPROVIDERS=MusicBrainz:Deezer:Tidal:Spotify
+    volumes:
+      - ~/Music:/Music
+      - ~/Downloads:/Downloads
+      - ~/nfs_share:/nfs_share
+```
+
 # Build
 ## ArchLinux
 ```
