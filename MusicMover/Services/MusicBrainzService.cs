@@ -4,7 +4,6 @@ using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Models.MusicBrainz;
-using Newtonsoft.Json.Linq;
 
 namespace MusicMover.Services;
 
@@ -287,7 +286,7 @@ public class MusicBrainzService
     private MusicBrainzArtistCreditModel? GetBestMatchingArtist(List<MusicBrainzArtistCreditModel>? artists, Track track)
     {
         string[] splitTrackArtists = !string.IsNullOrWhiteSpace(track.AlbumArtist) ? 
-                                        track.AlbumArtist.Split([',', ';', '&'], StringSplitOptions.RemoveEmptyEntries) : [];
+                                        track.AlbumArtist.Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries) : [];
 
         if (splitTrackArtists.Length > 0)
         {
