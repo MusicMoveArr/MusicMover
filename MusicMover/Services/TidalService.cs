@@ -6,6 +6,7 @@ using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Models.Tidal;
+using Spectre.Console;
 
 namespace MusicMover.Services;
 
@@ -54,8 +55,8 @@ public class TidalService
 
         foreach (var artist in artistSearch)
         {
-            Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
-            Console.WriteLine($"Searching for tidal artist '{artist}'");
+            AnsiConsole.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
+            AnsiConsole.WriteLine($"Searching for tidal artist '{artist}'");
             if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
             {
                 return true;
@@ -71,8 +72,8 @@ public class TidalService
             
             foreach (var artist in artistSearch)
             {
-                Console.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
-                Console.WriteLine($"Searching for tidal artist '{artist}'");
+                AnsiConsole.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'");
+                AnsiConsole.WriteLine($"Searching for tidal artist '{artist}'");
                 if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
                 {
                     return true;
@@ -140,7 +141,7 @@ public class TidalService
             }
             catch (Exception e)
             {
-                Console.WriteLine($"{e.Message}, {e.StackTrace}");
+                AnsiConsole.WriteLine($"{e.Message}, {e.StackTrace}");
             }
         }
 
@@ -156,7 +157,7 @@ public class TidalService
         List<string>? artistNames;
         TidalSearchResponse? albumTracks;
         
-        Console.WriteLine($"Tidal search query: {artist.Attributes.Name} - {targetTrackTitle}");
+        AnsiConsole.WriteLine($"Tidal search query: {artist.Attributes.Name} - {targetTrackTitle}");
 
         TidalSearchResponse? searchResult = await _tidalAPIService.SearchResultsTracksAsync($"{artist.Attributes.Name} - {targetTrackTitle}");
         searchResult = await GetAllTracksFromSearchAsync(searchResult);
@@ -294,10 +295,10 @@ public class TidalService
             .ToList();
 
         
-        Console.WriteLine("Matches:");
+        AnsiConsole.WriteLine("Matches:");
         foreach (var match in bestMatches)
         {
-            Console.WriteLine($"Title '{match.Match.FoundTrack.Attributes.Title}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Attributes.Title}' matched for {match.AlbumMatchedFor}%");
+            AnsiConsole.WriteLine($"Title '{match.Match.FoundTrack.Attributes.Title}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Attributes.Title}' matched for {match.AlbumMatchedFor}%");
         }
 
         var bestMatch = bestMatches.FirstOrDefault();
@@ -352,7 +353,7 @@ public class TidalService
             string? nextPage = artist.Data.RelationShips.Albums.Links.Next;
             while (!string.IsNullOrWhiteSpace(nextPage))
             {
-                Console.WriteLine($"Fetching next albums... {artist.Data.RelationShips.Albums.Data.Count}");
+                AnsiConsole.WriteLine($"Fetching next albums... {artist.Data.RelationShips.Albums.Data.Count}");
                 var nextArtistInfo = await _tidalAPIService.GetArtistNextInfoByIdAsync(int.Parse(artist.Data.Id), nextPage);
 
                 if (nextArtistInfo?.Data?.Count > 0)
@@ -404,14 +405,14 @@ public class TidalService
         bool trackInfoUpdated = false;
         string artists = string.Join(';', artistNames);
         
-        Console.WriteLine($"Filpath: {fromFile.FullName}");
-        Console.WriteLine($"Tidal Artist: {tidalArtist.Attributes.Name}");
-        Console.WriteLine($"Tidal Album: {tidalAlbum.Attributes.Title}");
-        Console.WriteLine($"Tidal TrackName: {tidalTrack.Attributes.FullTrackName}");
-        Console.WriteLine($"Media Artist: {track.Artist}");
-        Console.WriteLine($"Media AlbumArtist: {track.AlbumArtist}");
-        Console.WriteLine($"Media Album: {track.Album}");
-        Console.WriteLine($"Media TrackName: {track.Title}");
+        AnsiConsole.WriteLine($"Filpath: {fromFile.FullName}");
+        AnsiConsole.WriteLine($"Tidal Artist: {tidalArtist.Attributes.Name}");
+        AnsiConsole.WriteLine($"Tidal Album: {tidalAlbum.Attributes.Title}");
+        AnsiConsole.WriteLine($"Tidal TrackName: {tidalTrack.Attributes.FullTrackName}");
+        AnsiConsole.WriteLine($"Media Artist: {track.Artist}");
+        AnsiConsole.WriteLine($"Media AlbumArtist: {track.AlbumArtist}");
+        AnsiConsole.WriteLine($"Media Album: {track.Album}");
+        AnsiConsole.WriteLine($"Media TrackName: {track.Title}");
         
         UpdateTag(track, "Tidal Track Id", tidalTrack.Id, ref trackInfoUpdated);
         UpdateTag(track, "Tidal Track Explicit", tidalTrack.Attributes.Explicit ? "Y": "N", ref trackInfoUpdated);
@@ -486,7 +487,7 @@ public class TidalService
     private async Task<TidalSearchResponse?> GetAllTracksByAlbumIdAsync(int albumId)
     {
         var tracks = await _tidalAPIService.GetTracksByAlbumIdAsync(albumId);
-        Console.WriteLine($"Getting tracks of album '{tracks?.Data.Attributes.Title}', album id '{albumId}'");
+        AnsiConsole.WriteLine($"Getting tracks of album '{tracks?.Data.Attributes.Title}', album id '{albumId}'");
         if (tracks?.Data.Attributes.NumberOfItems >= 20)
         {
             string? nextPage = tracks.Data.RelationShips?.Items?.Links?.Next;
@@ -570,7 +571,7 @@ public class TidalService
                 orgValue = orgValue.Substring(0, 100) + "...";
             }
             
-            Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
+            AnsiConsole.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
             trackInfoUpdated = true;
         }
     }

@@ -1,6 +1,7 @@
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
+using Spectre.Console;
 
 namespace MusicMover;
 
@@ -263,36 +264,36 @@ public class CliCommands : ICommand
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
             !MetadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
         {
-            Console.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
+            AnsiConsole.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
             return;
         }
         
-        Console.WriteLine("Options used:");
-        Console.WriteLine($"From Directory: {options.FromDirectory}");
-        Console.WriteLine($"ToDirectory: {options.ToDirectory}");
-        Console.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
-        Console.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");
-        Console.WriteLine($"Parallel: {options.Parallel}");
-        Console.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
-        Console.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
-        Console.WriteLine($"Delete Duplicate To: {options.DeleteDuplicateTo}");
-        Console.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
-        Console.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
-        Console.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
-        Console.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
-        Console.WriteLine($"AcoustIdAPIKey: {options.AcoustIdApiKey}");
-        Console.WriteLine($"fileFormat: {options.FileFormat}");
-        Console.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
-        Console.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
-        Console.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
-        Console.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
-        Console.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
-        Console.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
-        Console.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
-        Console.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
-        Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
-        Console.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
-        Console.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
+        AnsiConsole.WriteLine("Options used:");
+        AnsiConsole.WriteLine($"From Directory: {options.FromDirectory}");
+        AnsiConsole.WriteLine($"ToDirectory: {options.ToDirectory}");
+        AnsiConsole.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
+        AnsiConsole.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");
+        AnsiConsole.WriteLine($"Parallel: {options.Parallel}");
+        AnsiConsole.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
+        AnsiConsole.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
+        AnsiConsole.WriteLine($"Delete Duplicate To: {options.DeleteDuplicateTo}");
+        AnsiConsole.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
+        AnsiConsole.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
+        AnsiConsole.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
+        AnsiConsole.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
+        AnsiConsole.WriteLine($"AcoustIdAPIKey: {options.AcoustIdApiKey}");
+        AnsiConsole.WriteLine($"fileFormat: {options.FileFormat}");
+        AnsiConsole.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
+        AnsiConsole.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
+        AnsiConsole.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
+        AnsiConsole.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
+        AnsiConsole.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
+        AnsiConsole.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
+        AnsiConsole.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
+        AnsiConsole.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
+        AnsiConsole.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
+        AnsiConsole.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
+        AnsiConsole.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
 
         if (ExtraScans?.Count > 0)
         {
@@ -304,7 +305,7 @@ public class CliCommands : ICommand
                     extra += '/';
                 }
                 options.ExtraScans.Add(extra);
-                Console.WriteLine($"Extra scans, {extra}");
+                AnsiConsole.WriteLine($"Extra scans, {extra}");
             }
         }
         
@@ -318,7 +319,7 @@ public class CliCommands : ICommand
                     directory += '/';
                 }
                 options.ArtistDirsMustNotExist.Add(directory);
-                Console.WriteLine($"Artist Directories Must Not Exist, {directory}");
+                AnsiConsole.WriteLine($"Artist Directories Must Not Exist, {directory}");
             }
         }
 
@@ -329,7 +330,7 @@ public class CliCommands : ICommand
                 ExtraScan += '/';
             }
             options.ExtraScans.Add(ExtraScan);
-            Console.WriteLine($"Extra scan, {ExtraScan}");
+            AnsiConsole.WriteLine($"Extra scan, {ExtraScan}");
         }
         
         MoveProcessor moveProcessor = new MoveProcessor(options);
@@ -371,7 +372,7 @@ public class CliCommands : ICommand
         string newFileName = moveProcessor.GetFormatName(fileInfo, options.FileFormat, options.DirectorySeperator);
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
         {
-            Console.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
+            AnsiConsole.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
             return false;
         }
 

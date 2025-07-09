@@ -3,6 +3,7 @@ using MusicMover.Models.MetadataAPI;
 using Polly;
 using Polly.Retry;
 using RestSharp;
+using Spectre.Console;
 
 namespace MusicMover.Services;
 
@@ -61,7 +62,7 @@ public class MiniMediaMetadataAPIService
                     TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (exception, timeSpan, retryCount, context) => {
                     Debug.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
-                    Console.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
+                    AnsiConsole.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
                 });
         
         return retryPolicy;

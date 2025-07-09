@@ -4,6 +4,7 @@ using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Models.MusicBrainz;
+using Spectre.Console;
 
 namespace MusicMover.Services;
 
@@ -76,7 +77,7 @@ public class MusicBrainzService
 
             if (!matchingReleaseResult.Success)
             {
-                Console.WriteLine($"MusicBrainz recording not found by id '{recordingId}' by searching from tag names, Artist: {mediaFileInfo.Artist}, ALbum: {mediaFileInfo.Album}, Title: {mediaFileInfo.Title}");
+                AnsiConsole.WriteLine($"MusicBrainz recording not found by id '{recordingId}' by searching from tag names, Artist: {mediaFileInfo.Artist}, ALbum: {mediaFileInfo.Album}, Title: {mediaFileInfo.Title}");
                 return false;
             }
 
@@ -226,7 +227,7 @@ public class MusicBrainzService
                 orgValue = orgValue.Substring(0, 100) + "...";
             }
             
-            Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
+            AnsiConsole.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
             trackInfoUpdated = true;
         }
     }
@@ -491,7 +492,7 @@ public class MusicBrainzService
 
         if (string.IsNullOrWhiteSpace(trackArtist))
         {
-            Console.WriteLine("Unable to search for a track without the artist name on MusicBrainz");
+            AnsiConsole.WriteLine("Unable to search for a track without the artist name on MusicBrainz");
             return result;
         }
         
@@ -567,7 +568,7 @@ public class MusicBrainzService
     {
         if (fingerprint is null)
         {
-            Console.WriteLine("Failed to generate fingerprint, corrupt file?");
+            AnsiConsole.WriteLine("Failed to generate fingerprint, corrupt file?");
         }
 
         string? recordingId = string.Empty;
@@ -576,7 +577,7 @@ public class MusicBrainzService
         
         if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
         {
-            Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
+            AnsiConsole.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
             
             //try again but with the AcoustID from the media file
             var acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
@@ -585,7 +586,7 @@ public class MusicBrainzService
             
             if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
             {
-                Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
+                AnsiConsole.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
             }
         }
 
@@ -598,7 +599,7 @@ public class MusicBrainzService
             if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
                 (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId)))
             {
-                Console.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
+                AnsiConsole.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'");
             
                 //try again but with the AcoustID from the media file
                 acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
@@ -607,7 +608,7 @@ public class MusicBrainzService
             
                 if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
                 {
-                    Console.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
+                    AnsiConsole.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'");
                 }
             }
         }
@@ -616,7 +617,7 @@ public class MusicBrainzService
         
         if (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId))
         {
-            Console.WriteLine($"MusicBrainz recording not found by id '{recordingId}'");
+            AnsiConsole.WriteLine($"MusicBrainz recording not found by id '{recordingId}'");
             result.Success = false;
         }
         else
