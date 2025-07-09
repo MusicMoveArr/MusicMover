@@ -204,6 +204,12 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_METADATAAPIPROVIDERS",
         IsRequired = false)]
     public List<string> MetadataApiProviders { get; set; }
+
+    [CommandOption("preferred-file-extensions",
+        Description = "The preferred music file extensions to use for your library (opus, m4a, flac etc with out '.').",
+        EnvironmentVariable = "MOVE_PREFERREDFILEEXTENSIONS",
+        IsRequired = false)]
+    public List<string> PreferredFileExtensions { get; set; } = MoveProcessor.MediaFileExtensions.ToList();
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -247,6 +253,10 @@ public class CliCommands : ICommand
             OnlyMoveWhenTagged = OnlyMoveWhenTagged,
             OnlyFileNameMatching = OnlyFileNameMatching,
             SearchByTagNames = SearchByTagNames,
+            PreferredFileExtensions = PreferredFileExtensions,
+            NonPreferredFileExtensions = MoveProcessor.MediaFileExtensions
+                .Where(mediaExt => !PreferredFileExtensions.Any(ext => string.Equals(ext, mediaExt)))
+                .ToList(),
         };
 
         string[] supportedProviderTypes = new[] { "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" };
@@ -282,6 +292,7 @@ public class CliCommands : ICommand
         Console.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
         Console.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
         Console.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
+        Console.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
 
         if (ExtraScans?.Count > 0)
         {

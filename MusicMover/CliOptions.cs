@@ -35,5 +35,7 @@ public class CliOptions
     public required string TidalCountryCode { get; init; }
     public required string MetadataApiBaseUrl { get; init; }
     public required List<string> MetadataApiProviders { get; init; }
+    public required List<string> PreferredFileExtensions { get; init; }
+    public required List<string> NonPreferredFileExtensions { get; init; }
     
 }

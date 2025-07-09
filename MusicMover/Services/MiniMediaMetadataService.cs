@@ -59,7 +59,7 @@ public class MiniMediaMetadataService
         foreach (var artist in artistSearch)
         {
             Console.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'");
-            Console.WriteLine($"Searching for tidal artist '{artist}'");
+            Console.WriteLine($"Searching for artist '{artist}'");
             
             if (await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, fromFile, 
                     overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
@@ -75,7 +75,7 @@ public class MiniMediaMetadataService
             foreach (var artist in artistSearch)
             {
                 Console.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'");
-                Console.WriteLine($"Searching for tidal artist '{artist}'");
+                Console.WriteLine($"Searching for artist '{artist}'");
                 
                 if (await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, fromFile, 
                         overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
@@ -154,7 +154,7 @@ public class MiniMediaMetadataService
         string targetTrackTitle,
         string targetAlbumTitle)
     {
-        Console.WriteLine($"MiniMedia Metadata API, search query: {artist.Name} - {targetTrackTitle}");
+        Console.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'");
         var searchResultTracks = await _miniMediaMetadataApiService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
 
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();

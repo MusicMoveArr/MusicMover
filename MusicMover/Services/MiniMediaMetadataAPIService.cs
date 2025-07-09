@@ -20,7 +20,7 @@ public class MiniMediaMetadataAPIService
     public async Task<SearchArtistResponse?> SearchArtistsAsync(string searchTerm)
     {
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
-        Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
+        Debug.WriteLine($"Requesting SearchResults '{searchTerm}'");
         
         using RestClient client = new RestClient(_baseUrl + "/api/SearchArtist");
 
@@ -37,7 +37,7 @@ public class MiniMediaMetadataAPIService
     public async Task<SearchTrackResponse?> SearchTracksAsync(string searchTerm, string artistId, string providerType)
     {
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
-        Debug.WriteLine($"Requesting Tidal SearchResults '{searchTerm}'");
+        Debug.WriteLine($"Requesting SearchResults '{searchTerm}'");
         using RestClient client = new RestClient(_baseUrl + "/api/SearchTrack");
 
         return await retryPolicy.ExecuteAsync(async () =>

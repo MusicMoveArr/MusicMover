@@ -10,7 +10,7 @@ namespace MusicMover;
 
 public class MoveProcessor
 {
-    private readonly string[] _mediaFileExtensions = new string[]
+    public static readonly string[] MediaFileExtensions = new string[]
     {
         "flac",
         "mp3",
@@ -18,19 +18,6 @@ public class MoveProcessor
         "wav",
         "aaif",
         "opus"
-    };
-
-    private readonly string[] _lowerQualityMediaExtensions = new string[]
-    {
-        "mp3",
-        "wav",
-        "aaif",
-        "opus"
-    };
-    private readonly string[] _higherQualityMediaExtensions = new string[]
-    {
-        "flac",
-        "m4a"
     };
 
     private const long MinAvailableDiskSpace = 5000; //GB
@@ -154,7 +141,7 @@ public class MoveProcessor
         FileInfo[] fromFiles = fromDirInfo
             .GetFiles("*.*", dirSearchOption)
             .Where(file => file.Length > 0)
-            .Where(file => _mediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
+            .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToArray();
 
         foreach (FileInfo fromFile in fromFiles)
@@ -418,7 +405,7 @@ public class MoveProcessor
             return false;
         }
 
-        SimilarFileResult similarFileResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, toAlbumDirInfo, artist);
+        SimilarFileResult similarFileResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, toAlbumDirInfo);
 
         if (similarFileResult.Errors && !_options.ContinueScanError)
         {
@@ -439,7 +426,7 @@ public class MoveProcessor
                 continue;
             }
 
-            var extraSimilarResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, albumDirInfo, artist);
+            var extraSimilarResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, albumDirInfo);
 
             if (extraSimilarResult.Errors && !_options.ContinueScanError)
             {
@@ -488,6 +475,7 @@ public class MoveProcessor
 
             UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
             mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
+            Console.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
             RemoveCacheByPath(newFromFilePath);
 
             IncrementCounter(() => _movedFiles++);
@@ -496,12 +484,12 @@ public class MoveProcessor
         {
             var similarFile = similarFileResult.SimilarFiles.First();
 
-            bool isFromHighQuality = _higherQualityMediaExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
-            bool isFromLowerQuality = _lowerQualityMediaExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
-            bool isSimilarHighQuality = _higherQualityMediaExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
-            bool isSimilarLowerQuality = _lowerQualityMediaExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
+            bool isFromPreferredQuality = _options.PreferredFileExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
+            bool isFromNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
+            bool isSimilarPreferredQuality = _options.PreferredFileExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
+            bool isNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
 
-            if (!isFromHighQuality && isSimilarHighQuality)
+            if (!isFromPreferredQuality && isSimilarPreferredQuality)
             {
                 if (_options.DeleteDuplicateFrom)
                 {
@@ -514,9 +502,9 @@ public class MoveProcessor
                     Console.WriteLine($"Similar file found, quality is lower, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
                 }
             }
-            else if (isFromHighQuality && isSimilarLowerQuality || //overwrite lower quality based on extension
-                     (isFromHighQuality && isSimilarHighQuality && mediaFileInfo.FileInfo.Length > similarFile.File.Length) || //overwrite based on filesize, both high quality
-                     (isFromLowerQuality && isSimilarLowerQuality && mediaFileInfo.FileInfo.Length > similarFile.File.Length)) //overwrite based on filesize, both low quality
+            else if (isFromPreferredQuality && isNonPreferredQuality || //overwrite lower quality based on extension
+                     (isFromPreferredQuality && isSimilarPreferredQuality && mediaFileInfo.FileInfo.Length > similarFile.File.Length) || //overwrite based on filesize, both high quality
+                     (isFromNonPreferredQuality && isNonPreferredQuality && mediaFileInfo.FileInfo.Length > similarFile.File.Length)) //overwrite based on filesize, both low quality
             {
                 if (!toAlbumDirInfo.Exists)
                 {
@@ -526,8 +514,8 @@ public class MoveProcessor
                 }
 
                 UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
-                Console.WriteLine($"Moved {mediaFileInfo.FileInfo} >> {newFromFilePath}");
                 mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
+                Console.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
                 
                 
                 RemoveCacheByPath(newFromFilePath);
@@ -569,10 +557,10 @@ public class MoveProcessor
         }
         else if (similarFileResult.SimilarFiles.Count >= 2)
         {
-            bool isFromHighQuality = _higherQualityMediaExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
-            bool isSimilarLowerQuality = _lowerQualityMediaExtensions.Any(ext => similarFileResult.SimilarFiles.Any(similarFile => similarFile.File.Extension.Contains(ext)));
+            bool isFromPreferredQuality = _options.PreferredFileExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
+            bool isNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => similarFileResult.SimilarFiles.Any(similarFile => similarFile.File.Extension.Contains(ext)));
             
-            if (isFromHighQuality && isSimilarLowerQuality)
+            if (isFromPreferredQuality && isNonPreferredQuality)
             {
                 if (!toAlbumDirInfo.Exists)
                 {
@@ -582,8 +570,8 @@ public class MoveProcessor
                 }
 
                 UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
-                Console.WriteLine($"Moved {mediaFileInfo.FileInfo} >> {newFromFilePath}");
                 mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
+                Console.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
                 RemoveCacheByPath(newFromFilePath);
 
                 if (_options.DeleteDuplicateTo)
@@ -631,8 +619,7 @@ public class MoveProcessor
     private async Task<SimilarFileResult> GetSimilarFileFromTagsArtistAsync(
         MediaFileInfo matchTagFile, 
         FileInfo fromFileInfo,
-        DirectoryInfo toAlbumDirInfo, 
-        string artistName)
+        DirectoryInfo toAlbumDirInfo)
     {
         SimilarFileResult similarFileResult = new SimilarFileResult();
 
@@ -644,7 +631,7 @@ public class MoveProcessor
         List<FileInfo> toFiles = toAlbumDirInfo
             .GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => file.Length > 0)
-            .Where(file => _mediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
+            .Where(file => MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToList();
 
         foreach (FileInfo toFile in toFiles)
