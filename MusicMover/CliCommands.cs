@@ -1,6 +1,7 @@
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
+using MusicMover.Helpers;
 using Spectre.Console;
 
 namespace MusicMover;
@@ -8,6 +9,8 @@ namespace MusicMover;
 [Command("", Description = "Move missing music to directories to complete your collection")]
 public class CliCommands : ICommand
 {
+    public static bool Debug { get; private set; }
+    
     [CommandOption("from", 
         Description = "From the directory.", 
         EnvironmentVariable = "MOVE_FROM",
@@ -211,9 +214,17 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_PREFERREDFILEEXTENSIONS",
         IsRequired = false)]
     public List<string> PreferredFileExtensions { get; set; } = MoveProcessor.MediaFileExtensions.ToList();
+
+    [CommandOption("debug",
+        Description = "Show more detailed information in the console.",
+        EnvironmentVariable = "MOVE_DEBUG",
+        IsRequired = false)]
+    public bool DebugInfo { get; set; } = false;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
+        CliCommands.Debug = DebugInfo;
+        
         if (!Target.EndsWith('/'))
         {
             Target += '/';
@@ -258,42 +269,43 @@ public class CliCommands : ICommand
             NonPreferredFileExtensions = MoveProcessor.MediaFileExtensions
                 .Where(mediaExt => !PreferredFileExtensions.Any(ext => string.Equals(ext, mediaExt)))
                 .ToList(),
+            DebugInfo = DebugInfo
         };
 
         string[] supportedProviderTypes = new[] { "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" };
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
             !MetadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
         {
-            AnsiConsole.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
+            Logger.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
             return;
         }
         
-        AnsiConsole.WriteLine("Options used:");
-        AnsiConsole.WriteLine($"From Directory: {options.FromDirectory}");
-        AnsiConsole.WriteLine($"ToDirectory: {options.ToDirectory}");
-        AnsiConsole.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
-        AnsiConsole.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");
-        AnsiConsole.WriteLine($"Parallel: {options.Parallel}");
-        AnsiConsole.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
-        AnsiConsole.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
-        AnsiConsole.WriteLine($"Delete Duplicate To: {options.DeleteDuplicateTo}");
-        AnsiConsole.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
-        AnsiConsole.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
-        AnsiConsole.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
-        AnsiConsole.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
-        AnsiConsole.WriteLine($"AcoustIdAPIKey: {options.AcoustIdApiKey}");
-        AnsiConsole.WriteLine($"fileFormat: {options.FileFormat}");
-        AnsiConsole.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
-        AnsiConsole.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
-        AnsiConsole.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
-        AnsiConsole.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
-        AnsiConsole.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
-        AnsiConsole.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
-        AnsiConsole.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
-        AnsiConsole.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
-        AnsiConsole.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
-        AnsiConsole.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
-        AnsiConsole.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
+        Logger.WriteLine("Options used:");
+        Logger.WriteLine($"From Directory: {options.FromDirectory}");
+        Logger.WriteLine($"ToDirectory: {options.ToDirectory}");
+        Logger.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
+        Logger.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");
+        Logger.WriteLine($"Parallel: {options.Parallel}");
+        Logger.WriteLine($"Skip From Directory Amount: {options.SkipFromDirAmount}");
+        Logger.WriteLine($"Delete Duplicate From: {options.DeleteDuplicateFrom}");
+        Logger.WriteLine($"Delete Duplicate To: {options.DeleteDuplicateTo}");
+        Logger.WriteLine($"Rename Various Artists: {options.RenameVariousArtists}");
+        Logger.WriteLine($"Extra Directory Must Exist: {options.ExtraDirMustExist}");
+        Logger.WriteLine($"Update Artist Tags: {options.UpdateArtistTags}");
+        Logger.WriteLine($"Fix File Corruption: {options.FixFileCorruption}");
+        Logger.WriteLine($"AcoustIdAPIKey: {options.AcoustIdApiKey}");
+        Logger.WriteLine($"fileFormat: {options.FileFormat}");
+        Logger.WriteLine($"Always Check AcoustId: {options.AlwaysCheckAcoustId}");
+        Logger.WriteLine($"Overwrite Artist: {options.OverwriteArtist}");
+        Logger.WriteLine($"Overwrite Album Artist: {options.OverwriteAlbumArtist}");
+        Logger.WriteLine($"Overwrite Album: {options.OverwriteAlbum}");
+        Logger.WriteLine($"Overwrite Track: {options.OverwriteTrack}");
+        Logger.WriteLine($"Only Move When Tagged: {options.OnlyMoveWhenTagged}");
+        Logger.WriteLine($"Only FileName Matching: {options.OnlyFileNameMatching}");
+        Logger.WriteLine($"Search By Tag Names: {options.SearchByTagNames}");
+        Logger.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
+        Logger.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
+        Logger.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
 
         if (ExtraScans?.Count > 0)
         {
@@ -305,7 +317,7 @@ public class CliCommands : ICommand
                     extra += '/';
                 }
                 options.ExtraScans.Add(extra);
-                AnsiConsole.WriteLine($"Extra scans, {extra}");
+                Logger.WriteLine($"Extra scans, {extra}");
             }
         }
         
@@ -319,7 +331,7 @@ public class CliCommands : ICommand
                     directory += '/';
                 }
                 options.ArtistDirsMustNotExist.Add(directory);
-                AnsiConsole.WriteLine($"Artist Directories Must Not Exist, {directory}");
+                Logger.WriteLine($"Artist Directories Must Not Exist, {directory}");
             }
         }
 
@@ -330,7 +342,7 @@ public class CliCommands : ICommand
                 ExtraScan += '/';
             }
             options.ExtraScans.Add(ExtraScan);
-            AnsiConsole.WriteLine($"Extra scan, {ExtraScan}");
+            Logger.WriteLine($"Extra scan, {ExtraScan}");
         }
         
         MoveProcessor moveProcessor = new MoveProcessor(options);
@@ -372,7 +384,7 @@ public class CliCommands : ICommand
         string newFileName = moveProcessor.GetFormatName(fileInfo, options.FileFormat, options.DirectorySeperator);
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
         {
-            AnsiConsole.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
+            Logger.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
             return false;
         }
 

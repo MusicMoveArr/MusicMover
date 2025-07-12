@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Models.MusicBrainz;
 using Polly;
@@ -12,7 +13,7 @@ public class MusicBrainzAPIService
 {
     public async Task<MusicBrainzArtistModel?> GetRecordingByIdAsync(string recordingId)
     {
-        AnsiConsole.WriteLine($"Requesting MusicBrainz GetRecordingById, {recordingId}");
+        Logger.WriteLine($"Requesting MusicBrainz GetRecordingById, {recordingId}", true);
 
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         
@@ -31,7 +32,7 @@ public class MusicBrainzAPIService
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         //ServiceUnavailable
         
-        AnsiConsole.WriteLine($"Requesting MusicBrainz GetReleaseWithLabel '{musicBrainzReleaseId}'");
+        Logger.WriteLine($"Requesting MusicBrainz GetReleaseWithLabel '{musicBrainzReleaseId}'", true);
         string url = $"https://musicbrainz.org/ws/2/release/{musicBrainzReleaseId}?inc=labels&fmt=json";
 
         return await retryPolicy.ExecuteAsync(async () =>
@@ -48,7 +49,7 @@ public class MusicBrainzAPIService
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         //ServiceUnavailable
         
-        AnsiConsole.WriteLine($"Requesting MusicBrainz GetReleaseWithAll '{musicBrainzReleaseId}'");
+        Logger.WriteLine($"Requesting MusicBrainz GetReleaseWithAll '{musicBrainzReleaseId}'", true);
         string url = $"https://musicbrainz.org/ws/2/release/{musicBrainzReleaseId}?inc=artists+release-groups+url-rels+media+recordings&fmt=json";
 
         return await retryPolicy.ExecuteAsync(async () =>
@@ -94,7 +95,7 @@ public class MusicBrainzAPIService
             .WaitAndRetryAsync(5, retryAttempt => 
                     TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (exception, timeSpan, retryCount, context) => {
-                    AnsiConsole.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
+                    Logger.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
                 });
         return retryPolicy;
     }

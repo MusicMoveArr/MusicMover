@@ -37,5 +37,6 @@ public class CliOptions
     public required List<string> MetadataApiProviders { get; init; }
     public required List<string> PreferredFileExtensions { get; init; }
     public required List<string> NonPreferredFileExtensions { get; init; }
+    public required bool DebugInfo { get; init; }
     
 }

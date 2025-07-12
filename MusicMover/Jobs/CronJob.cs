@@ -1,4 +1,5 @@
 using CliFx;
+using MusicMover.Helpers;
 using Quartz;
 using Spectre.Console;
 
@@ -18,7 +19,7 @@ public class CronJob : IJob
         }
         catch (Exception e)
         {
-            AnsiConsole.WriteLine(e.Message);
+            Logger.WriteLine(e.Message);
         }
     }
 }

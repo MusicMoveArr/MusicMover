@@ -65,7 +65,7 @@ public class IndexedMover
                         }
                         catch (Exception e)
                         {
-                            AnsiConsole.WriteLine(e.Message);
+                            Logger.WriteLine(e.Message);
                             return null; // Skip on exception
                         }
                     })
@@ -108,7 +108,7 @@ public class IndexedMover
                         }
                         catch (Exception e)
                         {
-                            AnsiConsole.WriteLine(e.Message);
+                            Logger.WriteLine(e.Message);
                             return null; // Skip files with errors
                         }
                     })

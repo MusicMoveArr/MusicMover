@@ -84,7 +84,7 @@ public class MoveProcessor
         int directoriesRead = 0;
         foreach (string directoryPath in topDirectories)
         {
-            AnsiConsole.WriteLine($"[{directoriesRead++}/{topDirectories.Count}] Reading files from '{directoryPath}'");
+            Logger.WriteLine($"[{directoriesRead++}/{topDirectories.Count}] Reading files from '{directoryPath}'");
             filesToProcess.AddRange(await GetMediaFileListAsync(directoryPath, SearchOption.AllDirectories));
         }
 
@@ -110,22 +110,51 @@ public class MoveProcessor
             })
             .StartAsync(async ctx =>
             {
-
+                Dictionary<string, ProgressTask> progressTasks = new Dictionary<string, ProgressTask>();
                 var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {filesToProcess.Count} processed"));
                 totalProgressTask.MaxValue = filesToProcess.Count;
                 if (_options.Parallel)
                 {
+                    AsyncLock progressLock = new AsyncLock();
+                    
                     await ParallelHelper.ForEachAsync(filesToProcess, 5, async mediaFileInfo =>
                     {
+                        using (await progressLock.LockAsync())
+                        {
+                            if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
+                            {
+                                string artistName = mediaFileInfo.Artist;
+                                if (artistName.Length > 50)
+                                {
+                                    artistName = artistName.Substring(0, 50) + "...";
+                                }
+                                int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
+                                var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed"));
+                                task.MaxValue = trackCount;
+                                progressTasks.TryAdd(mediaFileInfo.Artist,task);
+                            }
+                        }
+                        
                         try
                         {
                             await ProcessFromFileAsync(mediaFileInfo);
                         }
                         catch (Exception e)
                         {
-                            AnsiConsole.WriteLine($"{mediaFileInfo.FileInfo.FullName}, {e.Message}. \r\n{e.StackTrace}");
+                            Logger.WriteLine($"{mediaFileInfo.FileInfo.FullName}, {e.Message}. \r\n{e.StackTrace}");
                             IncrementCounter(() => _skippedErrorFiles++);
                         }
+                        
+                        
+                        using (await progressLock.LockAsync())
+                        {
+                            if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
+                            {
+                                progressTask.Increment(1);
+                                progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed"));
+                            }
+                        }
+                        
                         totalProgressTask.Value++;
                         totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {filesToProcess.Count} processed"));
                     });
@@ -134,17 +163,36 @@ public class MoveProcessor
                 {
                     foreach (var mediaFileInfo in filesToProcess)
                     {
+                        if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
+                        {
+                            string artistName = mediaFileInfo.Artist;
+                            if (artistName.Length > 50)
+                            {
+                                artistName = artistName.Substring(0, 50) + "...";
+                            }
+                            int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
+                            var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed"));
+                            task.MaxValue = trackCount;
+                            progressTasks.TryAdd(mediaFileInfo.Artist,task);
+                        }
                         try
                         {
                             await ProcessFromFileAsync(mediaFileInfo);
                         }
                         catch (Exception e)
                         {
-                            AnsiConsole.WriteLine($"{mediaFileInfo.FileInfo.FullName}, {e.Message}. \r\n{e.StackTrace}");
+                            Logger.WriteLine($"{mediaFileInfo.FileInfo.FullName}, {e.Message}. \r\n{e.StackTrace}");
                             IncrementCounter(() => _skippedErrorFiles++);
                         }
+                        
+                        if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
+                        {
+                            progressTask.Increment(1);
+                            progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed"));
+                        }
+                        
                         totalProgressTask.Value++;
-                        totalProgressTask.Description(Markup.Escape($"Processing Playlists {totalProgressTask.Value} of {filesToProcess.Count} processed"));
+                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {filesToProcess.Count} processed"));
                     }
                 }
             });
@@ -153,8 +201,8 @@ public class MoveProcessor
 
         if (_artistsNotFound.Count > 0)
         {
-            AnsiConsole.WriteLine($"Artists not found: {_artistsNotFound.Count}");
-            _artistsNotFound.ForEach(artist => AnsiConsole.WriteLine(artist));
+            Logger.WriteLine($"Artists not found: {_artistsNotFound.Count}");
+            _artistsNotFound.ForEach(artist => Logger.WriteLine(artist));
         }
     }
 
@@ -179,7 +227,7 @@ public class MoveProcessor
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteLine($"{ex.Message}, {fromFile.FullName}");
+                Logger.WriteLine($"{ex.Message}, {fromFile.FullName}");
                 IncrementCounter(() => _skippedErrorFiles++);
             }
 
@@ -195,7 +243,7 @@ public class MoveProcessor
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteLine($"{ex.Message}, {fromFile.FullName}");
+                Logger.WriteLine($"{ex.Message}, {fromFile.FullName}");
                 IncrementCounter(() => _skippedErrorFiles++);
             }
 
@@ -238,7 +286,7 @@ public class MoveProcessor
 
         if (!toArtistDirInfo.Exists)
         {
-            Debug.WriteLine($"Artist {artist} does not exist");
+            Logger.WriteLine($"Artist {artist} does not exist", true);
         }
 
         return toArtistDirInfo.Exists;
@@ -250,7 +298,7 @@ public class MoveProcessor
         {
             if (!_exitProcess)
             {
-                AnsiConsole.WriteLine("Not enough diskspace left! <5GB on target directory>");
+                Logger.WriteLine("Not enough diskspace left! <5GB on target directory>");
             }
             _exitProcess = true;
             return false;
@@ -258,7 +306,7 @@ public class MoveProcessor
 
         if (!mediaFileInfo.FileInfo.Exists)
         {
-            AnsiConsole.WriteLine($"Media file no longer exists '{mediaFileInfo.FileInfo.FullName}'");
+            Logger.WriteLine($"Media file no longer exists '{mediaFileInfo.FileInfo.FullName}'");
             return false;
         }
             
@@ -299,11 +347,11 @@ public class MoveProcessor
                 {
                     //read again the file after saving
                     mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                    AnsiConsole.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
                 }
                 else
                 {
-                    AnsiConsole.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}", true);
                 }
             }
         }
@@ -321,11 +369,11 @@ public class MoveProcessor
             {
                 //read again the file after saving
                 mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                AnsiConsole.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
             }
             else
             {
-                AnsiConsole.WriteLine($"Tidal track not found for {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Tidal track not found for {mediaFileInfo.FileInfo.FullName}", true);
             }
         }
         
@@ -345,17 +393,17 @@ public class MoveProcessor
             {
                 //read again the file after saving
                 mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                AnsiConsole.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
             }
             else
             {
-                AnsiConsole.WriteLine($"Tidal record not found by MediaTag information for {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Tidal record not found by MediaTag information for {mediaFileInfo.FileInfo.FullName}", true);
             }
         }
         
         if (_options.OnlyMoveWhenTagged && !musicBrainzTaggingSuccess && !tidalTaggingSuccess && !metadataApiTaggingSuccess)
         {
-            AnsiConsole.WriteLine($"Skipped processing, tagging failed for '{mediaFileInfo.FileInfo.FullName}'");
+            Logger.WriteLine($"Skipped processing, tagging failed for '{mediaFileInfo.FileInfo.FullName}'");
             return false;
         }
         
@@ -379,7 +427,7 @@ public class MoveProcessor
             string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
             string.IsNullOrWhiteSpace(mediaFileInfo.Title))
         {
-            AnsiConsole.WriteLine($"File is missing Artist, Album or title in the tags, skipping, {mediaFileInfo.FileInfo.FullName}");
+            Logger.WriteLine($"File is missing Artist, Album or title in the tags, skipping, {mediaFileInfo.FileInfo.FullName}");
             return false;
         }
 
@@ -390,7 +438,7 @@ public class MoveProcessor
             string newFilePath = Path.Join(mediaFileInfo.FileInfo.Directory.FullName, newFileName);
             File.Move(mediaFileInfo.FileInfo.FullName, newFilePath, true);
             mediaFileInfo = new MediaFileInfo(new FileInfo(newFilePath));
-            AnsiConsole.WriteLine($"Renamed '{oldFileName}' => '{newFileName}'");
+            Logger.WriteLine($"Renamed '{oldFileName}' => '{newFileName}'", true);
         }
 
         DirectoryInfo toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
@@ -408,7 +456,7 @@ public class MoveProcessor
                     _artistsNotFound.Add(newArtistName);
                 }
                 
-                AnsiConsole.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
+                Logger.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
                 return false;
             }
 
@@ -422,14 +470,14 @@ public class MoveProcessor
                 {
                     _artistsNotFound.Add(artist);
                 }
-                AnsiConsole.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
+                Logger.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
                 return false;
             }
         }
 
         if (!toArtistDirInfo.Exists)
         {
-            AnsiConsole.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
+            Logger.WriteLine($"Skipped processing, Artist folder does not exist for '{mediaFileInfo.FileInfo.FullName}'");
             return false;
         }
 
@@ -437,7 +485,7 @@ public class MoveProcessor
 
         if (similarFileResult.Errors && !_options.ContinueScanError)
         {
-            AnsiConsole.WriteLine($"Scan errors... skipping {mediaFileInfo.FileInfo.FullName}");
+            Logger.WriteLine($"Scan errors... skipping {mediaFileInfo.FileInfo.FullName}", true);
             return false;
         }
 
@@ -469,13 +517,13 @@ public class MoveProcessor
 
         if (!extraDirExists && _options.ExtraDirMustExist)
         {
-            AnsiConsole.WriteLine($"Skipping file, artist '{artist}' does not exist in extra directory {mediaFileInfo.FileInfo.FullName}");
+            Logger.WriteLine($"Skipping file, artist '{artist}' does not exist in extra directory {mediaFileInfo.FileInfo.FullName}");
             return false;
         }
 
         if (similarFileResult.Errors && !_options.ContinueScanError)
         {
-            AnsiConsole.WriteLine($"Scan errors... skipping {mediaFileInfo.FileInfo.FullName}");
+            Logger.WriteLine($"Scan errors... skipping {mediaFileInfo.FileInfo.FullName}", true);
             IncrementCounter(() => _skippedErrorFiles++);
             return false;
         }
@@ -492,18 +540,19 @@ public class MoveProcessor
         
         if (similarFileResult.SimilarFiles.Count == 0)
         {
-            AnsiConsole.WriteLine($"No similar files found moving, {artist}/{mediaFileInfo.Album}, {newFromFilePath}");
+            Logger.WriteLine($"No similar files found moving, {artist}/{mediaFileInfo.Album}, {newFromFilePath}", true);
+            
             if (!toAlbumDirInfo.Exists)
             {
                 toAlbumDirInfo.Create();
                 IncrementCounter(() => _createdSubDirectories++);
 
-                AnsiConsole.WriteLine($"Created directory, {toAlbumDirInfo.FullName}");
+                Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
             }
 
             UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
             mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
-            AnsiConsole.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
+            Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
             RemoveCacheByPath(newFromFilePath);
 
             IncrementCounter(() => _movedFiles++);
@@ -523,11 +572,11 @@ public class MoveProcessor
                 {
                     mediaFileInfo.FileInfo.Delete();
                     IncrementCounter(() => _localDelete++);
-                    AnsiConsole.WriteLine($"Similar file found, deleted from file, quality is lower, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"Similar file found, deleted from file, quality is lower, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
                 }
                 else
                 {
-                    AnsiConsole.WriteLine($"Similar file found, quality is lower, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"Similar file found, quality is lower, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
                 }
             }
             else if (isFromPreferredQuality && isNonPreferredQuality || //overwrite lower quality based on extension
@@ -538,12 +587,12 @@ public class MoveProcessor
                 {
                     toAlbumDirInfo.Create();
                     IncrementCounter(() => _createdSubDirectories++);
-                    Debug.WriteLine($"Created directory, {toAlbumDirInfo.FullName}");
+                    Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
                 }
 
                 UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
                 mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
-                AnsiConsole.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
+                Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
                 
                 
                 RemoveCacheByPath(newFromFilePath);
@@ -553,12 +602,12 @@ public class MoveProcessor
                 {
                     similarFile.File.Delete();
                     IncrementCounter(() => _remoteDelete++);
-                    AnsiConsole.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
+                    Logger.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
                 }
 
                 IncrementCounter(() => _movedFiles++);
 
-                AnsiConsole.WriteLine($"Similar file found, overwriting target, From is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Similar file found, overwriting target, From is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}", true);
             }
             else if (similarFile.File.Length == mediaFileInfo.FileInfo.Length)
             {
@@ -566,7 +615,7 @@ public class MoveProcessor
                 {
                     mediaFileInfo.FileInfo.Delete();
                     IncrementCounter(() => _localDelete++);
-                    AnsiConsole.WriteLine($"Similar file found, deleted from file, exact same size from/target, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"Similar file found, deleted from file, exact same size from/target, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}", true);
                 }
             }
             else if (similarFile.File.Length > mediaFileInfo.FileInfo.Length)
@@ -575,12 +624,12 @@ public class MoveProcessor
                 {
                     mediaFileInfo.FileInfo.Delete();
                     IncrementCounter(() => _localDelete++);
-                    AnsiConsole.WriteLine($"Similar file found, deleted from file, Target is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                    Logger.WriteLine($"Similar file found, deleted from file, Target is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}", true);
                 }
             }
             else
             {
-                AnsiConsole.WriteLine($"[To Be Implemented] Similar file found {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {similarFile.File.Extension}");
+                Logger.WriteLine($"[To Be Implemented] Similar file found {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {similarFile.File.Extension}");
             }
         }
         else if (similarFileResult.SimilarFiles.Count >= 2)
@@ -594,12 +643,12 @@ public class MoveProcessor
                 {
                     toAlbumDirInfo.Create();
                     IncrementCounter(() => _createdSubDirectories++);
-                    Debug.WriteLine($"Created directory, {toAlbumDirInfo.FullName}");
+                    Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
                 }
 
                 UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
                 mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
-                AnsiConsole.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
+                Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
                 RemoveCacheByPath(newFromFilePath);
 
                 if (_options.DeleteDuplicateTo)
@@ -608,7 +657,7 @@ public class MoveProcessor
                     {
                         if (similarFile.File.FullName != newFromFilePath)
                         {
-                            AnsiConsole.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
+                            Logger.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
                             RemoveCacheByPath(similarFile.File.FullName);
                             similarFile.File.Delete();
                             IncrementCounter(() => _remoteDelete++);
@@ -617,16 +666,16 @@ public class MoveProcessor
                 }
 
                 IncrementCounter(() => _movedFiles++);
-                AnsiConsole.WriteLine($"Similar files found, overwriting target, From is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Similar files found, overwriting target, From is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
             }
             else if(_options.DeleteDuplicateFrom)
             {
                 mediaFileInfo.FileInfo.Delete();
                 IncrementCounter(() => _localDelete++);
-                AnsiConsole.WriteLine($"Similar files found, deleted from file, Targets are bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
+                Logger.WriteLine($"Similar files found, deleted from file, Targets are bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
             }
 
-            AnsiConsole.WriteLine($"Similar files found {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}");
+            Logger.WriteLine($"Similar files found {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}");
         }
 
         return true;
@@ -711,7 +760,7 @@ public class MoveProcessor
                     string.IsNullOrWhiteSpace(cachedMediaInfo.Artist) || 
                     string.IsNullOrWhiteSpace(cachedMediaInfo.AlbumArtist))
                 {
-                    AnsiConsole.WriteLine($"scan error file, no Title, Album, Artist or AlbumArtist: {toFile}");
+                    Logger.WriteLine($"scan error file, no Title, Album, Artist or AlbumArtist: {toFile}");
                     similarFileResult.Errors = true;
                     continue;
                 }
@@ -741,7 +790,7 @@ public class MoveProcessor
             catch (Exception e)
             {
                 similarFileResult.Errors = true;
-                AnsiConsole.WriteLine($"scan error file, {e.Message}, {toFile.FullName}");
+                Logger.WriteLine($"scan error file, {e.Message}, {toFile.FullName}");
             }
         }
 
@@ -759,7 +808,7 @@ public class MoveProcessor
         }
         catch (Exception e)
         {
-            AnsiConsole.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
+            Logger.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
             return null;
         }
 
@@ -775,7 +824,7 @@ public class MoveProcessor
         }
         catch (Exception e)
         {
-            AnsiConsole.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
+            Logger.WriteLine($"File gave read error, '{fileInfo.FullName}', {e.Message}");
             return null;
         }
 
@@ -819,7 +868,7 @@ public class MoveProcessor
 
     private void ShowProgress()
     {
-        AnsiConsole.WriteLine($"Stats: Moved {_movedFiles}, " +
+        Logger.WriteLine($"Stats: Moved {_movedFiles}, " +
                               $"Local Delete: {_localDelete}, " +
                               $"Remote Delete: {_remoteDelete}, " +
                               $"Fixed Corrupted: {_fixedCorruptedFiles}, " +

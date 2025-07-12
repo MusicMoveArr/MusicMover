@@ -59,8 +59,8 @@ public class MiniMediaMetadataService
 
         foreach (var artist in artistSearch)
         {
-            AnsiConsole.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'");
-            AnsiConsole.WriteLine($"Searching for artist '{artist}'");
+            Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'", true);
+            Logger.WriteLine($"Searching for artist '{artist}'", true);
             
             if (await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, fromFile, 
                     overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
@@ -75,8 +75,8 @@ public class MiniMediaMetadataService
             string withoutArtistInAlbum = targetAlbum.ToLower().Replace(artistInAlbumName.ToLower(), string.Empty);
             foreach (var artist in artistSearch)
             {
-                AnsiConsole.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'");
-                AnsiConsole.WriteLine($"Searching for artist '{artist}'");
+                Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'", true);
+                Logger.WriteLine($"Searching for artist '{artist}'", true);
                 
                 if (await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, fromFile, 
                         overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
@@ -142,7 +142,7 @@ public class MiniMediaMetadataService
                 }
                 catch (Exception e)
                 {
-                    AnsiConsole.WriteLine($"{e.Message}, {e.StackTrace}");
+                    Logger.WriteLine($"{e.Message}, {e.StackTrace}");
                 }
             }
         }
@@ -155,7 +155,7 @@ public class MiniMediaMetadataService
         string targetTrackTitle,
         string targetAlbumTitle)
     {
-        AnsiConsole.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'");
+        Logger.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'", true);
         var searchResultTracks = await _miniMediaMetadataApiService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
 
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
@@ -219,13 +219,13 @@ public class MiniMediaMetadataService
         //foreach (var match in searchResultTracks.Tracks)
         //{
         //    string? mainArtist = match.Artists.FirstOrDefault(artist => artist.Id == match.Album.ArtistId)?.Name;
-        //    AnsiConsole.WriteLine($"Title '{match.Name}', Album '{match.Album.Name}', Artist: '{mainArtist}'");
+        //    Logger.WriteLine($"Title '{match.Name}', Album '{match.Album.Name}', Artist: '{mainArtist}'");
         //}
         
-        AnsiConsole.WriteLine("Matches:");
+        Logger.WriteLine("Matches:", true);
         foreach (var match in bestMatches)
         {
-            AnsiConsole.WriteLine($"Title '{match.Match.Name}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Name}' matched for {match.AlbumMatchedFor}%");
+            Logger.WriteLine($"Title '{match.Match.Name}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Name}' matched for {match.AlbumMatchedFor}%", true);
         }
 
         var bestMatch = bestMatches.FirstOrDefault();
@@ -283,18 +283,18 @@ public class MiniMediaMetadataService
 
         if (string.IsNullOrWhiteSpace(mainArtist))
         {
-            AnsiConsole.WriteLine("Main artist is missing, bug in MiniMedia's Metadata API?");
+            Logger.WriteLine("Main artist is missing, bug in MiniMedia's Metadata API?");
             return false;
         }
         
-        AnsiConsole.WriteLine($"Filpath: {fromFile.FullName}");
-        AnsiConsole.WriteLine($"API Artist: {mainArtist}");
-        AnsiConsole.WriteLine($"API Album: {foundTrack.Album.Name}");
-        AnsiConsole.WriteLine($"API TrackName: {foundTrack.Name}");
-        AnsiConsole.WriteLine($"Media Artist: {track.Artist}");
-        AnsiConsole.WriteLine($"Media AlbumArtist: {track.AlbumArtist}");
-        AnsiConsole.WriteLine($"Media Album: {track.Album}");
-        AnsiConsole.WriteLine($"Media TrackName: {track.Title}");
+        Logger.WriteLine($"Filpath: {fromFile.FullName}", true);
+        Logger.WriteLine($"API Artist: {mainArtist}", true);
+        Logger.WriteLine($"API Album: {foundTrack.Album.Name}", true);
+        Logger.WriteLine($"API TrackName: {foundTrack.Name}", true);
+        Logger.WriteLine($"Media Artist: {track.Artist}", true);
+        Logger.WriteLine($"Media AlbumArtist: {track.AlbumArtist}", true);
+        Logger.WriteLine($"Media Album: {track.Album}", true);
+        Logger.WriteLine($"Media TrackName: {track.Title}", true);
 
         if (foundTrack.ProviderType == "Tidal")
         {
@@ -400,7 +400,7 @@ public class MiniMediaMetadataService
                 orgValue = orgValue.Substring(0, 100) + "...";
             }
             
-            AnsiConsole.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'");
+            Logger.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'", true);
             trackInfoUpdated = true;
         }
     }

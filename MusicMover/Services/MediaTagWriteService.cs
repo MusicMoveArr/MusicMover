@@ -1,5 +1,6 @@
 using ATL;
 using ATL.AudioData;
+using MusicMover.Helpers;
 using Spectre.Console;
 
 namespace MusicMover.Services;
@@ -486,7 +487,7 @@ public class MediaTagWriteService
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteLine(ex.Message);
+            Logger.WriteLine(ex.Message);
         }
 
         if (success && File.Exists(tempFile))

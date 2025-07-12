@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MusicMover.Helpers;
 using MusicMover.Models;
 using Polly;
 using Polly.Retry;
@@ -60,7 +61,7 @@ public class AcoustIdService
                     TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (exception, timeSpan, retryCount, context) => {
                     Debug.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
-                    AnsiConsole.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
+                    Logger.WriteLine($"Retry {retryCount} after {timeSpan.TotalSeconds} sec due to: {exception.Message}");
                 });
         
         return retryPolicy;
