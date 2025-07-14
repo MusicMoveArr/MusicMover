@@ -37,11 +37,25 @@ public class MediaFileInfo
     }
     
     public MediaFileInfo(FileInfo fileInfo)
-    : this()
+        : this()
     {
         this.FileInfo = fileInfo;
         
-        this.TrackInfo = new Track(fileInfo.FullName);
+        CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        var readRask = Task.Run(() => this.TrackInfo = new Track(fileInfo.FullName), cancellationToken.Token);
+        Task.WhenAny(readRask, Task.Delay(TimeSpan.FromSeconds(5))).GetAwaiter().GetResult();
+        
+        if (this.TrackInfo == null)
+        {
+            try
+            {
+                cancellationToken.Cancel();
+            }
+            catch { }
+            
+            throw new FileLoadException($"It took too long to load '{fileInfo.FullName}'");
+        }
+        
         var mediaTags = TrackInfo.AdditionalFields
             .GroupBy(pair => pair.Key.ToLower())
             .Select(pair => pair.First())

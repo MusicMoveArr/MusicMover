@@ -16,6 +16,10 @@ public static class ParallelHelper
             {
                 await asyncAction(item);
             }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"An error occured: {ex.Message}");
+            }
             finally
             {
                 semaphore.Release();
