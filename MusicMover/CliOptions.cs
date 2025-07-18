@@ -2,34 +2,34 @@ namespace MusicMover;
 
 public class CliOptions
 {
-    public bool IsDryRun { get; set; }
+    public bool IsDryRun { get; init; }
     public required string FromDirectory { get; init; }
     public required string ToDirectory { get; init; }
-    public bool CreateArtistDirectory { get; set; }
-    public bool CreateAlbumDirectory { get; set; }
-    public bool Parallel { get; set; }
-    public int SkipFromDirAmount { get; set; }
-    public bool DeleteDuplicateFrom { get; set; }
-    public bool DeleteDuplicateTo { get; set; }
-    public List<string> ExtraScans { get; set; } = new List<string>();
-    public List<string> ArtistDirsMustNotExist { get; set; } = new List<string>();
+    public required bool CreateArtistDirectory { get; init; }
+    public required bool CreateAlbumDirectory { get; init; }
+    public required bool Parallel { get; init; }
+    public required int SkipFromDirAmount { get; init; }
+    public required bool DeleteDuplicateFrom { get; init; }
+    public required bool DeleteDuplicateTo { get; init; }
+    public List<string> ExtraScans { get; set; } = [];
+    public List<string> ArtistDirsMustNotExist { get; set; } = [];
     
-    public bool RenameVariousArtists { get; set; }
-    public bool ExtraDirMustExist { get; set; }
-    public bool UpdateArtistTags { get; set; }
-    public bool FixFileCorruption { get; set; }
+    public required bool RenameVariousArtists { get; init; }
+    public required bool ExtraDirMustExist { get; init; }
+    public required bool UpdateArtistTags { get; init; }
+    public required bool FixFileCorruption { get; init; }
     public required string? AcoustIdApiKey { get; init; }
     public required string FileFormat { get; init; }
     public required string DirectorySeperator { get; init; }
-    public bool AlwaysCheckAcoustId { get; set; }
-    public bool ContinueScanError { get; set; }
-    public bool OverwriteArtist { get; set; }
-    public bool OverwriteAlbumArtist { get; set; }
-    public bool OverwriteAlbum { get; set; }
-    public bool OverwriteTrack { get; set; }
-    public bool OnlyMoveWhenTagged { get; set; }
-    public bool OnlyFileNameMatching { get; set; }
-    public bool SearchByTagNames { get; set; }
+    public required bool AlwaysCheckAcoustId { get; init; }
+    public required bool ContinueScanError { get; init; }
+    public required bool OverwriteArtist { get; init; }
+    public required bool OverwriteAlbumArtist { get; init; }
+    public required bool OverwriteAlbum { get; init; }
+    public required bool OverwriteTrack { get; init; }
+    public required bool OnlyMoveWhenTagged { get; init; }
+    public required bool OnlyFileNameMatching { get; init; }
+    public required bool SearchByTagNames { get; init; }
     public required string TidalClientId { get; init; }
     public required string TidalClientSecret { get; init; }
     public required string TidalCountryCode { get; init; }

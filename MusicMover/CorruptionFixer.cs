@@ -4,7 +4,7 @@ namespace MusicMover;
 
 public class CorruptionFixer
 {
-    private const string FileExtensionPostfix = "___fixed";
+    private const string FileExtensionPostfix = "_fixed";
     private const int FfMpegSuccessCode = 0;
     
     public async Task<bool> FixCorruptionAsync(FileInfo input)

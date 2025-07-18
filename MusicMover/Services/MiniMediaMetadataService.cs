@@ -50,7 +50,7 @@ public class MiniMediaMetadataService
         }
         
         //replace disc X from album
-        string targetAlbum = mediaFileInfo.Album;
+        string targetAlbum = mediaFileInfo?.Album ?? string.Empty;
         string discPattern = "[([]{,1}[Disc|CD][ ]{0,}[0-9]{1,}[])]{,1}";
         if (Regex.IsMatch(targetAlbum, discPattern))
         {

@@ -272,9 +272,9 @@ public class CliCommands : ICommand
             DebugInfo = DebugInfo
         };
 
-        string[] supportedProviderTypes = new[] { "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" };
+        string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" ];
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
-            !MetadataApiProviders.Any(provider => supportedProviderTypes.Contains(provider))))
+            !MetadataApiProviders?.Any(provider => supportedProviderTypes.Contains(provider)) == true))
         {
             Logger.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
             return;
@@ -316,7 +316,7 @@ public class CliCommands : ICommand
                 {
                     extra += '/';
                 }
-                options.ExtraScans.Add(extra);
+                options?.ExtraScans.Add(extra);
                 Logger.WriteLine($"Extra scans, {extra}");
             }
         }
@@ -330,7 +330,7 @@ public class CliCommands : ICommand
                 {
                     directory += '/';
                 }
-                options.ArtistDirsMustNotExist.Add(directory);
+                options?.ArtistDirsMustNotExist.Add(directory);
                 Logger.WriteLine($"Artist Directories Must Not Exist, {directory}");
             }
         }
@@ -341,13 +341,13 @@ public class CliCommands : ICommand
             {
                 ExtraScan += '/';
             }
-            options.ExtraScans.Add(ExtraScan);
+            options?.ExtraScans.Add(ExtraScan);
             Logger.WriteLine($"Extra scan, {ExtraScan}");
         }
         
-        MoveProcessor moveProcessor = new MoveProcessor(options);
+        MoveProcessor moveProcessor = new MoveProcessor(options!);
 
-        if (!string.IsNullOrWhiteSpace(options.FileFormat))
+        if (!string.IsNullOrWhiteSpace(options?.FileFormat))
         {
             MediaFileInfo mediaFileInfo = new MediaFileInfo();
             mediaFileInfo.Artist = "Music";
@@ -379,7 +379,7 @@ public class CliCommands : ICommand
 
     private static bool TestFileFormatOutput(MoveProcessor moveProcessor, MediaFileInfo fileInfo, CliOptions options)
     {
-        string[] invalidCharacters = new string[] { "?", "<", ">", "=", "{", "}" };
+        string[] invalidCharacters = ["?", "<", ">", "=", "{", "}"];
             
         string newFileName = moveProcessor.GetFormatName(fileInfo, options.FileFormat, options.DirectorySeperator);
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))

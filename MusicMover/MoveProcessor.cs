@@ -360,8 +360,8 @@ public class MoveProcessor
         {
             metadataApiTaggingSuccess = await _miniMediaMetadataService.WriteTagsAsync(mediaFileInfo, 
                 mediaFileInfo.FileInfo, 
-                GetUncoupledArtistName(mediaFileInfo.Artist), 
-                GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
                 _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
                 _options.OverwriteAlbumArtist);
             
@@ -384,8 +384,8 @@ public class MoveProcessor
         {
             tidalTaggingSuccess = await _tidalService.WriteTagsAsync(mediaFileInfo, 
                 mediaFileInfo.FileInfo, 
-                GetUncoupledArtistName(mediaFileInfo.Artist), 
-                GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
                 _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
                 _options.OverwriteAlbumArtist);
             
@@ -444,7 +444,7 @@ public class MoveProcessor
         DirectoryInfo toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
         DirectoryInfo toAlbumDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}/{SanitizeAlbumName(mediaFileInfo.Album)}");
 
-        string? newArtistName = GetUncoupledArtistName(artist);
+        string? newArtistName = ArtistHelper.GetUncoupledArtistName(artist);
 
         if (!string.IsNullOrWhiteSpace(newArtistName) && newArtistName != artist)
         {
@@ -766,10 +766,10 @@ public class MoveProcessor
                 }
 
                 bool artistMatch = Fuzz.Ratio(cachedMediaInfo?.Artist,  matchTagFile.Artist) >= NamingAccuracy ||
-                                   Fuzz.Ratio(GetUncoupledArtistName(cachedMediaInfo?.Artist), GetUncoupledArtistName(matchTagFile.Artist)) >= NamingAccuracy;
+                                   Fuzz.Ratio(ArtistHelper.GetUncoupledArtistName(cachedMediaInfo?.Artist), ArtistHelper.GetUncoupledArtistName(matchTagFile.Artist)) >= NamingAccuracy;
                 
                 bool albumArtistMatch = Fuzz.Ratio(cachedMediaInfo?.AlbumArtist, matchTagFile.AlbumArtist) >= NamingAccuracy ||
-                                        Fuzz.Ratio(GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), GetUncoupledArtistName(matchTagFile.AlbumArtist)) >= NamingAccuracy;
+                                        Fuzz.Ratio(ArtistHelper.GetUncoupledArtistName(cachedMediaInfo?.AlbumArtist), ArtistHelper.GetUncoupledArtistName(matchTagFile.AlbumArtist)) >= NamingAccuracy;
                 
                 if (Fuzz.Ratio(cachedMediaInfo?.Title, matchTagFile.Title) >= NamingAccuracy &&
                     Fuzz.Ratio(cachedMediaInfo?.Album,  matchTagFile.Album) >= NamingAccuracy &&
@@ -899,37 +899,6 @@ public class MoveProcessor
         }
 
         return drive.AvailableFreeSpace > MinAvailableDiskSpace * (1024 * 1024);
-    }
-
-    private string GetUncoupledArtistName(string? artist)
-    {
-        if (string.IsNullOrWhiteSpace(artist))
-        {
-            return string.Empty;
-        }
-        
-        var splitCharacters = new string[]
-        {
-            ",",
-            "&",
-            "+",
-            "/",
-            " feat",
-            ";"
-        };
-
-        string? newArtistName = splitCharacters
-            .Where(splitChar => artist.Contains(splitChar))
-            .Select(splitChar => artist.Substring(0, artist.IndexOf(splitChar)).Trim())
-            .Where(split => split.Length > 0)
-            .OrderBy(split => split.Length)
-            .FirstOrDefault();
-
-        if (string.IsNullOrWhiteSpace(newArtistName))
-        {
-            return artist;
-        }
-        return newArtistName;
     }
     
     public string GetFormatName(MediaFileInfo file, string format,  string seperator)

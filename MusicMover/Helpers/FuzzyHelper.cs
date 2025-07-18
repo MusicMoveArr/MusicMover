@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FuzzySharp;
 
 namespace MusicMover.Helpers;
 
@@ -37,5 +38,25 @@ public class FuzzyHelper
         }
 
         return true;
+    }
+
+    public static int FuzzRatioToLower(string? value1, string? value2)
+    {
+        if (string.IsNullOrWhiteSpace(value1) || string.IsNullOrWhiteSpace(value2))
+        {
+            return 0;
+        }
+
+        return Fuzz.Ratio(value1.ToLower(), value2.ToLower());
+    }
+    
+    public static int PartialTokenSortRatioToLower(string? value1, string? value2)
+    {
+        if (string.IsNullOrWhiteSpace(value1) || string.IsNullOrWhiteSpace(value2))
+        {
+            return 0;
+        }
+
+        return Fuzz.PartialTokenSortRatio(value1.ToLower(), value2.ToLower());
     }
 }

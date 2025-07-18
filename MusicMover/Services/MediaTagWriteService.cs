@@ -480,6 +480,12 @@ public class MediaTagWriteService
     {
         FileInfo targetFile = new FileInfo(track.Path);
         string tempFile = $"{track.Path}.tmp{targetFile.Extension}";
+
+        if (File.Exists(tempFile))
+        {
+            File.Delete(tempFile);
+        }
+        
         bool success = false;
         try
         {

@@ -14,7 +14,7 @@ public class MediaFileInfo
     private const string AcoustIdTag = "AcoustId";
     
     public Track TrackInfo { get; private set; }
-    public FileInfo? FileInfo { get; set; }
+    public FileInfo FileInfo { get; set; }
     private FingerPrintService _fingerPrintService;
     
     public string? Artist { get; set; }
