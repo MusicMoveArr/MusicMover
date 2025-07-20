@@ -41,7 +41,7 @@
       <PackageReference Include="Spectre.Console" Version="0.50.0" />
       <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
       <PackageReference Include="System.Runtime.Caching" Version="9.0.7" />
-      <PackageReference Include="z440.atl.core" Version="7.1.0" />
+      <PackageReference Include="z440.atl.core" Version="7.2.0" />
     </ItemGroup>
 
     <ItemGroup>
