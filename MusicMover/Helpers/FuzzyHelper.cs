@@ -40,6 +40,16 @@ public class FuzzyHelper
         return true;
     }
 
+    public static int FuzzTokenSortRatioToLower(string? value1, string? value2)
+    {
+        if (string.IsNullOrWhiteSpace(value1) || string.IsNullOrWhiteSpace(value2))
+        {
+            return 0;
+        }
+
+        return Fuzz.TokenSortRatio(value1.ToLower(), value2.ToLower());
+    }
+
     public static int FuzzRatioToLower(string? value1, string? value2)
     {
         if (string.IsNullOrWhiteSpace(value1) || string.IsNullOrWhiteSpace(value2))

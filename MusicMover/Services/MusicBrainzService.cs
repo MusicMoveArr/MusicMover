@@ -63,7 +63,7 @@ public class MusicBrainzService
 
                 if (release == null)
                 {
-                    data = await _musicBrainzApiService.GetRecordingByIdAsync(acoustIdResult.RecordingId);
+                    data = await _musicBrainzApiService.GetRecordingByIdAsync(acoustIdResult.MatchedRecording.Id);
                     mediaFileInfo.TrackInfo.Title = acoustIdResult.MatchedRecording?.Title;
                     
                     release = GetBestMatchingRelease(data, mediaFileInfo.TrackInfo, artistCountry, artistCredit?.Name, true);
@@ -241,9 +241,7 @@ public class MusicBrainzService
         }
     }
 
-    private AcoustIdRecordingResponse? GetBestMatchingAcoustId(AcoustIdResponse? acoustIdResponse, 
-        MediaFileInfo mediaFileInfo,
-        ref string? acoustId)
+    private async Task<AcoustIdRecordingResponse?> GetBestMatchingAcoustIdAsync(AcoustIdResponse? acoustIdResponse, MediaFileInfo mediaFileInfo)
     {
         if (acoustIdResponse?.Results?.Count == 0)
         {
@@ -262,34 +260,54 @@ public class MusicBrainzService
             return null;
         }
 
-        acoustId = highestScoreResult.Id;
-
         //perhaps not the best approach but sometimes...
         bool ignoreFilters = string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
                              string.IsNullOrWhiteSpace(mediaFileInfo.Artist) ||
                              string.IsNullOrWhiteSpace(mediaFileInfo.Title);
 
+        var recordingReleases = highestScoreResult.Recordings
+            .Select(async x => new
+            {
+                RecordingId = x.Id,
+                Recording = await _musicBrainzApiService.GetRecordingByIdAsync(x.Id)
+            })
+            .Select(x => x.Result)
+            .ToList();
+        
         var results = highestScoreResult
             .Recordings
+           ?.Select(result => new
+           {
+               Result = result,
+               Releases = recordingReleases.FirstOrDefault(release => string.Equals(release.RecordingId, result.Id))
+           })
             ?.Select(result => new
             {
-                ArtistMatchedFor = result.Artists?.Sum(artist => Fuzz.TokenSortRatio(artist.Name?.ToLower(), mediaFileInfo.Artist?.ToLower())) ?? 0,
-                //ArtistMatchedFor = result.Artists?.Count > 0 ? Fuzz.TokenSortRatio(mediaFileInfo.Artist?.ToLower(), string.Join(',', result.Artists)) : 0,
-                TitleMatchedFor = Fuzz.TokenSortRatio(mediaFileInfo.Title?.ToLower(), result.Title?.ToLower()),
-                LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Duration ?? 100),
+                AlbumMatchedFor = result.Releases.Recording.Releases
+                    .Where(album => FuzzyHelper.ExactNumberMatch(album.Title, mediaFileInfo.Album))
+                    .Select(album => FuzzyHelper.FuzzTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
+                    .OrderByDescending(match => match)
+                    .FirstOrDefault(),
+                ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
+                TitleMatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
+                LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Result.Duration ?? 100),
                 Result = result
             })
-            .Where(match => ignoreFilters || FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.Result.Title))
+            .Where(match => ignoreFilters || FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.Result.Result.Title))
             //.Where(match => ignoreFilters || match.ArtistMatchedFor >= MatchPercentage)
             //.Where(match => ignoreFilters || match.TitleMatchedFor >= MatchPercentage)
             .OrderByDescending(result => result.ArtistMatchedFor)
+            .ThenByDescending(result => result.AlbumMatchedFor)
             .ThenByDescending(result => result.TitleMatchedFor)
             .ThenBy(result => result.LengthMatch)
-            //.Select(result => result.Result)
+            .Select(result => result.Result)
             .ToList();
 
         AcoustIdRecordingResponse? firstResult = results?.FirstOrDefault()?.Result;
-
+        if (firstResult != null)
+        {
+            firstResult.AcoustId = highestScoreResult.Id;
+        }
         return firstResult;
     }
 
@@ -611,7 +629,8 @@ public class MusicBrainzService
             
             //try again but with the AcoustID from the media file
             var acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
-            matchedRecording = GetBestMatchingAcoustId(acoustIdLookup, mediaFileInfo, ref acoustId);
+            matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo);
+            acoustId = matchedRecording?.AcoustId;
             recordingId = matchedRecording?.Id;
             
             if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
@@ -623,7 +642,8 @@ public class MusicBrainzService
         if (string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(fingerprint?.Fingerprint) && fingerprint?.Duration > 0)
         {
             var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, fingerprint.Fingerprint, (int)fingerprint.Duration);
-            matchedRecording = GetBestMatchingAcoustId(acoustIdLookup, mediaFileInfo, ref acoustId);
+            matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo);
+            acoustId = matchedRecording?.AcoustId;
             recordingId = matchedRecording?.Id;
 
             if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
@@ -633,7 +653,8 @@ public class MusicBrainzService
             
                 //try again but with the AcoustID from the media file
                 acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
-                matchedRecording = GetBestMatchingAcoustId(acoustIdLookup, mediaFileInfo, ref acoustId);
+                matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo);
+                acoustId = matchedRecording?.AcoustId;
                 recordingId = matchedRecording?.Id;
             
                 if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
