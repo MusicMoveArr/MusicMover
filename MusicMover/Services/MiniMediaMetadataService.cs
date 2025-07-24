@@ -51,10 +51,10 @@ public class MiniMediaMetadataService
         
         //replace disc X from album
         string targetAlbum = mediaFileInfo?.Album ?? string.Empty;
-        string discPattern = "[([]{,1}[Disc|CD][ ]{0,}[0-9]{1,}[])]{,1}";
-        if (Regex.IsMatch(targetAlbum, discPattern))
+        string discPattern = @"(?:[\[(])?(disc|cd)\s*([0-9]+)[\])]?";
+        if (Regex.IsMatch(targetAlbum.ToLower(), discPattern))
         {
-            targetAlbum = Regex.Replace(targetAlbum, discPattern, string.Empty);
+            targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
         }
 
         foreach (var artist in artistSearch)

@@ -129,7 +129,7 @@ public class MoveProcessor
                                     artistName = artistName.Substring(0, 50) + "...";
                                 }
                                 int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
-                                var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed"));
+                                var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                                 task.MaxValue = trackCount;
                                 progressTasks.TryAdd(mediaFileInfo.Artist,task);
                             }
@@ -151,7 +151,7 @@ public class MoveProcessor
                             if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
                             {
                                 progressTask.Increment(1);
-                                progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed"));
+                                progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                             }
                         }
                         
@@ -171,7 +171,7 @@ public class MoveProcessor
                                 artistName = artistName.Substring(0, 50) + "...";
                             }
                             int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
-                            var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed"));
+                            var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                             task.MaxValue = trackCount;
                             progressTasks.TryAdd(mediaFileInfo.Artist,task);
                         }
@@ -188,7 +188,7 @@ public class MoveProcessor
                         if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
                         {
                             progressTask.Increment(1);
-                            progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed"));
+                            progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                         }
                         
                         totalProgressTask.Value++;
