@@ -16,7 +16,15 @@ public class MusicBrainzService
     private readonly FingerPrintService _fingerPrintService;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private const int MinimumArtistName = 2; //prevents very short, non-artist names for example to be used for searching/matching
-        
+
+    private string[] IgnoreNames =
+    [
+        "[unknown]",
+        "[anonymous]",
+        "[traditional]",
+        "[no artist]"
+    ];
+    
     public MusicBrainzService()
     {
         _musicBrainzApiService = new MusicBrainzAPIService();
@@ -97,6 +105,14 @@ public class MusicBrainzService
 
         if (releaseMedia == null || release == null)
         {
+            return false;
+        }
+
+        string? ignoreName = IgnoreNames.FirstOrDefault(ignoreName => ignoreName.Equals(artistCredit?.Name, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(artistCredit?.Name) &&
+            !string.IsNullOrWhiteSpace(ignoreName))
+        {
+            Logger.WriteLine($"Artistname from MusicBrainz contained '{ignoreName}', skipped tagging");
             return false;
         }
         
