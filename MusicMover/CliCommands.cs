@@ -235,7 +235,7 @@ public class CliCommands : ICommand
 
     [CommandOption("musicbrainz-match-percentage",
         Description = "The percentage used for tagging, how accurate it must match with MusicBrainz.",
-        EnvironmentVariable = "MOVE_TIDAL_MATCH_PERCENTAGE",
+        EnvironmentVariable = "MOVE_MUSICBRAINZ_MATCH_PERCENTAGE",
         IsRequired = false)]
     public int MusicBrainzMatchPercentage { get; set; } = 80;
 
