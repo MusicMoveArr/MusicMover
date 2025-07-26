@@ -38,5 +38,8 @@ public class CliOptions
     public required List<string> PreferredFileExtensions { get; init; }
     public required List<string> NonPreferredFileExtensions { get; init; }
     public required bool DebugInfo { get; init; }
-    
+    public required int MetadataApiMatchPercentage { get; init; }
+    public required int TidalMatchPercentage { get; init; }
+    public required int MusicBrainzMatchPercentage { get; init; }
+    public required int AcoustIdMatchPercentage { get; init; }
 }

@@ -16,7 +16,6 @@ public class TidalService
     private readonly string VariousArtistsVA = "VA";
     
     private readonly MediaTagWriteService _mediaTagWriteService;
-    private const int MatchPercentage = 80;
     private const int SlidingCacheExpiration = 120;
     private Stopwatch _apiStopwatch = Stopwatch.StartNew();
     private readonly TidalAPICacheLayerService _tidalAPIService;
@@ -27,8 +26,15 @@ public class TidalService
         _tidalAPIService = new TidalAPICacheLayerService(tidalClientId, tidalClientSecret, countryCode);
     }
     
-    public async Task<bool> WriteTagsAsync(MediaFileInfo mediaFileInfo, FileInfo fromFile, string uncoupledArtistName, string uncoupledAlbumArtist,
-        bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
+    public async Task<bool> WriteTagsAsync(
+        MediaFileInfo mediaFileInfo, 
+        FileInfo fromFile, string uncoupledArtistName, 
+        string uncoupledAlbumArtist,
+        bool overWriteArtist, 
+        bool overWriteAlbum, 
+        bool overWriteTrack, 
+        bool overwriteAlbumArtist,
+        int matchPercentage)
     {
         if (string.IsNullOrWhiteSpace(_tidalAPIService.AuthenticationResponse?.AccessToken) ||
             (_tidalAPIService.AuthenticationResponse?.ExpiresIn > 0 &&
@@ -57,7 +63,7 @@ public class TidalService
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
             Logger.WriteLine($"Searching for tidal artist '{artist}'", true);
-            if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+            if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
             {
                 return true;
             }
@@ -74,7 +80,7 @@ public class TidalService
             {
                 Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
                 Logger.WriteLine($"Searching for tidal artist '{artist}'", true);
-                if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
                 {
                     return true;
                 }
@@ -91,7 +97,8 @@ public class TidalService
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
-        bool overwriteAlbumArtist)
+        bool overwriteAlbumArtist,
+        int matchPercentage)
     {
         if (string.IsNullOrWhiteSpace(artistName) ||
             IsVariousArtists(artistName))
@@ -121,7 +128,7 @@ public class TidalService
                 Artist = artist
             })
             .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Attributes.Name))
-            .Where(match => match.MatchedFor >= MatchPercentage)
+            .Where(match => match.MatchedFor >= matchPercentage)
             .OrderByDescending(result => result.MatchedFor)
             .ThenByDescending(result => result.Artist.Attributes.Popularity)
             .Select(result => result.Artist)
@@ -131,7 +138,7 @@ public class TidalService
         {
             try
             {
-                TidalProcessArtistResult processResult = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle);
+                TidalProcessArtistResult processResult = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle, matchPercentage);
                 
                 if (processResult.Success)
                 {
@@ -150,7 +157,8 @@ public class TidalService
 
     private async Task<TidalProcessArtistResult> ProcessArtistAsync(TidalSearchDataEntity artist, 
         string targetTrackTitle, 
-        string? targetAlbumTitle)
+        string? targetAlbumTitle,
+        int matchPercentage)
     {
         TidalSearchDataEntity? foundAlbum;
         TidalSearchDataEntity? foundTrack;
@@ -165,7 +173,7 @@ public class TidalService
         List<TidalMatchFound> matchesFound = new List<TidalMatchFound>();
         if (searchResult?.Included != null)
         {
-            List<TidalSearchDataEntity> bestTrackMatches = FindBestMatchingTracks(searchResult?.Included, targetTrackTitle, MatchPercentage);
+            List<TidalSearchDataEntity> bestTrackMatches = FindBestMatchingTracks(searchResult?.Included, targetTrackTitle, matchPercentage);
             bestTrackMatches = bestTrackMatches
                 .Where(track => !string.IsNullOrWhiteSpace(track.RelationShips.Albums.Links.Self))
                 .DistinctBy(track => new
@@ -191,8 +199,8 @@ public class TidalService
                 artistNames = await GetTrackArtistsAsync(int.Parse(result.Id));
 
                 bool containsArtist = artistNames.Any(artistName =>
-                                          Fuzz.TokenSortRatio(artist.Attributes.Name, artistName) > MatchPercentage) ||
-                                      Fuzz.TokenSortRatio(artist.Attributes.Name, string.Join(' ', artistNames)) > MatchPercentage; //maybe collab?
+                                          Fuzz.TokenSortRatio(artist.Attributes.Name, artistName) > matchPercentage) ||
+                                      Fuzz.TokenSortRatio(artist.Attributes.Name, string.Join(' ', artistNames)) > matchPercentage; //maybe collab?
 
                 if (!containsArtist)
                 {
@@ -216,13 +224,13 @@ public class TidalService
                     }
 
                     if (!string.IsNullOrWhiteSpace(targetAlbumTitle) &&
-                        (Fuzz.Ratio(targetAlbumTitle, albumTracks.Data.Attributes.Title) < MatchPercentage ||
+                        (Fuzz.Ratio(targetAlbumTitle, albumTracks.Data.Attributes.Title) < matchPercentage ||
                          !FuzzyHelper.ExactNumberMatch(targetAlbumTitle, albumTracks?.Data.Attributes.Title)))
                     {
                         continue;
                     }
 
-                    var trackMatches = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, MatchPercentage);
+                    var trackMatches = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, matchPercentage);
 
                     foreach (var trackMatch in trackMatches)
                     {
@@ -259,7 +267,7 @@ public class TidalService
                         Album = album
                     })
                     .Where(match => FuzzyHelper.ExactNumberMatch(targetAlbumTitle, match.Album.Attributes.Title))
-                    .Where(match => match.TitleMatchedFor >= MatchPercentage)
+                    .Where(match => match.TitleMatchedFor >= matchPercentage)
                     .OrderByDescending(result => result.TitleMatchedFor)
                     .Select(result => result.Album)
                     .DistinctBy(album => album.Id)
@@ -268,7 +276,7 @@ public class TidalService
                 foreach (var album in matchedAlbums)
                 {
                     albumTracks = await GetAllTracksByAlbumIdAsync(int.Parse(album.Id));
-                    foundTrack = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, MatchPercentage)
+                    foundTrack = FindBestMatchingTracks(albumTracks.Included, targetTrackTitle, matchPercentage)
                         .FirstOrDefault();
 
                     if (foundTrack != null)
@@ -414,43 +422,43 @@ public class TidalService
         Logger.WriteLine($"Media Album: {track.Album}", true);
         Logger.WriteLine($"Media TrackName: {track.Title}", true);
         
-        UpdateTag(track, "Tidal Track Id", tidalTrack.Id, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Track Explicit", tidalTrack.Attributes.Explicit ? "Y": "N", ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Track Id", tidalTrack.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Track Explicit", tidalTrack.Attributes.Explicit ? "Y": "N", ref trackInfoUpdated);
         
         string trackHref = tidalTrack.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        UpdateTag(track, "Tidal Track Href", trackHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Track Href", trackHref, ref trackInfoUpdated);
         
         string albumHref = tidalAlbum.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        UpdateTag(track, "Tidal Album Id", tidalAlbum.Id, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Album Href", albumHref, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Album Release Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Album Id", tidalAlbum.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Album Href", albumHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Album Release Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
         
         string artistHref = tidalArtist.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        UpdateTag(track, "Tidal Artist Id", tidalArtist.Id, ref trackInfoUpdated);
-        UpdateTag(track, "Tidal Artist Href", artistHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Artist Id", tidalArtist.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Tidal Artist Href", artistHref, ref trackInfoUpdated);
         
         if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
         {
-            UpdateTag(track, "Title", tidalTrack.Attributes.FullTrackName, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Title", tidalTrack.Attributes.FullTrackName, ref trackInfoUpdated);
         }
         if (string.IsNullOrWhiteSpace(track.Album) || overWriteAlbum)
         {
-            UpdateTag(track, "Album", tidalAlbum.Attributes.Title, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Album", tidalAlbum.Attributes.Title, ref trackInfoUpdated);
         }
         if (string.IsNullOrWhiteSpace(track.AlbumArtist) || track.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
         {
-            UpdateTag(track, "AlbumArtist", tidalArtist.Attributes.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "AlbumArtist", tidalArtist.Attributes.Name, ref trackInfoUpdated);
         }
         if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various") || overWriteArtist)
         {
-            UpdateTag(track, "Artist",  tidalArtist.Attributes.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Artist",  tidalArtist.Attributes.Name, ref trackInfoUpdated);
         }
-        UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
 
-        UpdateTag(track, "ISRC", tidalTrack.Attributes.ISRC, ref trackInfoUpdated);
-        UpdateTag(track, "UPC", tidalAlbum.Attributes.BarcodeId, ref trackInfoUpdated);
-        UpdateTag(track, "Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
-        UpdateTag(track, "Copyright", tidalTrack.Attributes.Copyright, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "ISRC", tidalTrack.Attributes.ISRC, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "UPC", tidalAlbum.Attributes.BarcodeId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(track, "Copyright", tidalTrack.Attributes.Copyright, ref trackInfoUpdated);
         
         var trackNumber = albumTracks.Data
             .RelationShips
@@ -460,9 +468,9 @@ public class TidalService
 
         if (trackNumber != null)
         {
-            UpdateTag(track, "Disc Number", trackNumber.Meta.VolumeNumber.ToString(), ref trackInfoUpdated);
-            UpdateTag(track, "Track Number", trackNumber.Meta.TrackNumber.ToString(), ref trackInfoUpdated);
-            UpdateTag(track, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Disc Number", trackNumber.Meta.VolumeNumber.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Track Number", trackNumber.Meta.TrackNumber.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(track, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
         }
         
         return await _mediaTagWriteService.SafeSaveAsync(track);
@@ -540,39 +548,5 @@ public class TidalService
         }
         
         return searchResults;
-    }
-    
-    private void UpdateTag(Track track, string tagName, string? value, ref bool trackInfoUpdated)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return;
-        }
-
-        if (int.TryParse(value, out int intValue) && intValue == 0)
-        {
-            return;
-        }
-        
-        tagName = _mediaTagWriteService.GetFieldName(track, tagName);
-        
-        string orgValue = string.Empty;
-        bool tempIsUpdated = false;
-        _mediaTagWriteService.UpdateTrackTag(track, tagName, value, ref tempIsUpdated, ref orgValue);
-
-        if (tempIsUpdated)
-        {
-            if (value.Length > 100)
-            {
-                value = value.Substring(0, 100) + "...";
-            }
-            if (orgValue.Length > 100)
-            {
-                orgValue = orgValue.Substring(0, 100) + "...";
-            }
-            
-            Logger.WriteLine($"Updating tag '{tagName}' value '{orgValue}' => '{value}'", true);
-            trackInfoUpdated = true;
-        }
     }
 }

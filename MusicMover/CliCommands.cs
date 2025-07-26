@@ -220,6 +220,30 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_DEBUG",
         IsRequired = false)]
     public bool DebugInfo { get; set; } = false;
+
+    [CommandOption("metadata-api-match-percentage",
+        Description = "The percentage used for tagging, how accurate it must match with the remote metadata server.",
+        EnvironmentVariable = "MOVE_METADATA_MATCH_PERCENTAGE",
+        IsRequired = false)]
+    public int MetadataApiMatchPercentage { get; set; } = 80;
+
+    [CommandOption("tidal-match-percentage",
+        Description = "The percentage used for tagging, how accurate it must match with Tidal.",
+        EnvironmentVariable = "MOVE_TIDAL_MATCH_PERCENTAGE",
+        IsRequired = false)]
+    public int TidalMatchPercentage { get; set; } = 80;
+
+    [CommandOption("musicbrainz-match-percentage",
+        Description = "The percentage used for tagging, how accurate it must match with MusicBrainz.",
+        EnvironmentVariable = "MOVE_TIDAL_MATCH_PERCENTAGE",
+        IsRequired = false)]
+    public int MusicBrainzMatchPercentage { get; set; } = 80;
+
+    [CommandOption("acoustid-match-percentage",
+        Description = "The percentage used for tagging, how accurate it must match with AcoustId.",
+        EnvironmentVariable = "MOVE_ACOUSTID_MATCH_PERCENTAGE",
+        IsRequired = false)]
+    public int AcoustIdMatchPercentage { get; set; } = 80;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -269,7 +293,11 @@ public class CliCommands : ICommand
             NonPreferredFileExtensions = MoveProcessor.MediaFileExtensions
                 .Where(mediaExt => !PreferredFileExtensions.Any(ext => string.Equals(ext, mediaExt)))
                 .ToList(),
-            DebugInfo = DebugInfo
+            DebugInfo = DebugInfo,
+            MetadataApiMatchPercentage = MetadataApiMatchPercentage,
+            TidalMatchPercentage = TidalMatchPercentage,
+            MusicBrainzMatchPercentage = MusicBrainzMatchPercentage,
+            AcoustIdMatchPercentage = AcoustIdMatchPercentage
         };
 
         string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" ];
@@ -306,6 +334,10 @@ public class CliCommands : ICommand
         Logger.WriteLine($"Metadata API Base Url: {options.MetadataApiBaseUrl}");
         Logger.WriteLine($"metadata API Provider: {string.Join(',', options?.MetadataApiProviders ?? [])}");
         Logger.WriteLine($"preferred file extensions: {string.Join(',', options?.PreferredFileExtensions ?? [])}");
+        Logger.WriteLine($"MetadataApi Match Percentage: {options.MetadataApiMatchPercentage}");
+        Logger.WriteLine($"Tidal Match Percentage: {options.TidalMatchPercentage}");
+        Logger.WriteLine($"MusicBrainz Match Percentage: {options.MusicBrainzMatchPercentage}");
+        Logger.WriteLine($"AcoustId Match Percentage: {options.AcoustIdMatchPercentage}");
 
         if (ExtraScans?.Count > 0)
         {

@@ -339,9 +339,17 @@ public class MoveProcessor
                  string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
                  string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
             {
-                musicBrainzTaggingSuccess = await _musicBrainzService.WriteTagFromAcoustIdAsync(mediaFileInfo, mediaFileInfo.FileInfo, _options.AcoustIdApiKey,
-                    _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
-                    _options.OverwriteAlbumArtist, _options.SearchByTagNames);
+                musicBrainzTaggingSuccess = await _musicBrainzService.WriteTagFromAcoustIdAsync(
+                    mediaFileInfo, 
+                    mediaFileInfo.FileInfo, 
+                    _options.AcoustIdApiKey,
+                    _options.OverwriteArtist, 
+                    _options.OverwriteAlbum, 
+                    _options.OverwriteTrack,
+                    _options.OverwriteAlbumArtist, 
+                    _options.SearchByTagNames,
+                    _options.AcoustIdMatchPercentage,
+                    _options.MusicBrainzMatchPercentage);
             
                 if (musicBrainzTaggingSuccess)
                 {
@@ -362,8 +370,11 @@ public class MoveProcessor
                 mediaFileInfo.FileInfo, 
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
-                _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
-                _options.OverwriteAlbumArtist);
+                _options.OverwriteArtist, 
+                _options.OverwriteAlbum, 
+                _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist,
+                _options.MetadataApiMatchPercentage);
             
             if (metadataApiTaggingSuccess)
             {
@@ -386,8 +397,11 @@ public class MoveProcessor
                 mediaFileInfo.FileInfo, 
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
-                _options.OverwriteArtist, _options.OverwriteAlbum, _options.OverwriteTrack,
-                _options.OverwriteAlbumArtist);
+                _options.OverwriteArtist, 
+                _options.OverwriteAlbum, 
+                _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist,
+                _options.TidalMatchPercentage);
             
             if (tidalTaggingSuccess)
             {

@@ -508,5 +508,41 @@ public class MediaTagWriteService
         return success;
     }
 
+    public void UpdateTag(Track track,
+        string tagName, 
+        string? value, 
+        ref bool trackInfoUpdated)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        if (int.TryParse(value, out int intValue) && intValue == 0)
+        {
+            return;
+        }
+        
+        tagName = GetFieldName(track, tagName);
+        
+        string orgValue = string.Empty;
+        bool tempIsUpdated = false;
+        UpdateTrackTag(track, tagName, value, ref tempIsUpdated, ref orgValue);
+        
+        if (tempIsUpdated && !string.Equals(orgValue, value))
+        {
+            if (value.Length > 100)
+            {
+                value = value.Substring(0, 100) + "...";
+            }
+            if (orgValue.Length > 100)
+            {
+                orgValue = orgValue.Substring(0, 100) + "...";
+            }
+            
+            Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' =>  '{value}'");
+            trackInfoUpdated = true;
+        }
+    }
     
 }
