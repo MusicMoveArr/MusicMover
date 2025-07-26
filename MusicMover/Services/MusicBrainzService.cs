@@ -16,7 +16,8 @@ public class MusicBrainzService
     private readonly FingerPrintService _fingerPrintService;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private const int MinimumArtistName = 2; //prevents very short, non-artist names for example to be used for searching/matching
-
+    private const int ArtistMatchPercentage = 80;
+    
     private string[] IgnoreNames =
     [
         "[unknown]",
@@ -299,8 +300,7 @@ public class MusicBrainzService
 
     private MusicBrainzArtistCreditModel? GetBestMatchingArtist(
         List<MusicBrainzArtistCreditModel>? artists, 
-        Track track,
-        int matchPercentage)
+        Track track)
     {
         string[] splitTrackArtists = !string.IsNullOrWhiteSpace(track.AlbumArtist) ? 
                                         track.AlbumArtist.Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries) : [];
@@ -316,7 +316,7 @@ public class MusicBrainzService
                         Artist = artist,
                         MatchedFor = Fuzz.Ratio(artist.Name?.ToLower(), splitArtist.ToLower())
                     })
-                    .Where(match => match.MatchedFor >= matchPercentage)
+                    .Where(match => match.MatchedFor >= ArtistMatchPercentage)
                     .OrderByDescending(match => match.MatchedFor)
                     .Select(match => match.Artist)
                     .FirstOrDefault();
@@ -327,10 +327,22 @@ public class MusicBrainzService
                 }
             }
         }
-        
-        return artists
+
+        var matchedArtists = artists
             ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
-            .FirstOrDefault();
+            .Select(artist => new
+            {
+                Artist = artist,
+                MatchedFor = Math.Max(FuzzyHelper.FuzzRatioToLower(artist.Name, track.Artist), 
+                    FuzzyHelper.FuzzRatioToLower(artist.Name, track.AlbumArtist))
+            })
+            .Where(match => match.MatchedFor >= ArtistMatchPercentage)
+            .OrderByDescending(match => match.MatchedFor)
+            .Select(match => match.Artist)
+            .ToList();
+        
+        return matchedArtists
+            ?.FirstOrDefault();
     }
 
     private MusicBrainzArtistReleaseModel? GetBestMatchingRelease(MusicBrainzArtistModel? data, 
