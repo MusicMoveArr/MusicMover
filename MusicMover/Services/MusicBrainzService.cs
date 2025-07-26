@@ -63,7 +63,7 @@ public class MusicBrainzService
             var data = await _musicBrainzApiService.GetRecordingByIdAsync(acoustIdResult.RecordingId);
             if (data != null)
             {
-                artistCredit = GetBestMatchingArtist(data.ArtistCredit, mediaFileInfo.TrackInfo, acoustIdMatchPercentage);
+                artistCredit = GetBestMatchingArtist(data.ArtistCredit, mediaFileInfo.TrackInfo);
             
                 artistCountry = !string.IsNullOrWhiteSpace(artistCredit?.Artist?.Id) ? 
                     (await _musicBrainzApiService.GetArtistInfoAsync(artistCredit.Artist.Id))?.Country ?? string.Empty
@@ -579,7 +579,7 @@ public class MusicBrainzService
             }
 
             result.RecordingQuery = recording;
-            var matchedArtist = GetBestMatchingArtist(tempRelease.ArtistCredit, track, matchPercentage);
+            var matchedArtist = GetBestMatchingArtist(tempRelease.ArtistCredit, track);
             if (matchedArtist != null)
             {
                 bestMatchedArtist = matchedArtist;
