@@ -9,9 +9,7 @@ class Program
     public static async Task Main(string[] args)
     {
         ATL.Settings.OutputStacktracesToConsole = false;
-        if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
         {
-            Console.SetWindowSize(150, 15);
         }
         
         ConsoleArguments = args;
