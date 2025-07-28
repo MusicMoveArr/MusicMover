@@ -25,8 +25,6 @@ public class MoveProcessor
     private const long MinAvailableDiskSpace = 5000; //GB
     private const int CacheTime = 5; //minutes
     private const string VariousArtistsName = "Various Artists";
-    private const string AcoustidFingerprintTag = "Acoustid Fingerprint";
-    private const string AcoustidTag = "Acoustid Id";
 
     private const int NamingAccuracy = 98;
     
@@ -53,6 +51,7 @@ public class MoveProcessor
     private readonly TidalService _tidalService;
     private readonly MiniMediaMetadataService _miniMediaMetadataService;
     private readonly AsyncLock _asyncAcoustIdLock;
+    private readonly FingerPrintService _fingerPrintService;
     
     private List<string> _artistsNotFound = new List<string>();
 
@@ -63,6 +62,7 @@ public class MoveProcessor
         _memoryCache = MemoryCache.Default;
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
+        _fingerPrintService = new FingerPrintService();
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
         _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
     }
@@ -161,8 +161,11 @@ public class MoveProcessor
                 }
                 else
                 {
-                    foreach (var mediaFileInfo in filesToProcess)
+                    for(; filesToProcess.Count > 0; )
                     {
+                        var mediaFileInfo = filesToProcess.FirstOrDefault();
+                        filesToProcess.RemoveAt(0);
+                        
                         if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
                         {
                             string artistName = mediaFileInfo.Artist;
@@ -339,17 +342,22 @@ public class MoveProcessor
                  string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
                  string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
             {
-                musicBrainzTaggingSuccess = await _musicBrainzService.WriteTagFromAcoustIdAsync(
-                    mediaFileInfo, 
-                    mediaFileInfo.FileInfo, 
+                FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(mediaFileInfo.FileInfo.FullName);
+                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
+                    fingerprint,
                     _options.AcoustIdApiKey,
-                    _options.OverwriteArtist, 
-                    _options.OverwriteAlbum, 
-                    _options.OverwriteTrack,
-                    _options.OverwriteAlbumArtist, 
                     _options.SearchByTagNames,
                     _options.AcoustIdMatchPercentage,
                     _options.MusicBrainzMatchPercentage);
+                
+                musicBrainzTaggingSuccess =
+                    match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
+                        match,
+                        mediaFileInfo, 
+                        _options.OverwriteArtist, 
+                        _options.OverwriteAlbum, 
+                        _options.OverwriteTrack,
+                        _options.OverwriteAlbumArtist);
             
                 if (musicBrainzTaggingSuccess)
                 {

@@ -4,7 +4,6 @@ using MusicMover.Models;
 using Polly;
 using Polly.Retry;
 using RestSharp;
-using Spectre.Console;
 
 namespace MusicMover.Services;
 

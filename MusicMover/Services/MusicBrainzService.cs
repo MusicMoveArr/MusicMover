@@ -32,22 +32,145 @@ public class MusicBrainzService
         _acoustIdService = new AcoustIdService();
         _fingerPrintService = new FingerPrintService();
         _mediaTagWriteService = new MediaTagWriteService();
-        
     }
     
-    public async Task<bool> WriteTagFromAcoustIdAsync(MediaFileInfo mediaFileInfo, 
-        FileInfo fromFile, 
-        string acoustIdApiKey,
+    public async Task<bool> WriteTagFromAcoustIdAsync(
+        AcoustIdResultMatch match,
+        MediaFileInfo mediaFileInfo, 
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
-        bool overwriteAlbumArtist,
+        bool overwriteAlbumArtist)
+    {
+        if (match.ReleaseMedia == null || match.Release == null)
+        {
+            return false;
+        }
+
+        string? ignoreName = IgnoreNames.FirstOrDefault(ignoreName => ignoreName.Equals(match.ArtistCredit?.Name, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(match.ArtistCredit?.Name) &&
+            !string.IsNullOrWhiteSpace(ignoreName))
+        {
+            Logger.WriteLine($"Artistname from MusicBrainz contained '{ignoreName}', skipped tagging");
+            return false;
+        }
+        
+        bool trackInfoUpdated = false;
+        
+        string? musicBrainzReleaseArtistId = match.ArtistCredit?.Artist?.Id;
+        string? musicBrainzAlbumId = match.Release.Id;
+        string? musicBrainzReleaseGroupId = match.Release.ReleaseGroup?.Id;
+        
+        string artists = string.Join(';', match.ArtistCredits.Select(artist => artist.Name));
+        string musicBrainzArtistIds = string.Join(';', match.ArtistCredits
+            .Where(artist => !string.IsNullOrWhiteSpace(artist.Artist?.Id))
+            .Select(artist => artist.Artist?.Id));
+        
+        string isrcs = string.Join(';', match.ISRCS);
+
+        if (!string.IsNullOrWhiteSpace(match.Release.Id))
+        {
+            var withLabelInfo = await _musicBrainzApiService.GetReleaseWithLabelAsync(match.Release.Id);
+            var label = withLabelInfo?.LabeLInfo?.FirstOrDefault(label => label?.Label?.Type?.Contains("production", StringComparison.OrdinalIgnoreCase) == true);
+
+            if (label == null && withLabelInfo?.LabeLInfo?.Count == 1)
+            {
+                label = withLabelInfo?.LabeLInfo?.FirstOrDefault();
+            }
+            if (!string.IsNullOrWhiteSpace(label?.Label?.Name))
+            {
+                _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "LABEL", label?.Label.Name, ref trackInfoUpdated);
+                _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "CATALOGNUMBER", label?.CataLogNumber, ref trackInfoUpdated);
+            }
+        }
+        
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "date", match.Release.Date, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originaldate", match.Release.Date, ref trackInfoUpdated);
+
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.Title) || overWriteTrack)
+        {
+            string? trackTitle = match.ReleaseMedia.Tracks?.FirstOrDefault()?.Title;
+            string credits = GetArtistFeatCreditString(match.ArtistCredits, match.ArtistCredit?.Name, true);
+            if (credits.Length > 2)
+            {
+                trackTitle += " " + credits;
+            }
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Title", trackTitle, ref trackInfoUpdated);
+        }
+        if (overWriteAlbum && 
+            !string.IsNullOrWhiteSpace(match.Release.Title) && 
+            !string.IsNullOrWhiteSpace(mediaFileInfo.Album))
+        {
+            if (!string.IsNullOrWhiteSpace(match.Release.Disambiguation) &&
+                !match.Release.Title.ToLower().Contains(match.Release.Disambiguation.ToLower()) &&
+                mediaFileInfo.Album.ToLower().Contains(match.Release.Disambiguation.ToLower()) &&
+                !match.Release.Title.Trim().EndsWith(')'))
+            {
+                string disambiguation = string.Join(' ',
+                    match.Release.Disambiguation
+                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(dis => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(dis)));
+                match.Release.Title += $" ({disambiguation})";
+            } 
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Album", match.Release.Title, ref trackInfoUpdated);
+        }
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)  || mediaFileInfo.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
+        {
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "AlbumArtist", match.ArtistCredit?.Name, ref trackInfoUpdated);
+        }
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist) || mediaFileInfo.Artist.ToLower().Contains("various") || overWriteArtist)
+        {
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Artist", match.ArtistCredit?.Name, ref trackInfoUpdated);
+        }
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ARTISTS", artists, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ISRC", isrcs, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "SCRIPT", match.Release.TextRepresentation?.Script, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "barcode", match.Release.Barcode, ref trackInfoUpdated);
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Track Id", match.RecordingId, ref trackInfoUpdated);
+        
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Track Id", match.RecordingId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Artist Id", musicBrainzReleaseArtistId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Group Id", musicBrainzReleaseGroupId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Id", match.Release.Id, ref trackInfoUpdated);
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Id", musicBrainzAlbumId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Type", match.Release.ReleaseGroup?.PrimaryType, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Release Country", match.Release.Country, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Status", match.Release.Status, ref trackInfoUpdated);
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Id", match.AcoustId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint", match.Fingerprint?.Fingerprint, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint Duration", match.Fingerprint?.Duration.ToString(CultureInfo.InvariantCulture), ref trackInfoUpdated);
+
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", match.Release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originaldate", match.Release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
+        
+        if (match.Release.ReleaseGroup?.FirstReleaseDate?.Length >= 4)
+        {
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originalyear", match.Release.ReleaseGroup.FirstReleaseDate[..4], ref trackInfoUpdated);
+        }
+        
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Disc Number", match.ReleaseMedia.Position?.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Track Number", match.ReleaseMedia.Tracks?.FirstOrDefault()?.Position?.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", match.ReleaseMedia.TrackCount.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MEDIA", match.ReleaseMedia.Format, ref trackInfoUpdated);
+
+        return await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo);
+    }
+
+    public async Task<AcoustIdResultMatch?> GetMatchFromAcoustIdAsync(
+        MediaFileInfo mediaFileInfo,
+        FpcalcOutput? fingerprint,
+        string acoustIdApiKey,
         bool searchByTagNames,
         int acoustIdMatchPercentage,
         int musicBrainzMatchPercentage)
     {
-        FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(fromFile.FullName);
-        
         string? recordingId = string.Empty;
         string? acoustId = string.Empty;
         
@@ -56,7 +179,7 @@ public class MusicBrainzService
         MusicBrainzArtistReleaseModel? release = null;
         List<MusicBrainzArtistCreditModel> artistCredits = new List<MusicBrainzArtistCreditModel>();
         List<string>? listISRCs = new List<string>();
-        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(fingerprint, mediaFileInfo, fromFile, acoustIdApiKey, acoustIdMatchPercentage);
+        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(fingerprint, mediaFileInfo, acoustIdApiKey, acoustIdMatchPercentage);
 
         if (acoustIdResult.Success && !string.IsNullOrWhiteSpace(acoustIdResult.RecordingId))
         {
@@ -92,9 +215,10 @@ public class MusicBrainzService
             if (!matchingReleaseResult.Success)
             {
                 Logger.WriteLine($"MusicBrainz recording not found by id '{recordingId}' by searching from tag names, Artist: {mediaFileInfo.Artist}, ALbum: {mediaFileInfo.Album}, Title: {mediaFileInfo.Title}", true);
-                return false;
+                return null;
             }
 
+            artistCredit = GetBestMatchingArtist(matchingReleaseResult.RecordingQuery?.ArtistCredit, mediaFileInfo.TrackInfo);
             artistCredits = matchingReleaseResult.RecordingQuery?.ArtistCredit ?? [];
             listISRCs = matchingReleaseResult.RecordingQuery?.ISRCS ?? [];
             release = matchingReleaseResult.MatchedRelease;
@@ -104,128 +228,20 @@ public class MusicBrainzService
             ?.Media
             ?.FirstOrDefault();
 
-        if (releaseMedia == null || release == null)
+        return new AcoustIdResultMatch
         {
-            return false;
-        }
-
-        string? ignoreName = IgnoreNames.FirstOrDefault(ignoreName => ignoreName.Equals(artistCredit?.Name, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(artistCredit?.Name) &&
-            !string.IsNullOrWhiteSpace(ignoreName))
-        {
-            Logger.WriteLine($"Artistname from MusicBrainz contained '{ignoreName}', skipped tagging");
-            return false;
-        }
-        
-        bool trackInfoUpdated = false;
-        
-        string? musicBrainzReleaseArtistId = artistCredit?.Artist?.Id;
-        string? musicBrainzAlbumId = release.Id;
-        string? musicBrainzReleaseGroupId = release.ReleaseGroup?.Id;
-        
-        string artists = string.Join(';', artistCredits.Select(artist => artist.Name));
-        string musicBrainzArtistIds = string.Join(';', artistCredits
-            .Where(artist => !string.IsNullOrWhiteSpace(artist.Artist?.Id))
-            .Select(artist => artist.Artist?.Id));
-        
-        string isrcs = string.Join(';', listISRCs);
-
-        if (!string.IsNullOrWhiteSpace(release.Id))
-        {
-            var withLabelInfo = await _musicBrainzApiService.GetReleaseWithLabelAsync(release.Id);
-            var label = withLabelInfo?.LabeLInfo?.FirstOrDefault(label => label?.Label?.Type?.Contains("production", StringComparison.OrdinalIgnoreCase) == true);
-
-            if (label == null && withLabelInfo?.LabeLInfo?.Count == 1)
-            {
-                label = withLabelInfo?.LabeLInfo?.FirstOrDefault();
-            }
-            if (!string.IsNullOrWhiteSpace(label?.Label?.Name))
-            {
-                _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "LABEL", label?.Label.Name, ref trackInfoUpdated);
-                _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "CATALOGNUMBER", label?.CataLogNumber, ref trackInfoUpdated);
-            }
-        }
-        
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "date", release.Date, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originaldate", release.Date, ref trackInfoUpdated);
-
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Title) || overWriteTrack)
-        {
-            string? trackTitle = releaseMedia.Tracks?.FirstOrDefault()?.Title;
-            string credits = GetArtistFeatCreditString(artistCredits, artistCredit?.Name, true);
-            if (credits.Length > 2)
-            {
-                trackTitle += " " + credits;
-            }
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Title", trackTitle, ref trackInfoUpdated);
-        }
-        if (overWriteAlbum && 
-            !string.IsNullOrWhiteSpace(release.Title) && 
-            !string.IsNullOrWhiteSpace(mediaFileInfo.Album))
-        {
-            if (!string.IsNullOrWhiteSpace(release.Disambiguation) &&
-                !release.Title.ToLower().Contains(release.Disambiguation.ToLower()) &&
-                mediaFileInfo.Album.ToLower().Contains(release.Disambiguation.ToLower()) &&
-                !release.Title.Trim().EndsWith(')'))
-            {
-                string disambiguation = string.Join(' ',
-                    release.Disambiguation
-                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(dis => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(dis)));
-                release.Title += $" ({disambiguation})";
-            } 
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Album", release.Title, ref trackInfoUpdated);
-        }
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)  || mediaFileInfo.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
-        {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "AlbumArtist", artistCredit?.Name, ref trackInfoUpdated);
-        }
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist) || mediaFileInfo.Artist.ToLower().Contains("various") || overWriteArtist)
-        {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Artist", artistCredit?.Name, ref trackInfoUpdated);
-        }
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ARTISTS", artists, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ISRC", isrcs, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "SCRIPT", release.TextRepresentation?.Script, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "barcode", release.Barcode, ref trackInfoUpdated);
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Track Id", recordingId, ref trackInfoUpdated);
-        
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Track Id", recordingId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Artist Id", musicBrainzReleaseArtistId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Group Id", musicBrainzReleaseGroupId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Id", release.Id, ref trackInfoUpdated);
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Artist Id", musicBrainzArtistIds, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Id", musicBrainzAlbumId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Type", release.ReleaseGroup?.PrimaryType, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Release Country", release.Country, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Status", release.Status, ref trackInfoUpdated);
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Id", acoustId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint", fingerprint?.Fingerprint, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint Duration", fingerprint?.Duration.ToString(CultureInfo.InvariantCulture), ref trackInfoUpdated);
-
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originaldate", release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
-        
-        if (release.ReleaseGroup?.FirstReleaseDate?.Length >= 4)
-        {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originalyear", release.ReleaseGroup.FirstReleaseDate[..4], ref trackInfoUpdated);
-        }
-        
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Disc Number", releaseMedia.Position?.ToString(), ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Track Number", releaseMedia.Tracks?.FirstOrDefault()?.Position?.ToString(), ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", releaseMedia.TrackCount.ToString(), ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MEDIA", releaseMedia.Format, ref trackInfoUpdated);
-
-        return await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo);
+            ArtistCredit = artistCredit,
+            ISRCS = listISRCs,
+            ReleaseMedia = releaseMedia,
+            AcoustId = acoustId,
+            Release = release,
+            ArtistCredits = artistCredits,
+            Fingerprint = fingerprint,
+            RecordingId = recordingId
+        };
     }
 
-    private async Task<AcoustIdRecordingResponse?> GetBestMatchingAcoustIdAsync(
+    public async Task<AcoustIdRecordingResponse?> GetBestMatchingAcoustIdAsync(
         AcoustIdResponse? acoustIdResponse, 
         MediaFileInfo mediaFileInfo,
         int matchPercentage)
@@ -298,7 +314,7 @@ public class MusicBrainzService
         return firstResult;
     }
 
-    private MusicBrainzArtistCreditModel? GetBestMatchingArtist(
+    public MusicBrainzArtistCreditModel? GetBestMatchingArtist(
         List<MusicBrainzArtistCreditModel>? artists, 
         Track track)
     {
@@ -345,7 +361,7 @@ public class MusicBrainzService
             ?.FirstOrDefault();
     }
 
-    private MusicBrainzArtistReleaseModel? GetBestMatchingRelease(MusicBrainzArtistModel? data, 
+    public MusicBrainzArtistReleaseModel? GetBestMatchingRelease(MusicBrainzArtistModel? data, 
         Track track, 
         string? artistCountry,
         string? targetArtist,
@@ -442,13 +458,14 @@ public class MusicBrainzService
         return bestMatchRelease;
     }
 
-    private List<MusicBrainzReleaseMediaTrackModel>? GetBestMatchingTracks(List<MusicBrainzReleaseMediaTrackModel>? tracks, 
+    public List<MusicBrainzReleaseMediaTrackModel>? GetBestMatchingTracks(
+        List<MusicBrainzReleaseMediaTrackModel>? tracks, 
         string trackTitle, 
         string artistCredit, 
         bool relaxedFiltering,
         int matchPercentage)
     {
-        return tracks?
+        var matches = tracks?
             .Select(releaseTrack => new
             {
                 Track = releaseTrack,
@@ -458,15 +475,18 @@ public class MusicBrainzService
                     : Fuzz.Ratio(trackTitle.ToLower(), releaseTrack.Title?.ToLower() + artistCredit)
             })
             //.Where(match => match.Track.Recording != null)
-            .Where(match => match.TitleMatch >= matchPercentage)
-            .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackTitle, match.Track.Title))
             .OrderByDescending(releaseTrack => releaseTrack.TitleMatch)
             .ThenBy(releaseTrack => releaseTrack.Length)
-            .Select(releaseTrack => releaseTrack.Track)
             .ToList();
+
+        return matches
+            .Where(match => match.TitleMatch >= matchPercentage)
+            .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackTitle, match.Track.Title))
+            .Select(releaseTrack => releaseTrack.Track)
+            .ToList();;
     }
 
-    private MusicBrainzRecordingQueryReleaseEntityModel? GetBestMatchingRecordingRelease(
+    public MusicBrainzRecordingQueryReleaseEntityModel? GetBestMatchingRecordingRelease(
         MusicBrainzRecordingQueryEntityModel? data, 
         Track track,
         int matchPercentage,
@@ -531,7 +551,7 @@ public class MusicBrainzService
         return null;
     }
 
-    private async Task<SearchBestMatchingReleaseResult> SearchBestMatchingReleaseAsync(Track track,
+    public async Task<SearchBestMatchingReleaseResult> SearchBestMatchingReleaseAsync(Track track,
         MusicBrainzArtistCreditModel? bestMatchedArtist,
         bool relaxedFiltering,
         int matchPercentage)
@@ -614,15 +634,14 @@ public class MusicBrainzService
         return result;
     }
 
-    private async Task<GetDataByAcoustIdResult> GetDataByAcoustIdAsync(FpcalcOutput? fingerprint, 
+    public async Task<GetDataByAcoustIdResult> GetDataByAcoustIdAsync(FpcalcOutput? fingerprint, 
         MediaFileInfo mediaFileInfo, 
-        FileInfo fromFile, 
         string acoustIdApiKey,
         int matchPercentage)
     {
         if (fingerprint is null)
         {
-            Logger.WriteLine("Failed to generate fingerprint, corrupt file?", true);
+            Logger.WriteLine("Failed to generate fingerprint, corrupt file?");
         }
 
         string? recordingId = string.Empty;
@@ -631,7 +650,7 @@ public class MusicBrainzService
         
         if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
         {
-            Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'", true);
+            Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag", true);
             
             //try again but with the AcoustID from the media file
             var acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
@@ -641,7 +660,7 @@ public class MusicBrainzService
             
             if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
             {
-                Logger.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'", true);
+                Logger.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag", true);
             }
         }
 
@@ -655,7 +674,7 @@ public class MusicBrainzService
             if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
                 (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId)))
             {
-                Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag, '{fromFile.FullName}'", true);
+                Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag", true);
             
                 //try again but with the AcoustID from the media file
                 acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
@@ -665,7 +684,7 @@ public class MusicBrainzService
             
                 if (!string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(acoustId))
                 {
-                    Logger.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag, '{fromFile.FullName}'", true);
+                    Logger.WriteLine($"Found AcoustId info from the AcoustId service by the AcoustID provided by the media Tag", true);
                 }
             }
         }
@@ -688,7 +707,7 @@ public class MusicBrainzService
         return result;
     }
 
-    private bool IsVariousArtists(string? name)
+    public bool IsVariousArtists(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -700,7 +719,7 @@ public class MusicBrainzService
             return true;
         }
 
-        if (Fuzz.Ratio(name, VariousArtists) >= 95)
+        if (FuzzyHelper.FuzzRatioToLower(name, VariousArtists) >= 95)
         {
             return true;
         }
@@ -708,7 +727,7 @@ public class MusicBrainzService
         return false;
     }
 
-    private string GetArtistFeatCreditString(List<MusicBrainzArtistCreditModel> artists, string? trackArtist, bool addBrackets)
+    public string GetArtistFeatCreditString(List<MusicBrainzArtistCreditModel> artists, string? trackArtist, bool addBrackets)
     {
         string artistName = string.Empty;
 
@@ -755,7 +774,7 @@ public class MusicBrainzService
         return artistName.Trim();
     }
 
-    private string CleanupArtistCredit(string trackName, string? joinPhrase)
+    public string CleanupArtistCredit(string trackName, string? joinPhrase)
     {
         if (!string.IsNullOrWhiteSpace(joinPhrase) &&
             trackName.ToLower().Contains(joinPhrase.Trim().ToLower()))

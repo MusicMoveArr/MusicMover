@@ -36,6 +36,13 @@ public class MediaFileInfo
         this._fingerPrintService = new FingerPrintService();
     }
     
+    public MediaFileInfo(Track track)
+        : this()
+    {
+        this._fingerPrintService = new FingerPrintService();
+        SetTrackInfo(track);
+    }
+    
     public MediaFileInfo(FileInfo fileInfo)
         : this()
     {
@@ -55,7 +62,46 @@ public class MediaFileInfo
             
             throw new FileLoadException($"It took too long to load '{fileInfo.FullName}'");
         }
+        SetTrackInfo(this.TrackInfo);
+    }
+
+    public async Task<bool> GenerateSaveFingerprintAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(AcoustIdFingerPrint) &&
+            AcoustIdFingerPrintDuration > 0)
+        {
+            return false;
+        }
+
+        FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(FileInfo.FullName);
+        if (string.IsNullOrWhiteSpace(fingerprint?.Fingerprint))
+        {
+            return false;
+        }
+
+        Track track = new Track(FileInfo.FullName);
+        MediaTagWriteService mediaTagWriteService = new MediaTagWriteService();
+
+        bool updated = false;
+        string originalValue = string.Empty;
+        mediaTagWriteService.UpdateTrackTag(track,
+            AcoustidFingerprintTag,
+            fingerprint.Fingerprint,
+            ref updated,
+            ref originalValue);
         
+        mediaTagWriteService.UpdateTrackTag(track,
+            AcoustidFingerprintDurationTag,
+            (fingerprint?.Duration ?? 0).ToString(),
+            ref updated,
+            ref originalValue);
+
+        return await mediaTagWriteService.SafeSaveAsync(track);
+    }
+
+    private void SetTrackInfo(Track trackInfo)
+    {
+        this.TrackInfo = trackInfo;
         var mediaTags = TrackInfo.AdditionalFields
             .GroupBy(pair => pair.Key.ToLower())
             .Select(pair => pair.First())
@@ -151,40 +197,6 @@ public class MediaFileInfo
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdIdTag, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdTag, StringComparison.OrdinalIgnoreCase)
             ).Value?.Trim();
-    }
-
-    public async Task<bool> GenerateSaveFingerprintAsync()
-    {
-        if (!string.IsNullOrWhiteSpace(AcoustIdFingerPrint) &&
-            AcoustIdFingerPrintDuration > 0)
-        {
-            return false;
-        }
-
-        FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(FileInfo.FullName);
-        if (string.IsNullOrWhiteSpace(fingerprint?.Fingerprint))
-        {
-            return false;
-        }
-
-        Track track = new Track(FileInfo.FullName);
-        MediaTagWriteService mediaTagWriteService = new MediaTagWriteService();
-
-        bool updated = false;
-        string originalValue = string.Empty;
-        mediaTagWriteService.UpdateTrackTag(track,
-            AcoustidFingerprintTag,
-            fingerprint.Fingerprint,
-            ref updated,
-            ref originalValue);
-        
-        mediaTagWriteService.UpdateTrackTag(track,
-            AcoustidFingerprintDurationTag,
-            (fingerprint?.Duration ?? 0).ToString(),
-            ref updated,
-            ref originalValue);
-
-        return await mediaTagWriteService.SafeSaveAsync(track);
     }
 
     public void Save(string artist)
