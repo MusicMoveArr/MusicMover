@@ -8,7 +8,14 @@ public static class Logger
     {
         if (!isDebug || (isDebug && CliCommands.Debug))
         {
-            AnsiConsole.WriteLine(message);
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            {
+                Console.WriteLine(message);
+            }
+            else
+            {
+                AnsiConsole.WriteLine(message);
+            }
         }
     }
 }
