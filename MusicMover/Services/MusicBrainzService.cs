@@ -471,8 +471,8 @@ public class MusicBrainzService
                 Track = releaseTrack,
                 Length = releaseTrack.Length / 1000 ?? int.MaxValue,
                 TitleMatch = relaxedFiltering 
-                    ? Fuzz.PartialTokenSortRatio(trackTitle.ToLower(), releaseTrack.Title?.ToLower() + artistCredit)
-                    : Fuzz.Ratio(trackTitle.ToLower(), releaseTrack.Title?.ToLower() + artistCredit)
+                    ? FuzzyHelper.PartialTokenSortRatioToLower(trackTitle, releaseTrack.Title + artistCredit)
+                    : FuzzyHelper.FuzzRatioToLower(trackTitle, releaseTrack.Title + artistCredit)
             })
             //.Where(match => match.Track.Recording != null)
             .OrderByDescending(releaseTrack => releaseTrack.TitleMatch)
@@ -513,7 +513,7 @@ public class MusicBrainzService
             
             var matchedReleases =
                 data?.Releases
-                    ?.Where(release => release.ArtistCredit?.Count > 0)
+                    ?.Where(release => data.ArtistCredit?.Count > 0)
                     ?.Where(release => release.Media.Count > 0)
                     .Select(release => new
                     {
@@ -600,6 +600,12 @@ public class MusicBrainzService
 
             result.RecordingQuery = recording;
             var matchedArtist = GetBestMatchingArtist(tempRelease.ArtistCredit, track);
+
+            if (matchedArtist == null)
+            {
+                matchedArtist = GetBestMatchingArtist(recording.ArtistCredit, track);
+            }
+            
             if (matchedArtist != null)
             {
                 bestMatchedArtist = matchedArtist;
@@ -639,11 +645,6 @@ public class MusicBrainzService
         string acoustIdApiKey,
         int matchPercentage)
     {
-        if (fingerprint is null)
-        {
-            Logger.WriteLine("Failed to generate fingerprint, corrupt file?");
-        }
-
         string? recordingId = string.Empty;
         string? acoustId = string.Empty;
         AcoustIdRecordingResponse? matchedRecording = null;

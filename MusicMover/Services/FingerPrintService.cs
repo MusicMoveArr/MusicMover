@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MusicMover.Helpers;
 using MusicMover.Models;
 using Newtonsoft.Json;
 
@@ -42,6 +43,7 @@ public class FingerPrintService
         
         if (result == null || string.IsNullOrEmpty(result.Fingerprint))
         {
+            Logger.WriteLine("Failed to generate fingerprint, corrupt file?");
             return null;
         }
         
