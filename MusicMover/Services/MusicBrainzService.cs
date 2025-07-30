@@ -171,9 +171,6 @@ public class MusicBrainzService
         int acoustIdMatchPercentage,
         int musicBrainzMatchPercentage)
     {
-        string? recordingId = string.Empty;
-        string? acoustId = string.Empty;
-        
         string artistCountry = string.Empty;
         MusicBrainzArtistCreditModel? artistCredit = null;
         MusicBrainzArtistReleaseModel? release = null;
@@ -214,7 +211,7 @@ public class MusicBrainzService
 
             if (!matchingReleaseResult.Success)
             {
-                Logger.WriteLine($"MusicBrainz recording not found by id '{recordingId}' by searching from tag names, Artist: {mediaFileInfo.Artist}, ALbum: {mediaFileInfo.Album}, Title: {mediaFileInfo.Title}", true);
+                Logger.WriteLine($"MusicBrainz recording not found by id '{acoustIdResult.RecordingId}' by searching from tag names, Artist: {mediaFileInfo.Artist}, ALbum: {mediaFileInfo.Album}, Title: {mediaFileInfo.Title}", true);
                 return null;
             }
 
@@ -233,11 +230,11 @@ public class MusicBrainzService
             ArtistCredit = artistCredit,
             ISRCS = listISRCs,
             ReleaseMedia = releaseMedia,
-            AcoustId = acoustId,
+            AcoustId = acoustIdResult.AcoustId,
             Release = release,
             ArtistCredits = artistCredits,
             Fingerprint = fingerprint,
-            RecordingId = recordingId
+            RecordingId = acoustIdResult.RecordingId
         };
     }
 
@@ -288,11 +285,11 @@ public class MusicBrainzService
             {
                 AlbumMatchedFor = result.Releases.Recording.Releases
                     .Where(album => FuzzyHelper.ExactNumberMatch(album.Title, mediaFileInfo.Album))
-                    .Select(album => FuzzyHelper.FuzzTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
+                    .Select(album => FuzzyHelper.PartialTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
                     .OrderByDescending(match => match)
                     .FirstOrDefault(),
-                ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
-                TitleMatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
+                ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.PartialTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
+                TitleMatchedFor = FuzzyHelper.PartialTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
                 LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Result.Duration ?? 100),
                 Result = result
             })
@@ -343,21 +340,25 @@ public class MusicBrainzService
                 }
             }
         }
+        
+        //searching in normal tags like Artist/AlbumArtist first
+        //searching as well in Title, it happens that people tag Artist/AlbumArtist differently with their website, collection or w\e
 
         var matchedArtists = artists
             ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
             .Select(artist => new
             {
                 Artist = artist,
-                MatchedFor = Math.Max(FuzzyHelper.FuzzRatioToLower(artist.Name, track.Artist), 
-                    FuzzyHelper.FuzzRatioToLower(artist.Name, track.AlbumArtist))
+                MatchedFor = Math.Max(Math.Max(FuzzyHelper.FuzzRatioToLower(artist.Name, track.Artist), //check in normal Artist tags
+                             FuzzyHelper.FuzzRatioToLower(artist.Name, track.AlbumArtist)),
+                             FuzzyHelper.PartialRatioToLower(artist.Name, track.Title)) //maybe artist name is in the title ?
             })
-            .Where(match => match.MatchedFor >= ArtistMatchPercentage)
             .OrderByDescending(match => match.MatchedFor)
-            .Select(match => match.Artist)
             .ToList();
         
         return matchedArtists
+            ?.Where(match => match.MatchedFor >= ArtistMatchPercentage)
+            ?.Select(match => match.Artist)
             ?.FirstOrDefault();
     }
 
@@ -414,6 +415,12 @@ public class MusicBrainzService
             foreach (var media in potentialRelease.Release.Media)
             {
                 var tempTracks = media.Tracks;
+
+                if (tempTracks?.Count == 0)
+                {
+                    continue;
+                }
+                
                 media.Tracks = GetBestMatchingTracks(tempTracks, track.Title, string.Empty, relaxedFiltering, matchPercentage);
 
                 if (media?.Tracks?.Count == 0 && 

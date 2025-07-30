@@ -77,7 +77,7 @@ public class MusicBrainzAPIService
     public async Task<MusicBrainzRecordingQueryModel?> SearchReleaseAsync(string artist, string album, string trackname)
     {
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
-        Debug.WriteLine($"Requesting MusicBrainz Recording lookup artist:'{artist}', album:'{album}', trackname:'{trackname}'");
+        Debug.WriteLine($"Requesting MusicBrainz Recording lookup artist:'{artist}', trackname:'{trackname}'");
         string url = $"https://musicbrainz.org/ws/2/recording?fmt=json&inc=isrcs+artists+releases+release-groups+url-rels+media+recordings&query=track:\"{trackname}\" AND artist:\"{artist}\"";
         using RestClient client = new RestClient(url);
 
