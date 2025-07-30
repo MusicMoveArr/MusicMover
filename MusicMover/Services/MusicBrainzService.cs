@@ -285,11 +285,11 @@ public class MusicBrainzService
             {
                 AlbumMatchedFor = result.Releases.Recording.Releases
                     .Where(album => FuzzyHelper.ExactNumberMatch(album.Title, mediaFileInfo.Album))
-                    .Select(album => FuzzyHelper.PartialTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
+                    .Select(album => FuzzyHelper.FuzzTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
                     .OrderByDescending(match => match)
                     .FirstOrDefault(),
-                ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.PartialTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
-                TitleMatchedFor = FuzzyHelper.PartialTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
+                ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
+                TitleMatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
                 LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Result.Duration ?? 100),
                 Result = result
             })
