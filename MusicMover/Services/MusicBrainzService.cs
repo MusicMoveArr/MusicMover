@@ -357,7 +357,7 @@ public class MusicBrainzService
             .ToList();
         
         return matchedArtists
-            ?.Where(match => match.MatchedFor >= ArtistMatchPercentage)
+            ?.Where(match => match.MatchedFor >= ArtistMatchPercentage || string.IsNullOrWhiteSpace(track.Artist))
             ?.Select(match => match.Artist)
             ?.FirstOrDefault();
     }

@@ -244,6 +244,12 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_ACOUSTID_MATCH_PERCENTAGE",
         IsRequired = false)]
     public int AcoustIdMatchPercentage { get; set; } = 80;
+
+    [CommandOption("trust-acoustid-when-tagging-failed",
+        Description = "Put the trust into AcoustId when tagging failed completely.",
+        EnvironmentVariable = "MOVE_TRUST_ACOUSTID_WHEN_TAGGING_FAILED",
+        IsRequired = false)]
+    public bool TrustAcoustIdWhenTaggingFailed { get; set; } = false;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -297,7 +303,8 @@ public class CliCommands : ICommand
             MetadataApiMatchPercentage = MetadataApiMatchPercentage,
             TidalMatchPercentage = TidalMatchPercentage,
             MusicBrainzMatchPercentage = MusicBrainzMatchPercentage,
-            AcoustIdMatchPercentage = AcoustIdMatchPercentage
+            AcoustIdMatchPercentage = AcoustIdMatchPercentage,
+            TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed
         };
 
         string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" ];

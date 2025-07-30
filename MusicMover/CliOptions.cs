@@ -42,4 +42,5 @@ public class CliOptions
     public required int TidalMatchPercentage { get; init; }
     public required int MusicBrainzMatchPercentage { get; init; }
     public required int AcoustIdMatchPercentage { get; init; }
+    public required bool TrustAcoustIdWhenTaggingFailed { get; init; }
 }

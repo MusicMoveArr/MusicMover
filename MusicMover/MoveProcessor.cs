@@ -333,93 +333,58 @@ public class MoveProcessor
         bool metadataApiTaggingSuccess = false;
         bool musicBrainzTaggingSuccess = false;
         bool tidalTaggingSuccess = false;
-
-        using (await _asyncAcoustIdLock.LockAsync())
+        
+        musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
+        if (musicBrainzTaggingSuccess)
         {
-            if (!string.IsNullOrWhiteSpace(_options.AcoustIdApiKey) &&
-                (_options.AlwaysCheckAcoustId ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.Artist) ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
-            {
-                FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(mediaFileInfo.FileInfo.FullName);
-                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
-                    fingerprint,
-                    _options.AcoustIdApiKey,
-                    _options.SearchByTagNames,
-                    _options.AcoustIdMatchPercentage,
-                    _options.MusicBrainzMatchPercentage);
-                
-                musicBrainzTaggingSuccess =
-                    match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
-                        match,
-                        mediaFileInfo, 
-                        _options.OverwriteArtist, 
-                        _options.OverwriteAlbum, 
-                        _options.OverwriteTrack,
-                        _options.OverwriteAlbumArtist);
-            
-                if (musicBrainzTaggingSuccess)
-                {
-                    //read again the file after saving
-                    mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                    Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
-                }
-                else
-                {
-                    Logger.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}", true);
-                }
-            }
+            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
         }
 
-        if (!string.IsNullOrWhiteSpace(_options.MetadataApiBaseUrl))
+        metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
+        if (metadataApiTaggingSuccess)
         {
-            metadataApiTaggingSuccess = await _miniMediaMetadataService.WriteTagsAsync(mediaFileInfo, 
-                mediaFileInfo.FileInfo, 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
-                _options.OverwriteArtist, 
-                _options.OverwriteAlbum, 
-                _options.OverwriteTrack,
-                _options.OverwriteAlbumArtist,
-                _options.MetadataApiMatchPercentage);
+            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
+        }
+
+        tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
+        if (tidalTaggingSuccess)
+        {
+            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
+        }
+
+        if (_options.OnlyMoveWhenTagged && 
+            !musicBrainzTaggingSuccess && 
+            !tidalTaggingSuccess &&
+            !metadataApiTaggingSuccess &&
+            _options.TrustAcoustIdWhenTaggingFailed &&
+            !string.IsNullOrWhiteSpace(_options.AcoustIdApiKey))
+        {
+            //empty the tags we use for tagging and try again
+            mediaFileInfo.Album = string.Empty;
+            mediaFileInfo.AlbumArtist = string.Empty;
+            mediaFileInfo.Artist = string.Empty;
+            mediaFileInfo.Title = string.Empty;
+            mediaFileInfo.TrackInfo.Album = string.Empty;
+            mediaFileInfo.TrackInfo.AlbumArtist = string.Empty;
+            mediaFileInfo.TrackInfo.Artist = string.Empty;
+            mediaFileInfo.TrackInfo.Title = string.Empty;
             
+            musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
+            if (musicBrainzTaggingSuccess)
+            {
+                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
+            }
+
+            metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
             if (metadataApiTaggingSuccess)
             {
-                //read again the file after saving
-                mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
+                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
             }
-            else
-            {
-                Logger.WriteLine($"Tidal track not found for {mediaFileInfo.FileInfo.FullName}", true);
-            }
-        }
-        
-        if (!metadataApiTaggingSuccess &&
-            !string.IsNullOrWhiteSpace(_options.TidalClientId) &&
-            !string.IsNullOrWhiteSpace(_options.TidalClientSecret) &&
-            !string.IsNullOrWhiteSpace(_options.TidalCountryCode))
-        {
-            tidalTaggingSuccess = await _tidalService.WriteTagsAsync(mediaFileInfo, 
-                mediaFileInfo.FileInfo, 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
-                _options.OverwriteArtist, 
-                _options.OverwriteAlbum, 
-                _options.OverwriteTrack,
-                _options.OverwriteAlbumArtist,
-                _options.TidalMatchPercentage);
-            
+
+            tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
             if (tidalTaggingSuccess)
             {
-                //read again the file after saving
-                mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-                Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
-            }
-            else
-            {
-                Logger.WriteLine($"Tidal record not found by MediaTag information for {mediaFileInfo.FileInfo.FullName}", true);
+                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
             }
         }
         
@@ -982,5 +947,108 @@ public class MoveProcessor
             return targetDir.Name;
         }
         return subDirectory;
+    }
+
+    private async Task<bool> TagFileAcoustIdAsync(MediaFileInfo mediaFileInfo)
+    {
+        bool success = false;
+        using (await _asyncAcoustIdLock.LockAsync())
+        {
+            if (!string.IsNullOrWhiteSpace(_options.AcoustIdApiKey) &&
+                (_options.AlwaysCheckAcoustId ||
+                 string.IsNullOrWhiteSpace(mediaFileInfo.Artist) ||
+                 string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
+                 string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
+            {
+                FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(mediaFileInfo.FileInfo.FullName);
+                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
+                    fingerprint,
+                    _options.AcoustIdApiKey,
+                    _options.SearchByTagNames,
+                    _options.AcoustIdMatchPercentage,
+                    _options.MusicBrainzMatchPercentage);
+                
+                success =
+                    match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
+                        match,
+                        mediaFileInfo, 
+                        _options.OverwriteArtist, 
+                        _options.OverwriteAlbum, 
+                        _options.OverwriteTrack,
+                        _options.OverwriteAlbumArtist);
+            
+                if (success)
+                {
+                    Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
+                }
+                else
+                {
+                    Logger.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}", true);
+                }
+            }
+        }
+
+        return success;
+    }
+
+    private async Task<bool> TagFileMetadataApiAsync(MediaFileInfo mediaFileInfo)
+    {
+        bool success = false;
+        if (!string.IsNullOrWhiteSpace(_options.MetadataApiBaseUrl))
+        {
+            success = await _miniMediaMetadataService.WriteTagsAsync(mediaFileInfo, 
+                mediaFileInfo.FileInfo, 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
+                _options.OverwriteArtist, 
+                _options.OverwriteAlbum, 
+                _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist,
+                _options.MetadataApiMatchPercentage);
+            
+            if (success)
+            {
+                Logger.WriteLine($"Updated with MetadataAPI tags {mediaFileInfo.FileInfo.FullName}", true);
+            }
+            else
+            {
+                Logger.WriteLine($"MetadataAPI track not found for {mediaFileInfo.FileInfo.FullName}", true);
+            }
+        }
+
+        return success;
+    }
+
+    private async Task<bool> TagFileTidalAsync(MediaFileInfo mediaFileInfo, bool metadataApiTaggingSuccess)
+    {
+        bool success = false;
+        if (!metadataApiTaggingSuccess &&
+            !string.IsNullOrWhiteSpace(_options.TidalClientId) &&
+            !string.IsNullOrWhiteSpace(_options.TidalClientSecret) &&
+            !string.IsNullOrWhiteSpace(_options.TidalCountryCode))
+        {
+            success = await _tidalService.WriteTagsAsync(mediaFileInfo, 
+                mediaFileInfo.FileInfo, 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
+                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
+                _options.OverwriteArtist, 
+                _options.OverwriteAlbum, 
+                _options.OverwriteTrack,
+                _options.OverwriteAlbumArtist,
+                _options.TidalMatchPercentage);
+            
+            if (success)
+            {
+                //read again the file after saving
+                mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
+                Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
+            }
+            else
+            {
+                Logger.WriteLine($"Tidal record not found by MediaTag information for {mediaFileInfo.FileInfo.FullName}", true);
+            }
+        }
+
+        return success;
     }
 }
