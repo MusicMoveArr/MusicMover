@@ -1,9 +1,7 @@
 using System.Text.RegularExpressions;
 using ATL;
-using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models.MetadataAPI.Entities;
-using Spectre.Console;
 
 namespace MusicMover.Services;
 
@@ -23,20 +21,15 @@ public class MiniMediaMetadataService
         _miniMediaMetadataApiService = new MiniMediaMetadataAPIService(baseUrl, providerTypes);
     }
 
-    public async Task<bool> WriteTagsAsync(
-        MediaFileInfo mediaFileInfo, 
-        FileInfo fromFile, 
+    public async Task<List<SearchTrackEntity>> GetMatchesAsync(
+        MediaFileInfo mediaFileInfo,
         string uncoupledArtistName,
         string uncoupledAlbumArtist,
-        bool overWriteArtist, 
-        bool overWriteAlbum, 
-        bool overWriteTrack, 
-        bool overwriteAlbumArtist,
         int matchPercentage)
     {
         if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist) || string.IsNullOrWhiteSpace(mediaFileInfo.Title))
         {
-            return false;
+            return new List<SearchTrackEntity>();
         }
 
         List<string> artistSearch = new List<string>();
@@ -52,7 +45,7 @@ public class MiniMediaMetadataService
 
         if (!artistSearch.Any())
         {
-            return false;
+            return new List<SearchTrackEntity>();
         }
         
         //replace disc X from album
@@ -67,11 +60,11 @@ public class MiniMediaMetadataService
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'", true);
             Logger.WriteLine($"Searching for artist '{artist}'", true);
-            
-            if (await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, fromFile, 
-                    overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
+
+            List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, matchPercentage);
+            if (foundTracks.Count > 0)
             {
-                return true;
+                return foundTracks;
             }
         }
 
@@ -83,45 +76,41 @@ public class MiniMediaMetadataService
             {
                 Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'", true);
                 Logger.WriteLine($"Searching for artist '{artist}'", true);
-                
-                if (await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, fromFile, 
-                        overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
+
+                List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, matchPercentage);
+                if (foundTracks.Count > 0)
                 {
-                    return true;
+                    return foundTracks;
                 }
             }
         }
-        return false;
+        return new List<SearchTrackEntity>();
     }
     
-    private async Task<bool> TryArtistAsync(string? artistName, 
+    private async Task<List<SearchTrackEntity>> TryArtistAsync(string? artistName, 
         string targetTrackTitle,
         string targetAlbumTitle,
-        FileInfo fromFile,
-        bool overWriteArtist, 
-        bool overWriteAlbum, 
-        bool overWriteTrack, 
-        bool overwriteAlbumArtist,
         int matchPercentage)
     {
+        List<SearchTrackEntity> foundTracks = new List<SearchTrackEntity>();
         if (string.IsNullOrWhiteSpace(artistName) ||
             IsVariousArtists(artistName))
         {
-            return false;
+            return foundTracks;
         }
 
         var searchResult = await _miniMediaMetadataApiService.SearchArtistsAsync(artistName);
 
         if (!searchResult.Artists.Any())
         {
-            return false;
+            return foundTracks;
         }
 
         var artists = searchResult.Artists
             .Where(artist => !string.IsNullOrWhiteSpace(artist.Name))
             .Select(artist => new
             {
-                MatchedFor = Fuzz.Ratio(artistName, artist.Name),
+                MatchedFor = FuzzyHelper.FuzzRatioToLower(artistName, artist.Name),
                 Artist = artist
             })
             .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name))
@@ -129,21 +118,21 @@ public class MiniMediaMetadataService
             .OrderByDescending(result => result.MatchedFor)
             .ThenByDescending(result => result.Artist.Popularity)
             .Select(result => result.Artist)
+            .Take(10)
             .ToList();
-
-        bool tagged = false;
         
         foreach (string provider in _providerTypes)
         {
-            foreach (var artist in artists.Where(artist => artist.ProviderType == provider))
+            foreach (var artist in artists.Where(artist => artist.ProviderType == provider || 
+                                                           string.Equals(provider, "any", StringComparison.OrdinalIgnoreCase)))
             {
                 try
                 {
                     SearchTrackEntity? foundTrack = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle, matchPercentage);
                     
-                    if (foundTrack != null && await WriteTagsToFileAsync(foundTrack, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist))
+                    if (foundTrack != null)
                     {
-                        tagged = true;
+                        foundTracks.Add(foundTrack);
                         break;
                     }
                 }
@@ -153,9 +142,7 @@ public class MiniMediaMetadataService
                 }
             }
         }
-
-
-        return tagged;
+        return foundTracks;
     }
 
     private async Task<SearchTrackEntity?> ProcessArtistAsync(
@@ -183,8 +170,8 @@ public class MiniMediaMetadataService
                 .ToList();
 
             bool containsArtist = artistNames.Any(artistName =>
-                                      Fuzz.TokenSortRatio(artist.Name, artistName) > matchPercentage) ||
-                                      Fuzz.TokenSortRatio(artist.Name, string.Join(' ', artistNames)) > matchPercentage; //maybe collab?
+                                      FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, artistName) > matchPercentage) ||
+                                      FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, string.Join(' ', artistNames)) > matchPercentage; //maybe collab?
 
             if (!containsArtist)
             {
@@ -192,7 +179,7 @@ public class MiniMediaMetadataService
             }
             
             if (!string.IsNullOrWhiteSpace(targetAlbumTitle) &&
-                (Fuzz.Ratio(targetAlbumTitle.ToLower(), result.Album.Name.ToLower()) < matchPercentage ||
+                (FuzzyHelper.FuzzRatioToLower(targetAlbumTitle, result.Album.Name) < matchPercentage ||
                  !FuzzyHelper.ExactNumberMatch(targetAlbumTitle, result.Album.Name)))
             {
                 continue;
@@ -215,8 +202,8 @@ public class MiniMediaMetadataService
         var bestMatches = matchesFound
             .Select(match => new
             {
-                TitleMatchedFor = Fuzz.Ratio(targetTrackTitle.ToLower(), match.Name.ToLower()),
-                AlbumMatchedFor = Fuzz.Ratio(targetAlbumTitle.ToLower(), match.Album.Name.ToLower()),
+                TitleMatchedFor = FuzzyHelper.FuzzRatioToLower(targetTrackTitle, match.Name),
+                AlbumMatchedFor = FuzzyHelper.FuzzRatioToLower(targetAlbumTitle, match.Album.Name),
                 Match = match
             })
             .OrderByDescending(result => result.TitleMatchedFor)
@@ -256,7 +243,7 @@ public class MiniMediaMetadataService
         return searchResults
             ?.Select(t => new
             {
-                TitleMatchedFor = Fuzz.Ratio(targetTrackTitle?.ToLower(), t.Name.ToLower()),
+                TitleMatchedFor = FuzzyHelper.FuzzRatioToLower(targetTrackTitle, t.Name),
                 Track = t
             })
             .Where(match => FuzzyHelper.ExactNumberMatch(targetTrackTitle, match.Track.Name))
@@ -273,7 +260,7 @@ public class MiniMediaMetadataService
             return true;
         }
 
-        if (Fuzz.Ratio(name, VariousArtists) >= 95)
+        if (FuzzyHelper.FuzzRatioToLower(name, VariousArtists) >= 95)
         {
             return true;
         }
@@ -281,8 +268,13 @@ public class MiniMediaMetadataService
         return false;
     }
     
-    private async Task<bool> WriteTagsToFileAsync(SearchTrackEntity foundTrack, FileInfo fromFile,
-        bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist)
+    public async Task<bool> WriteTagsToFileAsync(
+        SearchTrackEntity foundTrack, 
+        FileInfo fromFile,
+        bool overWriteArtist, 
+        bool overWriteAlbum, 
+        bool overWriteTrack, 
+        bool overwriteAlbumArtist)
     {
         Track track = new Track(fromFile.FullName);
         bool trackInfoUpdated = false;

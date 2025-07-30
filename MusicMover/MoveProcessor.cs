@@ -996,15 +996,25 @@ public class MoveProcessor
         bool success = false;
         if (!string.IsNullOrWhiteSpace(_options.MetadataApiBaseUrl))
         {
-            success = await _miniMediaMetadataService.WriteTagsAsync(mediaFileInfo, 
-                mediaFileInfo.FileInfo, 
+            var matches = await _miniMediaMetadataService.GetMatchesAsync(
+                mediaFileInfo,
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
                 ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
-                _options.OverwriteArtist, 
-                _options.OverwriteAlbum, 
-                _options.OverwriteTrack,
-                _options.OverwriteAlbumArtist,
                 _options.MetadataApiMatchPercentage);
+
+            foreach (var match in matches)
+            {
+                if (await _miniMediaMetadataService.WriteTagsToFileAsync(
+                        match,
+                        mediaFileInfo.FileInfo,
+                        _options.OverwriteArtist,
+                        _options.OverwriteAlbum,
+                        _options.OverwriteTrack,
+                        _options.OverwriteAlbumArtist))
+                {
+                    success = true;
+                }
+            }
             
             if (success)
             {

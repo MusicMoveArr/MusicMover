@@ -50,4 +50,10 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="MusicMover">
+        <HintPath>..\MusicMover.Tests\bin\Debug\net8.0\MusicMover.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>
