@@ -9,9 +9,6 @@ class Program
     public static async Task Main(string[] args)
     {
         ATL.Settings.OutputStacktracesToConsole = false;
-        {
-        }
-        
         ConsoleArguments = args;
         
         string? cronExpression = Environment.GetEnvironmentVariable("CRON");
