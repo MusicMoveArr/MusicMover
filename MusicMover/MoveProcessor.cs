@@ -43,6 +43,8 @@ public class MoveProcessor
 
     private Stopwatch _sw = Stopwatch.StartNew();
     private Stopwatch _runtimeSw = Stopwatch.StartNew();
+    private List<MediaFileInfo> _filesToProcess = new List<MediaFileInfo>();
+    private const int BatchFileProcessing = 1000;
 
     private readonly CliOptions _options;
     private readonly MemoryCache _memoryCache;
@@ -69,8 +71,6 @@ public class MoveProcessor
 
     public async Task ProcessAsync()
     {
-        List<MediaFileInfo> filesToProcess = new List<MediaFileInfo>();
-        
         var topDirectories = Directory
             .EnumerateFileSystemEntries(_options.FromDirectory, "*.*", SearchOption.TopDirectoryOnly)
             .Where(file => Directory.Exists(file))
@@ -79,22 +79,34 @@ public class MoveProcessor
             .OrderBy(dir => dir)
             .ToList();
         
-        filesToProcess.AddRange(await GetMediaFileListAsync(_options.FromDirectory, SearchOption.TopDirectoryOnly));
+        await GetMediaFileListAsync(_options.FromDirectory, SearchOption.TopDirectoryOnly);
 
         int directoriesRead = 0;
         foreach (string directoryPath in topDirectories)
         {
             Logger.WriteLine($"[{directoriesRead++}/{topDirectories.Count}] Reading files from '{directoryPath}'");
-            filesToProcess.AddRange(await GetMediaFileListAsync(directoryPath, SearchOption.AllDirectories));
+            await GetMediaFileListAsync(directoryPath, SearchOption.AllDirectories);
         }
+        
+        await ProcessMediaFiles();
 
-        filesToProcess = filesToProcess
+        ShowProgress();
+
+        if (_artistsNotFound.Count > 0)
+        {
+            Logger.WriteLine($"Artists not found: {_artistsNotFound.Count}");
+            _artistsNotFound.ForEach(artist => Logger.WriteLine(artist));
+        }
+    }
+
+    private async Task ProcessMediaFiles()
+    {
+        _filesToProcess = _filesToProcess
             .OrderBy(file => file.Artist)
             .ThenBy(file => file.AlbumArtist)
             .ThenBy(file => file.Album)
             .ToList();
-
-        //process directories
+        
         await AnsiConsole.Progress()
             .HideCompleted(true)
             .AutoClear(true)
@@ -111,13 +123,13 @@ public class MoveProcessor
             .StartAsync(async ctx =>
             {
                 Dictionary<string, ProgressTask> progressTasks = new Dictionary<string, ProgressTask>();
-                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {filesToProcess.Count} processed"));
-                totalProgressTask.MaxValue = filesToProcess.Count;
+                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {_filesToProcess.Count} processed"));
+                totalProgressTask.MaxValue = _filesToProcess.Count;
                 if (_options.Parallel)
                 {
                     AsyncLock progressLock = new AsyncLock();
                     
-                    await ParallelHelper.ForEachAsync(filesToProcess, 5, async mediaFileInfo =>
+                    await ParallelHelper.ForEachAsync(_filesToProcess, 5, async mediaFileInfo =>
                     {
                         using (await progressLock.LockAsync())
                         {
@@ -128,7 +140,7 @@ public class MoveProcessor
                                 {
                                     artistName = artistName.Substring(0, 50) + "...";
                                 }
-                                int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
+                                int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
                                 var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                                 task.MaxValue = trackCount;
                                 progressTasks.TryAdd(mediaFileInfo.Artist,task);
@@ -145,7 +157,6 @@ public class MoveProcessor
                             IncrementCounter(() => _skippedErrorFiles++);
                         }
                         
-                        
                         using (await progressLock.LockAsync())
                         {
                             if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
@@ -156,15 +167,15 @@ public class MoveProcessor
                         }
                         
                         totalProgressTask.Value++;
-                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {filesToProcess.Count} processed"));
+                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count} processed"));
                     });
                 }
                 else
                 {
-                    for(; filesToProcess.Count > 0; )
+                    for(; _filesToProcess.Count > 0; )
                     {
-                        var mediaFileInfo = filesToProcess.FirstOrDefault();
-                        filesToProcess.RemoveAt(0);
+                        var mediaFileInfo = _filesToProcess.FirstOrDefault();
+                        _filesToProcess.RemoveAt(0);
                         
                         if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
                         {
@@ -173,7 +184,7 @@ public class MoveProcessor
                             {
                                 artistName = artistName.Substring(0, 50) + "...";
                             }
-                            int trackCount = filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
+                            int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
                             var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
                             task.MaxValue = trackCount;
                             progressTasks.TryAdd(mediaFileInfo.Artist,task);
@@ -195,23 +206,16 @@ public class MoveProcessor
                         }
                         
                         totalProgressTask.Value++;
-                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {filesToProcess.Count} processed"));
+                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count} processed"));
                     }
                 }
             });
-
-        ShowProgress();
-
-        if (_artistsNotFound.Count > 0)
-        {
-            Logger.WriteLine($"Artists not found: {_artistsNotFound.Count}");
-            _artistsNotFound.ForEach(artist => Logger.WriteLine(artist));
-        }
+        
+        _filesToProcess.Clear();
     }
 
-    private async Task<List<MediaFileInfo>> GetMediaFileListAsync(string fromTopDir, SearchOption dirSearchOption)
+    private async Task GetMediaFileListAsync(string fromTopDir, SearchOption dirSearchOption)
     {
-        List<MediaFileInfo> filesToProcess = new List<MediaFileInfo>();
         DirectoryInfo fromDirInfo = new DirectoryInfo(fromTopDir);
 
         FileInfo[] fromFiles = fromDirInfo
@@ -252,11 +256,15 @@ public class MoveProcessor
 
             if (mediaFileInfo != null)
             {
-                filesToProcess.Add(mediaFileInfo);
+                _filesToProcess.Add(mediaFileInfo);
+
+                if (_filesToProcess.Count >= BatchFileProcessing)
+                {
+                    await ProcessMediaFiles();
+                }
             }
         }
 
-        return filesToProcess;
     }
 
     private bool SetToArtistDirectory(string artist, 
