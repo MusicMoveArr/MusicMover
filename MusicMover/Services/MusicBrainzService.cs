@@ -344,14 +344,25 @@ public class MusicBrainzService
         //searching in normal tags like Artist/AlbumArtist first
         //searching as well in Title, it happens that people tag Artist/AlbumArtist differently with their website, collection or w\e
 
+        string featArtist = GetArtistCreditString(artists);
+
+        if (FuzzyHelper.FuzzRatioToLower(featArtist, track.Artist) >= ArtistMatchPercentage ||
+            FuzzyHelper.FuzzRatioToLower(featArtist, track.AlbumArtist) >= ArtistMatchPercentage)
+        {
+            return artists.FirstOrDefault();
+        }
+
         var matchedArtists = artists
             ?.Where(artist => !string.Equals(artist.Name, VariousArtists, StringComparison.OrdinalIgnoreCase))
             .Select(artist => new
             {
                 Artist = artist,
-                MatchedFor = Math.Max(Math.Max(FuzzyHelper.FuzzRatioToLower(artist.Name, track.Artist), //check in normal Artist tags
-                             FuzzyHelper.FuzzRatioToLower(artist.Name, track.AlbumArtist)),
-                             FuzzyHelper.PartialRatioToLower(artist.Name, track.Title)) //maybe artist name is in the title ?
+                MatchedFor = Enumerable.Max<int>([
+                             FuzzyHelper.FuzzRatioToLower(artist.Name, track.Artist), //check in normal Artist tags
+                             FuzzyHelper.FuzzRatioToLower(artist.Name, track.AlbumArtist),
+                             FuzzyHelper.PartialRatioToLower(artist.Name, track.Title),//maybe artist name is in the title ?
+                             
+                ]) 
             })
             .OrderByDescending(match => match.MatchedFor)
             .ToList();
@@ -780,6 +791,24 @@ public class MusicBrainzService
         }
 
         return artistName.Trim();
+    }
+
+    public string GetArtistCreditString(List<MusicBrainzArtistCreditModel> artists)
+    {
+        string? artistName = string.Empty;
+
+        if (artists.Count > 1)
+        {
+            int index = 0;
+            foreach (var artist in artists)
+            {
+                string joinPhrase = artist.JoinPhrase ?? string.Empty;
+                artistName += $"{artist.Name}{joinPhrase}";
+                index++;
+            }
+        }
+
+        return artistName?.Trim() ?? string.Empty;
     }
 
     public string CleanupArtistCredit(string trackName, string? joinPhrase)
