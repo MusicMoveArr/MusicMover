@@ -194,10 +194,16 @@ public class MusicBrainzService
                 if (release == null)
                 {
                     data = await _musicBrainzApiService.GetRecordingByIdAsync(acoustIdResult.MatchedRecording.Id);
-                    mediaFileInfo.TrackInfo.Title = acoustIdResult.MatchedRecording?.Title;
+                    if (!string.IsNullOrWhiteSpace(acoustIdResult.MatchedRecording?.Title))
+                    {
+                        mediaFileInfo.TrackInfo.Title = acoustIdResult.MatchedRecording?.Title;
+                    }
                     
                     release = GetBestMatchingRelease(data, mediaFileInfo.TrackInfo, artistCountry, artistCredit?.Name, true, acoustIdMatchPercentage);
-                    mediaFileInfo.TrackInfo.Title = mediaFileInfo.Title;
+                    if (!string.IsNullOrWhiteSpace(mediaFileInfo.Title))
+                    {
+                        mediaFileInfo.TrackInfo.Title = mediaFileInfo.Title;
+                    }
                 }
                 
                 artistCredits = data?.ArtistCredit ?? [];
@@ -284,28 +290,34 @@ public class MusicBrainzService
             ?.Select(result => new
             {
                 AlbumMatchedFor = result.Releases.Recording.Releases
-                    .Where(album => FuzzyHelper.ExactNumberMatch(album.Title, mediaFileInfo.Album))
-                    .Select(album => FuzzyHelper.FuzzTokenSortRatioToLower(album.Title, mediaFileInfo.Album))
-                    .OrderByDescending(match => match)
+                    .Where(release => ignoreFilters || FuzzyHelper.ExactNumberMatch(release.Title, mediaFileInfo.Album))
+                    .Select(release => new
+                    {
+                        MatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(release.Title, mediaFileInfo.Album),
+                        Release = release
+                    })
+                    .OrderByDescending(match => match.MatchedFor)
                     .FirstOrDefault(),
                 ArtistMatchedFor = result.Result.Artists?.Sum(artist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaFileInfo.Artist)) ?? 0,
                 TitleMatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(mediaFileInfo.Title, result.Result.Title),
                 LengthMatch = Math.Abs(mediaFileInfo.Duration - result.Result.Duration ?? 100),
-                Result = result
+                AcoustIdResult = result
             })
-            .Where(match => ignoreFilters || FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.Result.Result.Title))
+            .Where(match => ignoreFilters || FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.AcoustIdResult.Result.Title))
             //.Where(match => ignoreFilters || match.ArtistMatchedFor >= matchPercentage)
             //.Where(match => ignoreFilters || match.TitleMatchedFor >= matchPercentage)
             .OrderByDescending(result => result.ArtistMatchedFor)
-            .ThenByDescending(result => result.AlbumMatchedFor)
+            .ThenByDescending(result => result.AlbumMatchedFor?.MatchedFor)
             .ThenByDescending(result => result.TitleMatchedFor)
             .ThenBy(result => result.LengthMatch)
-            .Select(result => result.Result)
+            .Select(result => result)
             .ToList();
 
-        AcoustIdRecordingResponse? firstResult = results?.FirstOrDefault()?.Result;
+        var bestResult = results.FirstOrDefault();
+        AcoustIdRecordingResponse? firstResult = bestResult?.AcoustIdResult.Result;
         if (firstResult != null)
         {
+            firstResult.RecordingRelease = bestResult.AlbumMatchedFor?.Release;
             firstResult.AcoustId = highestScoreResult.Id;
         }
         return firstResult;
@@ -498,7 +510,7 @@ public class MusicBrainzService
             .ToList();
 
         return matches
-            .Where(match => match.TitleMatch >= matchPercentage)
+            .Where(match => (relaxedFiltering && string.IsNullOrWhiteSpace(trackTitle)) || match.TitleMatch >= matchPercentage)
             .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackTitle, match.Track.Title))
             .Select(releaseTrack => releaseTrack.Track)
             .ToList();;

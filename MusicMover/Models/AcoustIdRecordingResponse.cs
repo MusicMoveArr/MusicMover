@@ -1,3 +1,5 @@
+using MusicMover.Models.MusicBrainz;
+
 namespace MusicMover.Models;
 
 public class AcoustIdRecordingResponse
@@ -8,4 +10,5 @@ public class AcoustIdRecordingResponse
     public List<AcoustIdArtistsResponse>? Artists { get; set; }
     
     public string AcoustId { get; set; }
+    public MusicBrainzArtistReleaseModel? RecordingRelease { get; set; }
 }
