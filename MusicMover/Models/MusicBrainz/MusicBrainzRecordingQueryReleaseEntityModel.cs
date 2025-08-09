@@ -20,7 +20,7 @@ public class MusicBrainzRecordingQueryReleaseEntityModel
     public int TrackCount { get; set; }
     
     [JsonPropertyName("artist-credit")]
-    public List<MusicBrainzArtistCreditModel> ArtistCredit {get; set; }
+    public List<MusicBrainzArtistCreditModel>? ArtistCredit {get; set; }
     
     [JsonPropertyName("release-group")]
     public MusicBrainzReleaseGroupModel ReleaseGroup { get; set; }

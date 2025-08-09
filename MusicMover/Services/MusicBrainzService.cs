@@ -573,6 +573,11 @@ public class MusicBrainzService
 
             if (matchedRelease != null)
             {
+                if (matchedRelease.ArtistCredit == null)
+                {
+                    matchedRelease.ArtistCredit = data.ArtistCredit;
+                }
+                
                 trackArtist = artistName;
                 return matchedRelease;
             }
@@ -805,11 +810,11 @@ public class MusicBrainzService
         return artistName.Trim();
     }
 
-    public string GetArtistCreditString(List<MusicBrainzArtistCreditModel> artists)
+    public string GetArtistCreditString(List<MusicBrainzArtistCreditModel>? artists)
     {
         string? artistName = string.Empty;
 
-        if (artists.Count > 1)
+        if (artists?.Count > 1)
         {
             int index = 0;
             foreach (var artist in artists)
