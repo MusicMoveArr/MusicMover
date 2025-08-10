@@ -496,6 +496,11 @@ public class MediaTagWriteService
             Logger.WriteLine(ex.Message);
         }
 
+        if (!success)
+        {
+            
+        }
+
         if (success && File.Exists(tempFile))
         {
             File.Move(tempFile, targetFile.FullName, true);
@@ -540,7 +545,7 @@ public class MediaTagWriteService
                 orgValue = orgValue.Substring(0, 100) + "...";
             }
             
-            Console.WriteLine($"Updating tag '{tagName}' value '{orgValue}' =>  '{value}'");
+            Logger.WriteLine($"Updating tag '{tagName}' value '{orgValue}' =>  '{value}'", true);
             trackInfoUpdated = true;
         }
     }
