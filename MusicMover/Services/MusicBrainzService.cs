@@ -98,12 +98,10 @@ public class MusicBrainzService
             _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Title", trackTitle, ref trackInfoUpdated);
         }
         if (overWriteAlbum && 
-            !string.IsNullOrWhiteSpace(match.Release.Title) && 
-            !string.IsNullOrWhiteSpace(mediaFileInfo.Album))
+            !string.IsNullOrWhiteSpace(match.Release.Title))
         {
             if (!string.IsNullOrWhiteSpace(match.Release.Disambiguation) &&
                 !match.Release.Title.ToLower().Contains(match.Release.Disambiguation.ToLower()) &&
-                mediaFileInfo.Album.ToLower().Contains(match.Release.Disambiguation.ToLower()) &&
                 !match.Release.Title.Trim().EndsWith(')'))
             {
                 string disambiguation = string.Join(' ',
