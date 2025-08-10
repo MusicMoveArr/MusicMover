@@ -105,26 +105,26 @@ public class MiniMediaMetadataService
         {
             return foundTracks;
         }
-
-        var artists = searchResult.Artists
-            .Where(artist => !string.IsNullOrWhiteSpace(artist.Name))
-            .Select(artist => new
-            {
-                MatchedFor = FuzzyHelper.FuzzRatioToLower(artistName, artist.Name),
-                Artist = artist
-            })
-            .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name))
-            .Where(match => match.MatchedFor >= matchPercentage)
-            .OrderByDescending(result => result.MatchedFor)
-            .ThenByDescending(result => result.Artist.Popularity)
-            .Select(result => result.Artist)
-            .Take(10)
-            .ToList();
         
         foreach (string provider in _providerTypes)
         {
-            foreach (var artist in artists.Where(artist => artist.ProviderType == provider || 
-                                                           string.Equals(provider, "any", StringComparison.OrdinalIgnoreCase)))
+            var artists = searchResult.Artists
+                .Where(artist => !string.IsNullOrWhiteSpace(artist.Name))
+                .Where(artist => string.Equals(artist.ProviderType, provider) || string.Equals(provider, "any", StringComparison.OrdinalIgnoreCase))
+                .Select(artist => new
+                {
+                    MatchedFor = FuzzyHelper.FuzzRatioToLower(artistName, artist.Name),
+                    Artist = artist
+                })
+                .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name))
+                .Where(match => match.MatchedFor >= matchPercentage)
+                .OrderByDescending(result => result.MatchedFor)
+                .ThenByDescending(result => result.Artist.Popularity)
+                .Select(result => result.Artist)
+                .Take(10)
+                .ToList();
+            
+            foreach (var artist in artists)
             {
                 try
                 {
@@ -210,8 +210,8 @@ public class MiniMediaMetadataService
             .ThenByDescending(result => result.AlbumMatchedFor)
             .ToList();
         
-        //Console.WriteLine("Tracks to match with:");
-        //Console.WriteLine($"Match with, Title '{targetTrackTitle}', Album '{targetAlbumTitle}', Artist: '{artist.Name}'");
+        //Logger.WriteLine("Tracks to match with:");
+        //Logger.WriteLine($"Match with, Title '{targetTrackTitle}', Album '{targetAlbumTitle}', Artist: '{artist.Name}'");
         //foreach (var match in searchResultTracks.Tracks)
         //{
         //    string? mainArtist = match.Artists.FirstOrDefault(artist => artist.Id == match.Album.ArtistId)?.Name;
