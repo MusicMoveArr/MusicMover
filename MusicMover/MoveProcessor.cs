@@ -131,19 +131,30 @@ public class MoveProcessor
                     
                     await ParallelHelper.ForEachAsync(_filesToProcess, 5, async mediaFileInfo =>
                     {
+                        string artistName = mediaFileInfo.Artist ?? string.Empty;
+                        string albumName = mediaFileInfo.Album ?? string.Empty;
+                        string trackName = mediaFileInfo.Title ?? string.Empty;
+                        
+                        if (artistName.Length > 30)
+                        {
+                            artistName = artistName.Substring(0, 30) + "...";
+                        }
+                        if (albumName.Length > 30)
+                        {
+                            albumName = albumName.Substring(0, 30) + "...";
+                        }
+                        if (trackName.Length > 30)
+                        {
+                            trackName = trackName.Substring(0, 30) + "...";
+                        }
                         using (await progressLock.LockAsync())
                         {
-                            if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
+                            if (!progressTasks.ContainsKey(artistName))
                             {
-                                string artistName = mediaFileInfo.Artist;
-                                if (artistName.Length > 50)
-                                {
-                                    artistName = artistName.Substring(0, 50) + "...";
-                                }
                                 int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
-                                var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
+                                var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{albumName}', Track: '{trackName}'"));
                                 task.MaxValue = trackCount;
-                                progressTasks.TryAdd(mediaFileInfo.Artist,task);
+                                progressTasks.TryAdd(artistName, task);
                             }
                         }
                         
@@ -159,10 +170,10 @@ public class MoveProcessor
                         
                         using (await progressLock.LockAsync())
                         {
-                            if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
+                            if (progressTasks.TryGetValue(artistName, out ProgressTask progressTask))
                             {
                                 progressTask.Increment(1);
-                                progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
+                                progressTask.Description(Markup.Escape($"Processing Artist '{artistName}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{albumName}', Track: '{trackName}'"));
                             }
                         }
                         
@@ -177,18 +188,30 @@ public class MoveProcessor
                         var mediaFileInfo = _filesToProcess.FirstOrDefault();
                         _filesToProcess.RemoveAt(0);
                         
-                        if (!progressTasks.ContainsKey(mediaFileInfo.Artist))
+                        string artistName = mediaFileInfo.Artist ?? string.Empty;
+                        string albumName = mediaFileInfo.Album ?? string.Empty;
+                        string trackName = mediaFileInfo.Title ?? string.Empty;
+                        
+                        if (artistName.Length > 30)
                         {
-                            string artistName = mediaFileInfo.Artist;
-                            if (artistName.Length > 50)
-                            {
-                                artistName = artistName.Substring(0, 50) + "...";
-                            }
-                            int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
-                            var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
-                            task.MaxValue = trackCount;
-                            progressTasks.TryAdd(mediaFileInfo.Artist,task);
+                            artistName = artistName.Substring(0, 30) + "...";
                         }
+                        if (albumName.Length > 30)
+                        {
+                            albumName = albumName.Substring(0, 30) + "...";
+                        }
+                        if (trackName.Length > 30)
+                        {
+                            trackName = trackName.Substring(0, 30) + "...";
+                        }
+                        if (!progressTasks.ContainsKey(artistName))
+                        {
+                            int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));
+                            var task = ctx.AddTask(Markup.Escape($"Processing Artist '{artistName}' 0 of {trackCount} processed, Album: '{albumName}', Track: '{trackName}'"));
+                            task.MaxValue = trackCount;
+                            progressTasks.TryAdd(artistName,task);
+                        }
+
                         try
                         {
                             await ProcessFromFileAsync(mediaFileInfo);
@@ -199,10 +222,10 @@ public class MoveProcessor
                             IncrementCounter(() => _skippedErrorFiles++);
                         }
                         
-                        if (progressTasks.TryGetValue(mediaFileInfo.Artist, out ProgressTask progressTask))
+                        if (progressTasks.TryGetValue(artistName, out ProgressTask progressTask))
                         {
                             progressTask.Increment(1);
-                            progressTask.Description(Markup.Escape($"Processing Artist '{mediaFileInfo.Artist}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{mediaFileInfo.Album}', Track: '{mediaFileInfo.Title}'"));
+                            progressTask.Description(Markup.Escape($"Processing Artist '{artistName}' {progressTask.Value} of {progressTask.MaxValue} processed, Album: '{albumName}', Track: '{trackName}'"));
                         }
                         
                         totalProgressTask.Value++;
