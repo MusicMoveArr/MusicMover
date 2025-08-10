@@ -9,7 +9,7 @@ public class TidalAPICacheLayerService
     private readonly TidalAPIService _tidalAPIService;
     private readonly MemoryCache _cache;
     private const int ApiDelay = 4500;
-    private const int SlidingCacheExpiration = 120;
+    private const int SlidingCacheExpiration = 15;
     private Stopwatch _apiStopwatch = Stopwatch.StartNew();
     
     public TidalAPICacheLayerService(string clientId, string clientSecret, string countryCode)
