@@ -27,17 +27,16 @@ public class FingerPrintService
         string output = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
 
-        // Check if fingerprint was successfully generated
-        if (process.ExitCode != 0)
-        {
-            return null;
-        }
-
         return ParseFingerprint(output);
     }
 
     private FpcalcOutput? ParseFingerprint(string output)
     {
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            return null;
+        }
+        
         // Deserialize JSON output to FpcalcOutput object
         var result = JsonConvert.DeserializeObject<FpcalcOutput>(output);
         
