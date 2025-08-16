@@ -8,6 +8,5 @@ public class AcoustIdResultMatch
     public required string? AcoustId { get; set; }
     public required MusicBrainzArtistReleaseModel? Release { get; init; }
     public required List<MusicBrainzArtistCreditModel> ArtistCredits { get; init; }
-    public required FpcalcOutput? Fingerprint { get; init; }
     public required string? RecordingId { get; init; }
 }

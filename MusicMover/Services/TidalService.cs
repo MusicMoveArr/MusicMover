@@ -402,7 +402,10 @@ public class TidalService
     }
 
     private async Task<bool> WriteTagsToFileAsync(FileInfo fromFile,
-        bool overWriteArtist, bool overWriteAlbum, bool overWriteTrack, bool overwriteAlbumArtist, 
+        bool overWriteArtist, 
+        bool overWriteAlbum, 
+        bool overWriteTrack, 
+        bool overwriteAlbumArtist, 
         TidalSearchDataEntity tidalArtist,
         TidalSearchDataEntity tidalAlbum,
         TidalSearchDataEntity tidalTrack,
@@ -473,7 +476,7 @@ public class TidalService
             _mediaTagWriteService.UpdateTag(track, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
         }
         
-        return await _mediaTagWriteService.SafeSaveAsync(track);
+        return true;
     }
     
     private bool IsVariousArtists(string? name)

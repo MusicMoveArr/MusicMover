@@ -54,6 +54,7 @@ public class MoveProcessor
     private readonly MiniMediaMetadataService _miniMediaMetadataService;
     private readonly AsyncLock _asyncAcoustIdLock;
     private readonly FingerPrintService _fingerPrintService;
+    private readonly MediaTagWriteService _mediaTagWriteService;
     
     private List<string> _artistsNotFound = new List<string>();
 
@@ -65,6 +66,7 @@ public class MoveProcessor
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
         _fingerPrintService = new FingerPrintService();
+        _mediaTagWriteService = new MediaTagWriteService();
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
         _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
     }
@@ -356,32 +358,15 @@ public class MoveProcessor
         IncrementCounter(() => _scannedFromFiles++);
         Debug.WriteLine($"File: {mediaFileInfo.FileInfo.FullName}");
 
-        if (await mediaFileInfo.GenerateSaveFingerprintAsync())
-        {
-            mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
-        }
+        await mediaFileInfo.GenerateSaveFingerprintAsync();
 
         bool metadataApiTaggingSuccess = false;
         bool musicBrainzTaggingSuccess = false;
         bool tidalTaggingSuccess = false;
         
         musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
-        if (musicBrainzTaggingSuccess)
-        {
-            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-        }
-
         metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
-        if (metadataApiTaggingSuccess)
-        {
-            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-        }
-
         tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
-        if (tidalTaggingSuccess)
-        {
-            mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-        }
 
         if (_options.OnlyMoveWhenTagged && 
             !musicBrainzTaggingSuccess && 
@@ -401,22 +386,8 @@ public class MoveProcessor
             mediaFileInfo.TrackInfo.Title = string.Empty;
             
             musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
-            if (musicBrainzTaggingSuccess)
-            {
-                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-            }
-
             metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
-            if (metadataApiTaggingSuccess)
-            {
-                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-            }
-
             tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
-            if (tidalTaggingSuccess)
-            {
-                mediaFileInfo = new  MediaFileInfo(mediaFileInfo.FileInfo);
-            }
         }
         
         if (_options.OnlyMoveWhenTagged && !musicBrainzTaggingSuccess && !tidalTaggingSuccess && !metadataApiTaggingSuccess)
@@ -448,15 +419,14 @@ public class MoveProcessor
             Logger.WriteLine($"File is missing Artist, Album or title in the tags, skipping, {mediaFileInfo.FileInfo.FullName}");
             return false;
         }
+        
 
         if (!String.IsNullOrWhiteSpace(_options.FileFormat))
         {
             string oldFileName = mediaFileInfo.FileInfo.Name;
             string newFileName = GetFormatName(mediaFileInfo, _options.FileFormat, _options.DirectorySeperator) + mediaFileInfo.FileInfo.Extension;
             string newFilePath = Path.Join(mediaFileInfo.FileInfo.Directory.FullName, newFileName);
-            File.Move(mediaFileInfo.FileInfo.FullName, newFilePath, true);
-            mediaFileInfo = new MediaFileInfo(new FileInfo(newFilePath));
-            Logger.WriteLine($"Renamed '{oldFileName}' => '{newFileName}'", true);
+            mediaFileInfo.TargetSaveFileInfo = new FileInfo(newFilePath);
         }
 
         DirectoryInfo toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
@@ -499,7 +469,7 @@ public class MoveProcessor
             return false;
         }
 
-        SimilarFileResult similarFileResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, toAlbumDirInfo);
+        SimilarFileResult similarFileResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.TargetSaveFileInfo, toAlbumDirInfo);
 
         if (similarFileResult.Errors && !_options.ContinueScanError)
         {
@@ -520,7 +490,7 @@ public class MoveProcessor
                 continue;
             }
 
-            var extraSimilarResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.FileInfo, albumDirInfo);
+            var extraSimilarResult = await GetSimilarFileFromTagsArtistAsync(mediaFileInfo, mediaFileInfo.TargetSaveFileInfo, albumDirInfo);
 
             if (extraSimilarResult.Errors && !_options.ContinueScanError)
             {
@@ -546,7 +516,7 @@ public class MoveProcessor
             return false;
         }
 
-        string fromFileName = mediaFileInfo.FileInfo.Name;
+        string fromFileName = mediaFileInfo.TargetSaveFileInfo.Name;
 
         if (_options.RenameVariousArtists &&
             fromFileName.Contains(VariousArtistsName))
@@ -568,8 +538,14 @@ public class MoveProcessor
                 Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
             }
 
-            UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
-            mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
+            await UpdateArtistTagAsync(updatedArtistName, mediaFileInfo, artist);
+
+            if (await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo, new FileInfo(newFromFilePath)) &&
+                !string.Equals(mediaFileInfo.FileInfo.FullName, newFromFilePath))
+            {
+                mediaFileInfo.FileInfo.Delete();
+            }
+            
             Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
             RemoveCacheByPath(newFromFilePath);
 
@@ -608,10 +584,15 @@ public class MoveProcessor
                     Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
                 }
 
-                UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
-                mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
-                Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
+                await UpdateArtistTagAsync(updatedArtistName, mediaFileInfo, artist);
                 
+                if (await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo, new FileInfo(newFromFilePath)) &&
+                    !string.Equals(mediaFileInfo.FileInfo.FullName, newFromFilePath))
+                {
+                    mediaFileInfo.FileInfo.Delete();
+                }
+                
+                Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
                 
                 RemoveCacheByPath(newFromFilePath);
                 RemoveCacheByPath(similarFile.File.FullName);
@@ -664,8 +645,14 @@ public class MoveProcessor
                     Logger.WriteLine($"Created directory, {toAlbumDirInfo.FullName}", true);
                 }
 
-                UpdateArtistTag(updatedArtistName, mediaFileInfo, oldArtistName, artist, mediaFileInfo.FileInfo);
-                mediaFileInfo.FileInfo.MoveTo(newFromFilePath, true);
+                await UpdateArtistTagAsync(updatedArtistName, mediaFileInfo, artist);
+                
+                if (await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo, new FileInfo(newFromFilePath)) &&
+                    !string.Equals(mediaFileInfo.FileInfo.FullName, newFromFilePath))
+                {
+                    mediaFileInfo.FileInfo.Delete();
+                }
+                
                 Logger.WriteLine($"Moved {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}");
                 RemoveCacheByPath(newFromFilePath);
 
@@ -859,12 +846,12 @@ public class MoveProcessor
         return cachedMediaInfo;
     }
     
-    private void UpdateArtistTag(bool updatedArtistName, MediaFileInfo tagFile, string oldArtistName, string artist,
-        FileInfo fromFile)
+    private async Task UpdateArtistTagAsync(bool updatedArtistName, MediaFileInfo tagFile, string artist)
     {
         if (updatedArtistName && _options.UpdateArtistTags)
         {
-            tagFile.Save(artist);
+            await _mediaTagWriteService.UpdateArtistAsync(tagFile.TrackInfo, tagFile.FileInfo, artist);
+            tagFile.SetTrackInfo(tagFile.TrackInfo);
             
             IncrementCounter(() => _updatedTagfiles++);
         }
@@ -896,7 +883,7 @@ public class MoveProcessor
                               $"Cached Read Target: {_cachedReadTargetFiles}. " +
                               $"Scanned Target: {_scannedTargetFiles}. " +
                               $"Skipped Error: {_skippedErrorFiles}, " +
-                              $"Running: {(int)_runtimeSw.Elapsed.TotalMinutes}:{_runtimeSw.Elapsed.Seconds}");
+                              $"Running: {_runtimeSw.Elapsed.Hours}:{_runtimeSw.Elapsed.Minutes}:{_runtimeSw.Elapsed.Seconds}");
     }
 
     private void IncrementCounter(Action callback)
@@ -991,9 +978,7 @@ public class MoveProcessor
                  string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
                  string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
             {
-                FpcalcOutput? fingerprint = await _fingerPrintService.GetFingerprintAsync(mediaFileInfo.FileInfo.FullName);
                 var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
-                    fingerprint,
                     _options.AcoustIdApiKey,
                     _options.SearchByTagNames,
                     _options.AcoustIdMatchPercentage,
@@ -1010,6 +995,7 @@ public class MoveProcessor
             
                 if (success)
                 {
+                    mediaFileInfo.SetTrackInfo(mediaFileInfo.TrackInfo);
                     Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
                 }
                 else
@@ -1037,12 +1023,13 @@ public class MoveProcessor
             {
                 if (await _miniMediaMetadataService.WriteTagsToFileAsync(
                         match,
-                        mediaFileInfo.FileInfo,
+                        mediaFileInfo,
                         _options.OverwriteArtist,
                         _options.OverwriteAlbum,
                         _options.OverwriteTrack,
                         _options.OverwriteAlbumArtist))
                 {
+                    mediaFileInfo.SetTrackInfo(mediaFileInfo.TrackInfo);
                     success = true;
                 }
             }
@@ -1080,8 +1067,7 @@ public class MoveProcessor
             
             if (success)
             {
-                //read again the file after saving
-                mediaFileInfo = new MediaFileInfo(mediaFileInfo.FileInfo);
+                mediaFileInfo.SetTrackInfo(mediaFileInfo.TrackInfo);
                 Logger.WriteLine($"Updated with Tidal tags {mediaFileInfo.FileInfo.FullName}", true);
             }
             else

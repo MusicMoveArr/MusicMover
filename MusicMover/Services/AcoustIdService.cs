@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using MusicMover.Helpers;
-using MusicMover.Models;
+using MusicMover.Models.AcoustId;
 using Polly;
 using Polly.Retry;
 using RestSharp;

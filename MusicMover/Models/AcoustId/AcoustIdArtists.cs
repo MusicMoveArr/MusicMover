@@ -1,6 +1,6 @@
-namespace MusicMover.Models;
+namespace MusicMover.Models.AcoustId;
 
-public class AcoustIdArtistsResponse
+public class AcoustIdArtists
 {
     public string? Id { get; set; }
     public string? Name { get; set; }

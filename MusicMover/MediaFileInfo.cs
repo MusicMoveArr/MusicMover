@@ -1,6 +1,5 @@
 using System.Globalization;
 using ATL;
-using FFMpegCore;
 using MusicMover.Models;
 using MusicMover.Services;
 
@@ -12,9 +11,10 @@ public class MediaFileInfo
     private const string AcoustidFingerprintDurationTag = "Acoustid Fingerprint Duration";
     private const string AcoustIdIdTag = "AcoustidId";
     private const string AcoustIdTag = "AcoustId";
-    
+
     public Track TrackInfo { get; private set; }
     public FileInfo FileInfo { get; set; }
+    public FileInfo TargetSaveFileInfo { get; set; }
     private FingerPrintService _fingerPrintService;
     
     public string? Artist { get; set; }
@@ -47,9 +47,13 @@ public class MediaFileInfo
         : this()
     {
         this.FileInfo = fileInfo;
+        this.TargetSaveFileInfo = fileInfo;
         
         CancellationTokenSource cancellationToken = new CancellationTokenSource();
-        var readRask = Task.Run(() => this.TrackInfo = new Track(fileInfo.FullName), cancellationToken.Token);
+        var readRask = Task.Run(() =>
+        {
+           this.TrackInfo = new Track(fileInfo.FullName);
+        }, cancellationToken.Token);
         Task.WhenAny(readRask, Task.Delay(TimeSpan.FromSeconds(5))).GetAwaiter().GetResult();
         
         if (this.TrackInfo == null)
@@ -79,27 +83,31 @@ public class MediaFileInfo
             return false;
         }
 
-        Track track = new Track(FileInfo.FullName);
         MediaTagWriteService mediaTagWriteService = new MediaTagWriteService();
 
         bool updated = false;
         string originalValue = string.Empty;
-        mediaTagWriteService.UpdateTrackTag(track,
+        mediaTagWriteService.UpdateTrackTag(this.TrackInfo,
             AcoustidFingerprintTag,
-            fingerprint.Fingerprint,
+            fingerprint?.Fingerprint ?? string.Empty,
             ref updated,
             ref originalValue);
         
-        mediaTagWriteService.UpdateTrackTag(track,
+        mediaTagWriteService.UpdateTrackTag(this.TrackInfo,
             AcoustidFingerprintDurationTag,
             (fingerprint?.Duration ?? 0).ToString(),
             ref updated,
             ref originalValue);
 
-        return await mediaTagWriteService.SafeSaveAsync(track);
-    }
+        this.AcoustIdFingerPrint = fingerprint.Fingerprint ?? string.Empty;
+        this.AcoustIdFingerPrintDuration = fingerprint?.Duration ?? 0;
 
-    private void SetTrackInfo(Track trackInfo)
+        return true;
+    }
+    
+    
+
+    public void SetTrackInfo(Track trackInfo)
     {
         this.TrackInfo = trackInfo;
         var mediaTags = TrackInfo.AdditionalFields
@@ -197,26 +205,5 @@ public class MediaFileInfo
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdIdTag, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tag.Key.Replace(" ", string.Empty), AcoustIdTag, StringComparison.OrdinalIgnoreCase)
             ).Value?.Trim();
-    }
-
-    public void Save(string artist)
-    {
-        string tempFile = $"{FileInfo.FullName}.tmp{FileInfo.Extension}";
-        bool success = FFMpegArguments
-            .FromFileInput(FileInfo.FullName)
-            .OutputToFile(tempFile, overwrite: true, options => options
-                .WithCustomArgument($"-metadata album_artist=\"{artist}\"")
-                .WithCustomArgument($"-metadata artist=\"{artist}\"")
-                .WithCustomArgument("-codec copy")) // Prevents re-encoding
-            .ProcessSynchronously();
-
-        if (success && File.Exists(tempFile))
-        {
-            File.Move(tempFile, FileInfo.FullName, true);
-        }
-        else if (File.Exists(tempFile))
-        {
-            File.Delete(tempFile);
-        }
     }
 }

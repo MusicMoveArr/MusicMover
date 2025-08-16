@@ -7,26 +7,12 @@ namespace MusicMover.Services;
 
 public class MediaTagWriteService
 {
-    public async Task<bool> SaveAsync(FileInfo targetFile, string artistName, string albumName, string title)
+    public async Task UpdateArtistAsync(Track track, FileInfo targetFile, string artistName)
     {
         string orgValue = string.Empty;
         bool isUpdated = false;
-        Track track = new Track(targetFile.FullName);
         UpdateTrackTag(track, "artist", artistName, ref isUpdated, ref orgValue);
-        UpdateTrackTag(track, "album", albumName, ref isUpdated, ref orgValue);
-        UpdateTrackTag(track, "title", title, ref isUpdated, ref orgValue);
-
-        return await SafeSaveAsync(track);
-    }
-    
-    public async Task<bool> SaveTagAsync(FileInfo targetFile, string tag, string value)
-    {
-        string orgValue = string.Empty;
-        bool isUpdated = false;
-        Track track = new Track(targetFile.FullName);
-        UpdateTrackTag(track, tag, value, ref isUpdated, ref orgValue);
-
-        return await SafeSaveAsync(track);
+        UpdateTrackTag(track, "AlbumArtist", artistName, ref isUpdated, ref orgValue);
     }
     
     public bool UpdateTrackTag(Track track, string tag, string value, ref bool updated, ref string orgValue)
@@ -476,10 +462,9 @@ public class MediaTagWriteService
         return string.Empty;
     }
     
-    public async Task<bool> SafeSaveAsync(Track track)
+    public async Task<bool> SafeSaveAsync(Track track, FileInfo targetFile)
     {
-        FileInfo targetFile = new FileInfo(track.Path);
-        string tempFile = $"{track.Path}.tmp{targetFile.Extension}";
+        string tempFile = $"{targetFile.FullName}.tmp{targetFile.Extension}";
 
         if (File.Exists(tempFile))
         {
@@ -494,11 +479,6 @@ public class MediaTagWriteService
         catch (Exception ex)
         {
             Logger.WriteLine(ex.Message);
-        }
-
-        if (!success)
-        {
-            
         }
 
         if (success && File.Exists(tempFile))

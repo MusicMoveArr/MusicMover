@@ -3,6 +3,7 @@ using ATL;
 using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models;
+using MusicMover.Models.AcoustId;
 using MusicMover.Models.MusicBrainz;
 
 namespace MusicMover.Services;
@@ -142,8 +143,6 @@ public class MusicBrainzService
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Status", match.Release.Status, ref trackInfoUpdated);
 
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Id", match.AcoustId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint", match.Fingerprint?.Fingerprint, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Acoustid Fingerprint Duration", match.Fingerprint?.Duration.ToString(CultureInfo.InvariantCulture), ref trackInfoUpdated);
 
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", match.Release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "originaldate", match.Release.ReleaseGroup?.FirstReleaseDate, ref trackInfoUpdated);
@@ -158,12 +157,11 @@ public class MusicBrainzService
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", match.ReleaseMedia.TrackCount.ToString(), ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MEDIA", match.ReleaseMedia.Format, ref trackInfoUpdated);
 
-        return await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo);
+        return true;
     }
 
     public async Task<AcoustIdResultMatch?> GetMatchFromAcoustIdAsync(
         MediaFileInfo mediaFileInfo,
-        FpcalcOutput? fingerprint,
         string acoustIdApiKey,
         bool searchByTagNames,
         int acoustIdMatchPercentage,
@@ -174,7 +172,7 @@ public class MusicBrainzService
         MusicBrainzArtistReleaseModel? release = null;
         List<MusicBrainzArtistCreditModel> artistCredits = new List<MusicBrainzArtistCreditModel>();
         List<string>? listISRCs = new List<string>();
-        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(fingerprint, mediaFileInfo, acoustIdApiKey, acoustIdMatchPercentage);
+        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(mediaFileInfo, acoustIdApiKey, acoustIdMatchPercentage);
 
         if (acoustIdResult.Success && !string.IsNullOrWhiteSpace(acoustIdResult.RecordingId))
         {
@@ -237,12 +235,11 @@ public class MusicBrainzService
             AcoustId = acoustIdResult.AcoustId,
             Release = release,
             ArtistCredits = artistCredits,
-            Fingerprint = fingerprint,
             RecordingId = acoustIdResult.RecordingId
         };
     }
 
-    public async Task<AcoustIdRecordingResponse?> GetBestMatchingAcoustIdAsync(
+    public async Task<AcoustIdRecording?> GetBestMatchingAcoustIdAsync(
         AcoustIdResponse? acoustIdResponse, 
         MediaFileInfo mediaFileInfo,
         int matchPercentage)
@@ -312,7 +309,7 @@ public class MusicBrainzService
             .ToList();
 
         var bestResult = results.FirstOrDefault();
-        AcoustIdRecordingResponse? firstResult = bestResult?.AcoustIdResult.Result;
+        AcoustIdRecording? firstResult = bestResult?.AcoustIdResult.Result;
         if (firstResult != null)
         {
             firstResult.RecordingRelease = bestResult.AlbumMatchedFor?.Release;
@@ -673,14 +670,14 @@ public class MusicBrainzService
         return result;
     }
 
-    public async Task<GetDataByAcoustIdResult> GetDataByAcoustIdAsync(FpcalcOutput? fingerprint, 
+    public async Task<GetDataByAcoustIdResult> GetDataByAcoustIdAsync(
         MediaFileInfo mediaFileInfo, 
         string acoustIdApiKey,
         int matchPercentage)
     {
         string? recordingId = string.Empty;
         string? acoustId = string.Empty;
-        AcoustIdRecordingResponse? matchedRecording = null;
+        AcoustIdRecording? matchedRecording = null;
         
         if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
         {
@@ -698,9 +695,10 @@ public class MusicBrainzService
             }
         }
 
-        if (string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(fingerprint?.Fingerprint) && fingerprint?.Duration > 0)
+        if (string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustIdFingerPrint) && mediaFileInfo.AcoustIdFingerPrintDuration > 0)
         {
-            var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, fingerprint.Fingerprint, (int)fingerprint.Duration);
+            var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustIdFingerPrint, (int)mediaFileInfo.AcoustIdFingerPrintDuration);
+
             matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo, matchPercentage);
             acoustId = matchedRecording?.AcoustId;
             recordingId = matchedRecording?.Id;

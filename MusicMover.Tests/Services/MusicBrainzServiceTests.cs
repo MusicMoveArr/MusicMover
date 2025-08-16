@@ -71,7 +71,6 @@ public class MusicBrainzServiceTests
         MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
 
         var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
-            null, 
             string.Empty, 
             true, 
             80, 
@@ -92,7 +91,6 @@ public class MusicBrainzServiceTests
             MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
 
             var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
-                null, 
                 string.Empty, 
                 true, 
                 80, 
@@ -125,54 +123,59 @@ public class MusicBrainzServiceTests
     public async Task TestCurrentUserMusicDirectory_WithAcoustId(string acoustId)
     {
         string path = @$"/home/{Environment.UserName}/Music/";
-        foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
+        
+        foreach (string directory in Directory.GetDirectories(path, "*.*", SearchOption.TopDirectoryOnly))
         {
-            var fingerprint = await _fingerPrintService.GetFingerprintAsync(filePath);
-            Track track = new Track(filePath);
-            MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
-
-            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
-                fingerprint, 
-                acoustId, 
-                true, 
-                80, 
-                80);
-
-            if (match == null ||
-                !match.Release.Media.Any() ||
-                !match.Release.Media.First().Tracks.Any())//remove, fix issue
+            foreach (string filePath in Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories))
             {
-                Console.WriteLine($"No Match found for Artist: '{track.Artist}', Album, '{track.Album}', Title: '{track.Title}'");
-                continue;
-            }
+                var fingerprint = await _fingerPrintService.GetFingerprintAsync(filePath);
+                Track track = new Track(filePath);
+                MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
+                mediaFileInfo.AcoustIdFingerPrint = fingerprint.Fingerprint;
+                mediaFileInfo.AcoustIdFingerPrintDuration = fingerprint.Duration;
 
-            string matchedArtist = match.ArtistCredit.Name;
-            string matchedAlbum = match.Release.Title;
-            string matchedTitle = match.Release.Media.First().Tracks.First().Title;
-            
-            Console.WriteLine($"Match found for Artist: '{track.Artist}', Album, '{track.Album}', Title: '{track.Title}'");
-            Console.WriteLine($"Match: Artist: '{matchedArtist}', Album, '{matchedAlbum}', Title: '{matchedTitle}'");
-            Console.WriteLine();
+                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
+                    acoustId, 
+                    true, 
+                    80, 
+                    80);
 
-            match.Release.Media.ShouldNotBeEmpty();
-            match.Release.Media.First().Tracks.ShouldNotBeEmpty();
-            int albumMatch = FuzzyHelper.PartialRatioToLower(track.Album, match.Release.Title);
-            int titleMatch = FuzzyHelper.PartialRatioToLower(track.Title, match.Release.Media.First().Tracks.First().Title);
-            int artistMatch = FuzzyHelper.PartialRatioToLower(track.Artist, match.ArtistCredit.Name);
+                if (match == null ||
+                    !match.Release.Media.Any() ||
+                    !match.Release.Media.First().Tracks.Any())//remove, fix issue
+                {
+                    Console.WriteLine($"No Match found for Artist: '{track.Artist}', Album, '{track.Album}', Title: '{track.Title}'");
+                    continue;
+                }
 
-            if (!string.IsNullOrWhiteSpace(track.Album))
-            {
-                albumMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Album}' => '{match.Release.Title}'");
-            }
+                string matchedArtist = match.ArtistCredit.Name;
+                string matchedAlbum = match.Release.Title;
+                string matchedTitle = match.Release.Media.First().Tracks.First().Title;
+                
+                Console.WriteLine($"Match found for Artist: '{track.Artist}', Album, '{track.Album}', Title: '{track.Title}'");
+                Console.WriteLine($"Match: Artist: '{matchedArtist}', Album, '{matchedAlbum}', Title: '{matchedTitle}'");
+                Console.WriteLine();
 
-            if (!string.IsNullOrWhiteSpace(track.Title))
-            {
-                titleMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Title}' => '{match.Release.Media.First().Tracks.First().Title}'");
-            }
-            
-            if (!string.IsNullOrWhiteSpace(track.Artist))
-            {
-                artistMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Artist}' => '{match.ArtistCredit.Name}'");
+                match.Release.Media.ShouldNotBeEmpty();
+                match.Release.Media.First().Tracks.ShouldNotBeEmpty();
+                int albumMatch = FuzzyHelper.PartialRatioToLower(track.Album, match.Release.Title);
+                int titleMatch = FuzzyHelper.PartialRatioToLower(track.Title, match.Release.Media.First().Tracks.First().Title);
+                int artistMatch = FuzzyHelper.PartialRatioToLower(track.Artist, match.ArtistCredit.Name);
+
+               if (!string.IsNullOrWhiteSpace(track.Album))
+               {
+                   albumMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Album}' => '{match.Release.Title}'");
+               }
+               
+               if (!string.IsNullOrWhiteSpace(track.Title))
+               {
+                   titleMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Title}' => '{match.Release.Media.First().Tracks.First().Title}'");
+               }
+               
+               if (!string.IsNullOrWhiteSpace(track.Artist))
+               {
+                   artistMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{track.Artist}' => '{match.ArtistCredit.Name}'");
+               }
             }
         }
     }
@@ -183,6 +186,7 @@ public class MusicBrainzServiceTests
     public async Task TestCurrentUserMusicDirectory_WithTrustAcoustId(string acoustId)
     {
         string path = @$"/home/{Environment.UserName}/Music/";
+        
         foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
         {
             var fingerprint = await _fingerPrintService.GetFingerprintAsync(filePath);
@@ -198,9 +202,10 @@ public class MusicBrainzServiceTests
             track.Artist = string.Empty;
             track.Title = string.Empty;
             MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
+            mediaFileInfo.AcoustIdFingerPrint = fingerprint.Fingerprint;
+            mediaFileInfo.AcoustIdFingerPrintDuration = fingerprint.Duration;
 
             var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
-                fingerprint, 
                 acoustId, 
                 true, 
                 80, 
@@ -228,10 +233,10 @@ public class MusicBrainzServiceTests
             int titleMatch = FuzzyHelper.PartialRatioToLower(originalTitle, matchedTitle);
             int artistMatch = FuzzyHelper.PartialRatioToLower(originalArtist, match.ArtistCredit.Name);
 
-            //if (!string.IsNullOrWhiteSpace(originalAlbum))
-            //{
-            //    albumMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{originalAlbum}' => '{match.Release.Title}'");
-            //}
+            if (!string.IsNullOrWhiteSpace(originalAlbum))
+            {
+                albumMatch.ShouldBeGreaterThanOrEqualTo(80, $"'{originalAlbum}' => '{match.Release.Title}'");
+            }
 
             if (!string.IsNullOrWhiteSpace(originalTitle))
             {
