@@ -299,8 +299,8 @@ public class MusicBrainzService
                 AcoustIdResult = result
             })
             .Where(match => ignoreFilters || FuzzyHelper.ExactNumberMatch(mediaFileInfo.Title, match.AcoustIdResult.Result.Title))
-            //.Where(match => ignoreFilters || match.ArtistMatchedFor >= matchPercentage)
-            //.Where(match => ignoreFilters || match.TitleMatchedFor >= matchPercentage)
+            .Where(match => ignoreFilters || match.ArtistMatchedFor >= matchPercentage)
+            .Where(match => ignoreFilters || match.TitleMatchedFor >= matchPercentage)
             .OrderByDescending(result => result.ArtistMatchedFor)
             .ThenByDescending(result => result.AlbumMatchedFor?.MatchedFor)
             .ThenByDescending(result => result.TitleMatchedFor)
