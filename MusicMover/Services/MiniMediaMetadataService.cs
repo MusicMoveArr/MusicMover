@@ -217,11 +217,14 @@ public class MiniMediaMetadataService
         //    string? mainArtist = match.Artists.FirstOrDefault(artist => artist.Id == match.Album.ArtistId)?.Name;
         //    Logger.WriteLine($"Title '{match.Name}', Album '{match.Album.Name}', Artist: '{mainArtist}'");
         //}
-        
-        Logger.WriteLine("Matches:", true);
-        foreach (var match in bestMatches)
+
+        if (bestMatches.Count > 0)
         {
-            Logger.WriteLine($"Title '{match.Match.Name}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Name}' matched for {match.AlbumMatchedFor}%", true);
+            Logger.WriteLine("Matches:", true);
+            foreach (var match in bestMatches)
+            {
+                Logger.WriteLine($"Title '{match.Match.Name}' matched for {match.TitleMatchedFor}%, Album '{match.Match.Album.Name}' matched for {match.AlbumMatchedFor}%", true);
+            }
         }
 
         var bestMatch = bestMatches.FirstOrDefault();

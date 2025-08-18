@@ -678,8 +678,8 @@ public class MusicBrainzService
         string? recordingId = string.Empty;
         string? acoustId = string.Empty;
         AcoustIdRecording? matchedRecording = null;
-        
-        if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId))
+
+        if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && Guid.TryParse(mediaFileInfo.AcoustId, out Guid _))
         {
             Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag", true);
             
@@ -704,6 +704,7 @@ public class MusicBrainzService
             recordingId = matchedRecording?.Id;
 
             if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
+                !Guid.TryParse(mediaFileInfo.AcoustId, out Guid _) && 
                 (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId)))
             {
                 Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag", true);
