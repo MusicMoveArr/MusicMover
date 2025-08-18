@@ -11,8 +11,12 @@ namespace MusicMover.Services;
 
 public class MusicBrainzAPIService
 {
+    private static Stopwatch _apiStopwatch = Stopwatch.StartNew();
+    
     public async Task<MusicBrainzArtistModel?> GetRecordingByIdAsync(string recordingId)
     {
+        Delay();
+        
         Logger.WriteLine($"Requesting MusicBrainz GetRecordingById, {recordingId}", true);
 
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
@@ -29,6 +33,8 @@ public class MusicBrainzAPIService
     }
     public async Task<MusicBrainzArtistReleaseModel?> GetReleaseWithLabelAsync(string musicBrainzReleaseId)
     {
+        Delay();
+
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         //ServiceUnavailable
         
@@ -46,6 +52,8 @@ public class MusicBrainzAPIService
     }
     public async Task<MusicBrainzArtistReleaseModel?> GetReleaseWithAllAsync(string musicBrainzReleaseId)
     {
+        Delay();
+
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         //ServiceUnavailable
         
@@ -63,6 +71,8 @@ public class MusicBrainzAPIService
     }
     public async Task<MusicBrainzArtistInfoModel?> GetArtistInfoAsync(string musicBrainzArtistId)
     {
+        Delay();
+
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting MusicBrainz GetArtistInfo '{musicBrainzArtistId}'");
         string url = $"https://musicbrainz.org/ws/2/artist/{musicBrainzArtistId}?inc=aliases&fmt=json";
@@ -76,6 +86,8 @@ public class MusicBrainzAPIService
     }
     public async Task<MusicBrainzRecordingQueryModel?> SearchReleaseAsync(string artist, string album, string trackname)
     {
+        Delay();
+        
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         Debug.WriteLine($"Requesting MusicBrainz Recording lookup artist:'{artist}', trackname:'{trackname}'");
         string url = $"https://musicbrainz.org/ws/2/recording?fmt=json&inc=isrcs+artists+releases+release-groups+url-rels+media+recordings&query=track:\"{trackname}\" AND artist:\"{artist}\"";
@@ -86,6 +98,19 @@ public class MusicBrainzAPIService
             RestRequest request = new RestRequest();
             return await client.GetAsync<MusicBrainzRecordingQueryModel>(request);
         });
+    }
+
+    private static void Delay()
+    {
+        lock (_apiStopwatch)
+        {
+            int elapsed = (int)_apiStopwatch.ElapsedMilliseconds;
+            if (elapsed < 1000)
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+                _apiStopwatch.Restart();
+            }
+        }
     }
     
     private AsyncRetryPolicy GetRetryPolicy()
