@@ -464,7 +464,7 @@ public class MediaTagWriteService
     
     public async Task<bool> SafeSaveAsync(Track track, FileInfo targetFile)
     {
-        string tempFile = $"{targetFile.FullName}.tmp{targetFile.Extension}";
+        string tempFile = $"{targetFile.FullName}.bak";
 
         if (File.Exists(tempFile))
         {
