@@ -874,16 +874,16 @@ public class MoveProcessor
     private void ShowProgress()
     {
         Logger.WriteLine($"Stats: Moved {_movedFiles}, " +
-                              $"Local Delete: {_localDelete}, " +
-                              $"Remote Delete: {_remoteDelete}, " +
-                              $"Fixed Corrupted: {_fixedCorruptedFiles}, " +
-                              $"Updated Artist Tags: {_updatedTagfiles}, " +
-                              $"Created SubDirectories: {_createdSubDirectories}, " +
-                              $"Scanned From: {_scannedFromFiles}. " +
-                              $"Cached Read Target: {_cachedReadTargetFiles}. " +
-                              $"Scanned Target: {_scannedTargetFiles}. " +
-                              $"Skipped Error: {_skippedErrorFiles}, " +
-                              $"Running: {_runtimeSw.Elapsed.Hours}:{_runtimeSw.Elapsed.Minutes}:{_runtimeSw.Elapsed.Seconds}");
+                           (_options.DeleteDuplicateFrom ? $"Local Delete: {_localDelete}, " : string.Empty) +
+                           (_options.DeleteDuplicateTo ? $"Remote Delete: {_remoteDelete}, " : string.Empty) +
+                           (_options.FixFileCorruption ? $"Fixed Corrupted: {_fixedCorruptedFiles}, " : string.Empty) +
+                           (_options.UpdateArtistTags ? $"Updated Artist Tags: {_updatedTagfiles}, " : string.Empty) +
+                           (_options.CreateAlbumDirectory ? $"Created SubDirectories: {_createdSubDirectories}, " : string.Empty) +
+                           $"Scanned From: {_scannedFromFiles}. " +
+                           (!_options.OnlyFileNameMatching ? $"Cached Read Target: {_cachedReadTargetFiles}. " : string.Empty) +
+                           (!_options.OnlyFileNameMatching ? $"Scanned Target: {_scannedTargetFiles}. " : string.Empty) +
+                           $"Skipped Error: {_skippedErrorFiles}, " +
+                           $"Running: {_runtimeSw.Elapsed.Hours}:{_runtimeSw.Elapsed.Minutes}:{_runtimeSw.Elapsed.Seconds}");
     }
 
     private void IncrementCounter(Action callback)
