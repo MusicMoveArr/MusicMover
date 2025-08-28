@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.Runtime.Caching;
 using FuzzySharp;
 using ListRandomizer;
+using McMaster.NETCore.Plugins;
 using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Services;
+using MusicMoverPlugin;
 using SmartFormat;
 using Spectre.Console;
 
@@ -55,6 +57,8 @@ public class MoveProcessor
     private readonly AsyncLock _asyncAcoustIdLock;
     private readonly FingerPrintService _fingerPrintService;
     private readonly MediaTagWriteService _mediaTagWriteService;
+    private readonly List<PluginLoader> _loaders = new List<PluginLoader>();
+    private readonly List<IPlugin> _plugins = new List<IPlugin>();
     
     private List<string> _artistsNotFound = new List<string>();
 
@@ -69,6 +73,37 @@ public class MoveProcessor
         _mediaTagWriteService = new MediaTagWriteService();
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
         _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
+    }
+
+    public void LoadPlugins()
+    {
+        var pluginsDir = Path.Combine(AppContext.BaseDirectory, "plugins");
+        foreach (var dir in Directory.GetDirectories(pluginsDir))
+        {
+            var dirName = Path.GetFileName(dir);
+            var pluginDll = Path.Combine(dir, dirName + ".dll");
+            if (File.Exists(pluginDll))
+            {
+                var loader = PluginLoader.CreateFromAssemblyFile(
+                    pluginDll,
+                    sharedTypes: new [] { typeof(IPlugin) });
+                _loaders.Add(loader);
+            }
+        }
+
+        // Create an instance of plugin types
+        foreach (var loader in _loaders)
+        {
+            foreach (var pluginType in loader
+                         .LoadDefaultAssembly()
+                         .GetTypes()
+                         .Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsAbstract))
+            {
+                // This assumes the implementation of IPlugin has a parameterless constructor
+                IPlugin plugin = (IPlugin)Activator.CreateInstance(pluginType);
+                _plugins.Add(plugin);
+            }
+        }
     }
 
     public async Task ProcessAsync()
@@ -360,6 +395,11 @@ public class MoveProcessor
 
         await mediaFileInfo.GenerateSaveFingerprintAsync();
 
+        foreach (var plugin in _plugins)
+        {
+            plugin.OnLoad(mediaFileInfo.TrackInfo);
+        }
+
         bool metadataApiTaggingSuccess = false;
         bool musicBrainzTaggingSuccess = false;
         bool tidalTaggingSuccess = false;
@@ -389,9 +429,21 @@ public class MoveProcessor
             metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
             tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
         }
+
+        if (musicBrainzTaggingSuccess || tidalTaggingSuccess || metadataApiTaggingSuccess)
+        {
+            foreach (var plugin in _plugins)
+            {
+                plugin.AfterTagging(mediaFileInfo.TrackInfo);
+            }
+        }
         
         if (_options.OnlyMoveWhenTagged && !musicBrainzTaggingSuccess && !tidalTaggingSuccess && !metadataApiTaggingSuccess)
         {
+            foreach (var plugin in _plugins)
+            {
+                plugin.TaggingFailed(mediaFileInfo.TrackInfo);
+            }
             Logger.WriteLine($"Skipped processing, tagging failed for '{mediaFileInfo.FileInfo.FullName}'");
             return false;
         }
@@ -522,6 +574,11 @@ public class MoveProcessor
             fromFileName.Contains(VariousArtistsName))
         {
             fromFileName = fromFileName.Replace(VariousArtistsName, artist);
+        }
+
+        if (_options.IsDryRun)
+        {
+            return false;
         }
 
         string newFromFilePath = $"{toAlbumDirInfo.FullName}/{fromFileName}";

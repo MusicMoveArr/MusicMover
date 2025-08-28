@@ -32,6 +32,8 @@
       </PackageReference>
       <PackageReference Include="FFMpegCore" Version="5.2.0" />
       <PackageReference Include="FuzzySharp" Version="2.0.2" />
+      <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
+      <PackageReference Include="MusicMoverPlugin" Version="1.0.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Polly" Version="8.6.2" />
       <PackageReference Include="Quartz" Version="3.14.0" />

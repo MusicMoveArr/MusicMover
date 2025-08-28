@@ -2,7 +2,6 @@ using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using MusicMover.Helpers;
-using Spectre.Console;
 
 namespace MusicMover;
 
@@ -412,7 +411,7 @@ public class CliCommands : ICommand
                 return;
             }
         }
-        
+        moveProcessor.LoadPlugins();
         await moveProcessor.ProcessAsync();
     }
 
