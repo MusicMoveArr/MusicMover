@@ -4,6 +4,7 @@ public class CliOptions
 {
     public bool IsDryRun { get; init; }
     public required string FromDirectory { get; init; }
+    public required string FromFile { get; init; }
     public required string ToDirectory { get; init; }
     public required bool CreateArtistDirectory { get; init; }
     public required bool CreateAlbumDirectory { get; init; }

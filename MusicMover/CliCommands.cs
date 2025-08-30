@@ -9,12 +9,18 @@ namespace MusicMover;
 public class CliCommands : ICommand
 {
     public static bool Debug { get; private set; }
-    
-    [CommandOption("from", 
-        Description = "From the directory.", 
+
+    [CommandOption("from",
+        Description = "From the directory.",
         EnvironmentVariable = "MOVE_FROM",
-        IsRequired = true)]
-    public string From { get; set; }
+        IsRequired = false)]
+    public string From { get; set; } = string.Empty;
+    
+    [CommandOption("from-file", 
+        Description = "Read file paths to process from a file.", 
+        EnvironmentVariable = "MOVE_FROM_FILE",
+        IsRequired = false)]
+    public string FromFile { get; set; } = string.Empty;
     
     [CommandOption("target", 
         Description = "directory to move/copy files to.", 
@@ -253,12 +259,19 @@ public class CliCommands : ICommand
     public async ValueTask ExecuteAsync(IConsole console)
     {
         CliCommands.Debug = DebugInfo;
+
+        if (string.IsNullOrWhiteSpace(From) && 
+            string.IsNullOrWhiteSpace(FromFile))
+        {
+            Logger.WriteLine("Missing From/FromFile configuration");
+            return;
+        }
         
         if (!Target.EndsWith('/'))
         {
             Target += '/';
         }
-        if (!From.EndsWith('/'))
+        if (!String.IsNullOrWhiteSpace(From) && !From.EndsWith('/'))
         {
             From += '/';
         }
@@ -266,6 +279,7 @@ public class CliCommands : ICommand
         CliOptions options = new CliOptions
         {
             FromDirectory = From,
+            FromFile = FromFile,
             ToDirectory = Target,
             AcoustIdApiKey = AcoustidApiKey,
             FileFormat = FileFormat,
@@ -316,6 +330,7 @@ public class CliCommands : ICommand
         
         Logger.WriteLine("Options used:");
         Logger.WriteLine($"From Directory: {options.FromDirectory}");
+        Logger.WriteLine($"From File: {options.FromFile}");
         Logger.WriteLine($"ToDirectory: {options.ToDirectory}");
         Logger.WriteLine($"Create Album Directory: {options.CreateAlbumDirectory}");
         Logger.WriteLine($"Create Artist Directory: {options.CreateArtistDirectory}");

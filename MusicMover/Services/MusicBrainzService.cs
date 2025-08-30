@@ -417,7 +417,7 @@ public class MusicBrainzService
                     CountryMatch = !string.IsNullOrWhiteSpace(artistCountry) ? relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower(release.Release.Country, artistCountry) : FuzzyHelper.FuzzRatioToLower(release.Release.Country, artistCountry) : 0,
                     BarcodeMatch = !string.IsNullOrWhiteSpace(release.Barcode) ? relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower(release.Barcode, trackBarcode) : FuzzyHelper.FuzzRatioToLower(release.Barcode, trackBarcode) : 0
                 })
-                //.Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackAlbum, match.AlbumName))
+                .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackAlbum, match.AlbumName))
                 .OrderByDescending(match => match.AlbumMatch)
                 .ThenByDescending(match => match.CountryMatch)
                 .ThenByDescending(match => match.BarcodeMatch)
