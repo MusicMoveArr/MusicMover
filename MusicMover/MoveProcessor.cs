@@ -78,6 +78,12 @@ public class MoveProcessor
     public void LoadPlugins()
     {
         var pluginsDir = Path.Combine(AppContext.BaseDirectory, "plugins");
+
+        if (!Directory.Exists(pluginsDir))
+        {
+            return;
+        }
+        
         foreach (var dir in Directory.GetDirectories(pluginsDir))
         {
             var dirName = Path.GetFileName(dir);
