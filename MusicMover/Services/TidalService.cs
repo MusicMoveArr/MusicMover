@@ -63,7 +63,7 @@ public class TidalService
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
             Logger.WriteLine($"Searching for tidal artist '{artist}'", true);
-            if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
+            if (await TryArtistAsync(artist, mediaFileInfo.Title!, mediaFileInfo.Album, mediaFileInfo, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
             {
                 return true;
             }
@@ -80,7 +80,7 @@ public class TidalService
             {
                 Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
                 Logger.WriteLine($"Searching for tidal artist '{artist}'", true);
-                if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
+                if (await TryArtistAsync(artist, mediaFileInfo.Title, mediaFileInfo.Album, mediaFileInfo, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist, matchPercentage))
                 {
                     return true;
                 }
@@ -90,10 +90,11 @@ public class TidalService
         return false;
     }
 
-    private async Task<bool> TryArtistAsync(string? artistName, 
+    private async Task<bool> TryArtistAsync(
+        string? artistName, 
         string targetTrackTitle,
         string? targetAlbumTitle,
-        FileInfo fromFile,
+        MediaFileInfo mediaFileInfo,
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
@@ -142,7 +143,7 @@ public class TidalService
                 
                 if (processResult.Success)
                 {
-                    return await WriteTagsToFileAsync(fromFile, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist,
+                    return await WriteTagsToFileAsync(mediaFileInfo, overWriteArtist, overWriteAlbum, overWriteTrack, overwriteAlbumArtist,
                         artist, processResult.FoundAlbum, processResult.FoundTrack, processResult.ArtistNames, processResult.AlbumTracks);
                 }
             }
@@ -401,7 +402,8 @@ public class TidalService
             .ToList() ?? [];
     }
 
-    private async Task<bool> WriteTagsToFileAsync(FileInfo fromFile,
+    private async Task<bool> WriteTagsToFileAsync(
+        MediaFileInfo mediaFileInfo,
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
@@ -412,56 +414,55 @@ public class TidalService
         List<string> artistNames,
         TidalSearchResponse albumTracks)
     {
-        Track track = new Track(fromFile.FullName);
         bool trackInfoUpdated = false;
         string artists = string.Join(';', artistNames);
         
-        Logger.WriteLine($"Filpath: {fromFile.FullName}", true);
+        Logger.WriteLine($"Filpath: {mediaFileInfo.FileInfo.FullName}", true);
         Logger.WriteLine($"Tidal Artist: {tidalArtist.Attributes.Name}", true);
         Logger.WriteLine($"Tidal Album: {tidalAlbum.Attributes.Title}", true);
         Logger.WriteLine($"Tidal TrackName: {tidalTrack.Attributes.FullTrackName}", true);
-        Logger.WriteLine($"Media Artist: {track.Artist}", true);
-        Logger.WriteLine($"Media AlbumArtist: {track.AlbumArtist}", true);
-        Logger.WriteLine($"Media Album: {track.Album}", true);
-        Logger.WriteLine($"Media TrackName: {track.Title}", true);
+        Logger.WriteLine($"Media Artist: {mediaFileInfo.Artist}", true);
+        Logger.WriteLine($"Media AlbumArtist: {mediaFileInfo.AlbumArtist}", true);
+        Logger.WriteLine($"Media Album: {mediaFileInfo.Album}", true);
+        Logger.WriteLine($"Media TrackName: {mediaFileInfo.Title}", true);
         
-        _mediaTagWriteService.UpdateTag(track, "Tidal Track Id", tidalTrack.Id, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Tidal Track Explicit", tidalTrack.Attributes.Explicit ? "Y": "N", ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Id", tidalTrack.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Explicit", tidalTrack.Attributes.Explicit ? "Y": "N", ref trackInfoUpdated);
         
         string trackHref = tidalTrack.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        _mediaTagWriteService.UpdateTag(track, "Tidal Track Href", trackHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Href", trackHref, ref trackInfoUpdated);
         
         string albumHref = tidalAlbum.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        _mediaTagWriteService.UpdateTag(track, "Tidal Album Id", tidalAlbum.Id, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Tidal Album Href", albumHref, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Tidal Album Release Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Id", tidalAlbum.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Href", albumHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Release Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
         
         string artistHref = tidalArtist.Attributes.ExternalLinks.FirstOrDefault()?.Href ?? string.Empty;
-        _mediaTagWriteService.UpdateTag(track, "Tidal Artist Id", tidalArtist.Id, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Tidal Artist Href", artistHref, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Artist Id", tidalArtist.Id, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Artist Href", artistHref, ref trackInfoUpdated);
         
-        if (string.IsNullOrWhiteSpace(track.Title) || overWriteTrack)
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.TrackInfo.Title) || overWriteTrack)
         {
-            _mediaTagWriteService.UpdateTag(track, "Title", tidalTrack.Attributes.FullTrackName, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Title", tidalTrack.Attributes.FullTrackName, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.Album) || overWriteAlbum)
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.TrackInfo.Album) || overWriteAlbum)
         {
-            _mediaTagWriteService.UpdateTag(track, "Album", tidalAlbum.Attributes.Title, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Album", tidalAlbum.Attributes.Title, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.AlbumArtist) || track.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.TrackInfo.AlbumArtist) || mediaFileInfo.TrackInfo.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
         {
-            _mediaTagWriteService.UpdateTag(track, "AlbumArtist", tidalArtist.Attributes.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "AlbumArtist", tidalArtist.Attributes.Name, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(track.Artist) || track.Artist.ToLower().Contains("various") || overWriteArtist)
+        if (string.IsNullOrWhiteSpace(mediaFileInfo.TrackInfo.Artist) || mediaFileInfo.TrackInfo.Artist.ToLower().Contains("various") || overWriteArtist)
         {
-            _mediaTagWriteService.UpdateTag(track, "Artist",  tidalArtist.Attributes.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Artist",  tidalArtist.Attributes.Name, ref trackInfoUpdated);
         }
-        _mediaTagWriteService.UpdateTag(track, "ARTISTS", artists, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ARTISTS", artists, ref trackInfoUpdated);
 
-        _mediaTagWriteService.UpdateTag(track, "ISRC", tidalTrack.Attributes.ISRC, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "UPC", tidalAlbum.Attributes.BarcodeId, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(track, "Copyright", tidalTrack.Attributes.Copyright, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ISRC", tidalTrack.Attributes.ISRC, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "UPC", tidalAlbum.Attributes.BarcodeId, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Copyright", tidalTrack.Attributes.Copyright, ref trackInfoUpdated);
         
         var trackNumber = albumTracks.Data
             .RelationShips
@@ -471,9 +472,9 @@ public class TidalService
 
         if (trackNumber != null)
         {
-            _mediaTagWriteService.UpdateTag(track, "Disc Number", trackNumber.Meta.VolumeNumber.ToString(), ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(track, "Track Number", trackNumber.Meta.TrackNumber.ToString(), ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(track, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Disc Number", trackNumber.Meta.VolumeNumber.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Track Number", trackNumber.Meta.TrackNumber.ToString(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
         }
         
         return true;
