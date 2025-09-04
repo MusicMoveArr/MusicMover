@@ -255,6 +255,12 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_TRUST_ACOUSTID_WHEN_TAGGING_FAILED",
         IsRequired = false)]
     public bool TrustAcoustIdWhenTaggingFailed { get; set; } = false;
+
+    [CommandOption("move-untaggable-files-path",
+        Description = "Move untaggable files (failed to tag by MusicBrainz, AcoustId, Spotify etc) to a specific folder.",
+        EnvironmentVariable = "MOVE_MOVE_UNTAGGABLE_FILES_PATH",
+        IsRequired = false)]
+    public string MoveUntaggableFilesPath { get; set; }
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -317,8 +323,20 @@ public class CliCommands : ICommand
             TidalMatchPercentage = TidalMatchPercentage,
             MusicBrainzMatchPercentage = MusicBrainzMatchPercentage,
             AcoustIdMatchPercentage = AcoustIdMatchPercentage,
-            TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed
+            TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed,
+            MoveUntaggableFilesPath = MoveUntaggableFilesPath
         };
+
+        if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))
+        {
+            Logger.WriteLine($"Directory does not exist '{MoveUntaggableFilesPath}'");
+            return;
+        }
+        if (!String.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !MoveUntaggableFilesPath.EndsWith('/'))
+        {
+            MoveUntaggableFilesPath += '/';
+        }
+        
 
         string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal" ];
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||

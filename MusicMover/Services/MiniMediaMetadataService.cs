@@ -291,6 +291,7 @@ public class MiniMediaMetadataService
         }
         
         Logger.WriteLine($"Filpath: {mediaFileInfo.FileInfo.FullName}", true);
+        Logger.WriteLine($"Provider: {foundTrack.ProviderType}", true);
         Logger.WriteLine($"API Artist: {mainArtist}", true);
         Logger.WriteLine($"API Album: {foundTrack.Album.Name}", true);
         Logger.WriteLine($"API TrackName: {foundTrack.Name}", true);
@@ -371,6 +372,11 @@ public class MiniMediaMetadataService
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Track Number", foundTrack.TrackNumber.ToString(), ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", foundTrack.Album.TotalTracks.ToString(), ref trackInfoUpdated);
 
+        if (trackInfoUpdated)
+        {
+            mediaFileInfo.TaggerUpdatedTags = true;
+        }
+        
         return true;
     }
     

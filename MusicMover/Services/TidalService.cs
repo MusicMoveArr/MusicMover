@@ -477,6 +477,10 @@ public class TidalService
             _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", tidalAlbum.Attributes.NumberOfItems.ToString(), ref trackInfoUpdated);
         }
         
+        if (trackInfoUpdated)
+        {
+            mediaFileInfo.TaggerUpdatedTags = true;
+        }
         return true;
     }
     

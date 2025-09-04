@@ -492,6 +492,35 @@ public class MoveProcessor
                 plugin.TaggingFailed(mediaFileInfo.TrackInfo);
             }
             Logger.WriteLine($"Skipped processing, tagging failed for '{mediaFileInfo.FileInfo.FullName}'");
+
+            if (!string.IsNullOrWhiteSpace(_options.MoveUntaggableFilesPath))
+            {
+                string artistFolderName = mediaFileInfo.Artist;
+                string albumFolderName = mediaFileInfo.Album;
+                if (string.IsNullOrWhiteSpace(artistFolderName))
+                {
+                    artistFolderName = "[unknown_artist]";
+                }
+                if (string.IsNullOrWhiteSpace(albumFolderName))
+                {
+                    albumFolderName = "[unknown_album]";
+                }
+                
+                string newFilePath = Path.Join(
+                    _options.MoveUntaggableFilesPath, 
+                    artistFolderName, 
+                    albumFolderName, 
+                    mediaFileInfo.FileInfo.Name);
+                
+                Logger.WriteLine($"Moving untaggable file '{mediaFileInfo.FileInfo.FullName}' >> '{newFilePath}'");
+                FileInfo newFilePathInfo = new FileInfo(newFilePath);
+                if (!newFilePathInfo.Directory.Exists)
+                {
+                    newFilePathInfo.Directory.Create();
+                }
+                File.Move(mediaFileInfo.FileInfo.FullName, newFilePath, true);
+            }
+            
             return false;
         }
         

@@ -16,7 +16,8 @@ public class MediaFileInfo
     public FileInfo FileInfo { get; set; }
     public FileInfo TargetSaveFileInfo { get; set; }
     private FingerPrintService _fingerPrintService;
-    
+    public bool TaggerUpdatedTags { get; set; }
+
     public string? Artist { get; set; }
     public string? SortArtist { get; set; }
     public string? Title { get; set; }

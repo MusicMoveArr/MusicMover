@@ -157,6 +157,10 @@ public class MusicBrainzService
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", match.ReleaseMedia.TrackCount.ToString(), ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MEDIA", match.ReleaseMedia.Format, ref trackInfoUpdated);
 
+        if (trackInfoUpdated)
+        {
+            mediaFileInfo.TaggerUpdatedTags = true;
+        }
         return true;
     }
 

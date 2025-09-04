@@ -44,4 +44,5 @@ public class CliOptions
     public required int MusicBrainzMatchPercentage { get; init; }
     public required int AcoustIdMatchPercentage { get; init; }
     public required bool TrustAcoustIdWhenTaggingFailed { get; init; }
+    public required string MoveUntaggableFilesPath { get; init; }
 }
