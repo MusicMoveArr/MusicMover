@@ -506,6 +506,8 @@ public class MoveProcessor
                     albumFolderName = "[unknown_album]";
                 }
                 
+                artistFolderName = string.Join("_", artistFolderName.Split(Path.GetInvalidFileNameChars()));
+                albumFolderName = string.Join("_", albumFolderName.Split(Path.GetInvalidFileNameChars()));
                 string safeFileName = string.Join("_", mediaFileInfo.FileInfo.Name.Split(Path.GetInvalidFileNameChars()));
                 
                 string newFilePath = Path.Join(
