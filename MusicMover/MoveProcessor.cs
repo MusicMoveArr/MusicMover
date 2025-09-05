@@ -506,12 +506,13 @@ public class MoveProcessor
                     albumFolderName = "[unknown_album]";
                 }
                 
+                string safeFileName = string.Join("_", mediaFileInfo.FileInfo.Name.Split(Path.GetInvalidFileNameChars()));
+                
                 string newFilePath = Path.Join(
                     _options.MoveUntaggableFilesPath, 
                     artistFolderName, 
                     albumFolderName, 
-                    mediaFileInfo.FileInfo.Name);
-                
+                    safeFileName);
                 Logger.WriteLine($"Moving untaggable file '{mediaFileInfo.FileInfo.FullName}' >> '{newFilePath}'");
                 FileInfo newFilePathInfo = new FileInfo(newFilePath);
                 if (!newFilePathInfo.Directory.Exists)
