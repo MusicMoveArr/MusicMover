@@ -695,7 +695,7 @@ public class MoveProcessor
             bool isFromNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
             bool isSimilarPreferredQuality = _options.PreferredFileExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
             bool isNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => similarFile.File.Extension.Contains(ext));
-            bool inputIsOutput = string.Equals(similarFile.File.FullName, newFromFilePath);
+            bool inputIsOutput = string.Equals(similarFile.File.FullName, mediaFileInfo.FileInfo.FullName);
 
             if (inputIsOutput)
             {
