@@ -182,22 +182,10 @@ public class MoveProcessor
                     
                     await ParallelHelper.ForEachAsync(_filesToProcess, 5, async mediaFileInfo =>
                     {
-                        string artistName = mediaFileInfo.Artist ?? string.Empty;
-                        string albumName = mediaFileInfo.Album ?? string.Empty;
-                        string trackName = mediaFileInfo.Title ?? string.Empty;
+                        string artistName = ArtistHelper.GetShortVersion(mediaFileInfo.Artist, 30, "...");
+                        string albumName = ArtistHelper.GetShortVersion(mediaFileInfo.Album, 30, "...");
+                        string trackName = ArtistHelper.GetShortVersion(mediaFileInfo.Title, 30, "...");
                         
-                        if (artistName.Length > 30)
-                        {
-                            artistName = artistName.Substring(0, 30) + "...";
-                        }
-                        if (albumName.Length > 30)
-                        {
-                            albumName = albumName.Substring(0, 30) + "...";
-                        }
-                        if (trackName.Length > 30)
-                        {
-                            trackName = trackName.Substring(0, 30) + "...";
-                        }
                         using (await progressLock.LockAsync())
                         {
                             if (!progressTasks.ContainsKey(artistName))
@@ -239,22 +227,10 @@ public class MoveProcessor
                         var mediaFileInfo = _filesToProcess.FirstOrDefault();
                         _filesToProcess.RemoveAt(0);
                         
-                        string artistName = mediaFileInfo.Artist ?? string.Empty;
-                        string albumName = mediaFileInfo.Album ?? string.Empty;
-                        string trackName = mediaFileInfo.Title ?? string.Empty;
+                        string artistName = ArtistHelper.GetShortVersion(mediaFileInfo.Artist, 30, "...");
+                        string albumName = ArtistHelper.GetShortVersion(mediaFileInfo.Album, 30, "...");
+                        string trackName = ArtistHelper.GetShortVersion(mediaFileInfo.Title, 30, "...");
                         
-                        if (artistName.Length > 30)
-                        {
-                            artistName = artistName.Substring(0, 30) + "...";
-                        }
-                        if (albumName.Length > 30)
-                        {
-                            albumName = albumName.Substring(0, 30) + "...";
-                        }
-                        if (trackName.Length > 30)
-                        {
-                            trackName = trackName.Substring(0, 30) + "...";
-                        }
                         if (!progressTasks.ContainsKey(artistName))
                         {
                             int trackCount = _filesToProcess.Count(file => string.Equals(file.Artist, mediaFileInfo.Artist));

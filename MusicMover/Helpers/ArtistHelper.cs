@@ -32,4 +32,19 @@ public static class ArtistHelper
         }
         return newArtistName;
     }
+
+    public static string GetShortVersion(string? value, int length, string postfix)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        if (value.Length <= length)
+        {
+            return value;
+        }
+
+        return value.Substring(0, length) + postfix;
+    }
 }
