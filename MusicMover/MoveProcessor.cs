@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Caching;
+using System.Text.RegularExpressions;
 using FuzzySharp;
 using ListRandomizer;
 using McMaster.NETCore.Plugins;
@@ -430,6 +431,46 @@ public class MoveProcessor
         musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
         metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
         tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
+
+        if (!musicBrainzTaggingSuccess &&
+            !tidalTaggingSuccess &&
+            !metadataApiTaggingSuccess)
+        {
+            string oldArtist = mediaFileInfo.Artist ?? string.Empty;
+            string oldTitle = mediaFileInfo.Title ?? string.Empty;
+            
+            //remove numbers at the start of the title
+            mediaFileInfo.Title = Regex.Replace(mediaFileInfo.Title, @"^[0-9.\- ]*", string.Empty).TrimStart();
+            //remove (Album Version)
+            mediaFileInfo.Title = mediaFileInfo.Title.Replace("(Album Version)", string.Empty, StringComparison.OrdinalIgnoreCase);
+            
+            //remove the artist name at the start of the title
+            //if artist name is empty, fill artist name partly from the title
+            var artistMatches = Regex.Matches(mediaFileInfo.Title, @"^([\d\w ]{3,})\-");
+            if (artistMatches.Count > 0)
+            {
+                mediaFileInfo.Title = Regex.Replace(mediaFileInfo.Title, @"^([\d\w ]{3,})\-", string.Empty).TrimStart();
+                
+                if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist))
+                {
+                    mediaFileInfo.Artist = artistMatches.First().Groups[1].Value;
+                }
+            }
+
+            mediaFileInfo.Title = mediaFileInfo.Title.Trim();
+            mediaFileInfo.Artist = mediaFileInfo.Artist?.Trim();
+            
+            mediaFileInfo.TrackInfo.Title = mediaFileInfo.Title;
+            mediaFileInfo.TrackInfo.Artist = mediaFileInfo.Artist;
+
+            if (!string.Equals(oldArtist, mediaFileInfo.Artist) ||
+                !string.Equals(oldTitle, mediaFileInfo.Title))
+            {
+                musicBrainzTaggingSuccess = await TagFileAcoustIdAsync(mediaFileInfo);
+                metadataApiTaggingSuccess = await TagFileMetadataApiAsync(mediaFileInfo);
+                tidalTaggingSuccess = await TagFileTidalAsync(mediaFileInfo, metadataApiTaggingSuccess);
+            }
+        }
 
         if (_options.OnlyMoveWhenTagged && 
             !musicBrainzTaggingSuccess && 

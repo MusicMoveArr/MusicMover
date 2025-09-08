@@ -384,7 +384,8 @@ public class MusicBrainzService
             ?.FirstOrDefault();
     }
 
-    public MusicBrainzArtistReleaseModel? GetBestMatchingRelease(MusicBrainzArtistModel? data, 
+    public MusicBrainzArtistReleaseModel? GetBestMatchingRelease(
+        MusicBrainzArtistModel? data, 
         Track track, 
         string? artistCountry,
         string? targetArtist,
@@ -410,16 +411,23 @@ public class MusicBrainzService
                 })
                 .Where(release => !string.IsNullOrWhiteSpace(release.Album))
                 //.Where(release => !string.IsNullOrWhiteSpace(release.Release.Country))
+                .OrderBy(release => release.Release.Disambiguation?.Length ?? 0)
                 .Select(release => new
                 {
                     AlbumName = release.Album,
                     release.Release,
-                    AlbumMatch = !string.IsNullOrWhiteSpace(trackAlbum) ? Math.Max(
-                        relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower($"{release.Album} {release.Release.Disambiguation}", trackAlbum) : FuzzyHelper.FuzzRatioToLower($"{release.Album} {release.Release.Disambiguation}", trackAlbum), //search with added "deluxe edition" etc
-                        relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower(release.Album, trackAlbum) : FuzzyHelper.FuzzRatioToLower(release.Album, trackAlbum)) : 100,
+                    AlbumMatch = !string.IsNullOrWhiteSpace(trackAlbum) ? 
+                        relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower($"{release.Album} {release.Release.Disambiguation}", trackAlbum) : 
+                            FuzzyHelper.FuzzRatioToLower($"{release.Album} {release.Release.Disambiguation}", trackAlbum) : 100,
+                    
                     ArtistMatch = !string.IsNullOrWhiteSpace(targetArtist) ? data.ArtistCredit.Sum(artist => FuzzyHelper.FuzzRatioToLower(targetArtist, artist.Name)) : 100,
-                    CountryMatch = !string.IsNullOrWhiteSpace(artistCountry) ? relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower(release.Release.Country, artistCountry) : FuzzyHelper.FuzzRatioToLower(release.Release.Country, artistCountry) : 0,
-                    BarcodeMatch = !string.IsNullOrWhiteSpace(release.Barcode) ? relaxedFiltering ? FuzzyHelper.PartialTokenSortRatioToLower(release.Barcode, trackBarcode) : FuzzyHelper.FuzzRatioToLower(release.Barcode, trackBarcode) : 0
+                    
+                    CountryMatch = !string.IsNullOrWhiteSpace(artistCountry) ? relaxedFiltering ? 
+                        FuzzyHelper.PartialTokenSortRatioToLower(release.Release.Country, artistCountry) : FuzzyHelper.FuzzRatioToLower(release.Release.Country, artistCountry) : 0,
+                    
+                    BarcodeMatch = !string.IsNullOrWhiteSpace(release.Barcode) ? relaxedFiltering ? 
+                        FuzzyHelper.PartialTokenSortRatioToLower(release.Barcode, trackBarcode) : 
+                        FuzzyHelper.FuzzRatioToLower(release.Barcode, trackBarcode) : 0
                 })
                 .Where(match => relaxedFiltering || FuzzyHelper.ExactNumberMatch(trackAlbum, match.AlbumName))
                 .OrderByDescending(match => match.AlbumMatch)
