@@ -727,6 +727,11 @@ public class MoveProcessor
 
                 if (await _mediaTagWriteService.SafeSaveAsync(mediaFileInfo.TrackInfo, new FileInfo(newFromFilePath)))
                 {
+                    if (!string.Equals(mediaFileInfo.FileInfo.FullName, newFromFilePath))
+                    {
+                        mediaFileInfo.FileInfo.Delete();
+                    }
+                    
                     Logger.WriteLine($"Updated {mediaFileInfo.FileInfo.Name} >> {newFromFilePath}", true);
                     RemoveCacheByPath(similarFile.File.FullName);
                     Logger.WriteLine($"Similar file found, overwritten input file, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}", true);
@@ -812,6 +817,9 @@ public class MoveProcessor
             bool isFromPreferredQuality = _options.PreferredFileExtensions.Any(ext => mediaFileInfo.FileInfo.Extension.Contains(ext));
             bool isNonPreferredQuality = _options.NonPreferredFileExtensions.Any(ext => similarFileResult.SimilarFiles.Any(similarFile => similarFile.File.Extension.Contains(ext)));
             
+            bool inputIsOutput = similarFileResult.SimilarFiles
+                .Any(sim => string.Equals(sim.File.FullName, mediaFileInfo.FileInfo.FullName));
+            
             if (isFromPreferredQuality && isNonPreferredQuality)
             {
                 if (!toAlbumDirInfo.Exists)
@@ -836,7 +844,9 @@ public class MoveProcessor
                 {
                     similarFileResult.SimilarFiles.ForEach(similarFile =>
                     {
-                        if (similarFile.File.FullName != newFromFilePath)
+                        inputIsOutput = string.Equals(similarFile.File.FullName, mediaFileInfo.FileInfo.FullName) ||
+                                        string.Equals(similarFile.File.FullName, newFromFilePath);
+                        if (similarFile.File.FullName != newFromFilePath && !inputIsOutput)
                         {
                             Logger.WriteLine($"Deleting duplicated file '{similarFile.File.FullName}'");
                             RemoveCacheByPath(similarFile.File.FullName);
@@ -849,7 +859,7 @@ public class MoveProcessor
                 IncrementCounter(() => _movedFiles++);
                 Logger.WriteLine($"Similar files found, overwriting target, From is bigger, {similarFileResult.SimilarFiles.Count}, {artist}/{mediaFileInfo.Album}, {mediaFileInfo.FileInfo.FullName}");
             }
-            else if(_options.DeleteDuplicateFrom)
+            else if(_options.DeleteDuplicateFrom && !inputIsOutput)
             {
                 mediaFileInfo.FileInfo.Delete();
                 IncrementCounter(() => _localDelete++);
