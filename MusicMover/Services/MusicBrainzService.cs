@@ -91,7 +91,7 @@ public class MusicBrainzService
         if (string.IsNullOrWhiteSpace(mediaFileInfo.Title) || overWriteTrack)
         {
             string? trackTitle = match.ReleaseMedia.Tracks?.FirstOrDefault()?.Title;
-            string credits = GetArtistFeatCreditString(match.ArtistCredits, match.ArtistCredit?.Name, true);
+            string credits = GetArtistFeatCreditString(match.ArtistCredits);
             if (credits.Length > 2)
             {
                 trackTitle += " " + credits;
@@ -468,7 +468,7 @@ public class MusicBrainzService
                 if (media?.Tracks?.Count == 0 && data?.ArtistCredit?.Count > 1)
                 {
                     //try by adding artist credit join phrase
-                    string artistCredits = GetArtistFeatCreditString(data.ArtistCredit, string.Empty, true);
+                    string artistCredits = GetArtistFeatCreditString(data.ArtistCredit);
                     media.Tracks = GetBestMatchingTracks(tempTracks, track.Title, artistCredits, relaxedFiltering, matchPercentage);
                 }
 
@@ -772,47 +772,20 @@ public class MusicBrainzService
         return false;
     }
 
-    public string GetArtistFeatCreditString(List<MusicBrainzArtistCreditModel> artists, string? trackArtist, bool addBrackets)
+    public string GetArtistFeatCreditString(List<MusicBrainzArtistCreditModel> artists)
     {
         string artistName = string.Empty;
 
         if (artists.Count > 1)
         {
-            if (addBrackets)
-            {
-                artistName += "(";
-            }
-
-            if (!string.IsNullOrWhiteSpace(trackArtist))
-            {
-                artists = artists
-                    .Where(artist => !string.Equals(artist.Name, trackArtist))
-                    .ToList();
-            }
-
             int index = 0;
-            string joinPhrase = artists.FirstOrDefault()?.JoinPhrase ?? string.Empty;
-
-            string[] replaceToFeat = [ ",", "&" ];
-            if (joinPhrase.Length > 0 && replaceToFeat.Any(feat => joinPhrase.Trim() == feat))
-            {
-                joinPhrase = "feat. ";
-            }
             
-            foreach (var artist in artists)
+            foreach (var artist in artists.Skip(1))
             {
-                if (index == 0 && joinPhrase.StartsWith(' '))
-                {
-                    joinPhrase = joinPhrase.TrimStart();
-                }
+                string joinPhrase = artists.Skip(index).FirstOrDefault()?.JoinPhrase ?? string.Empty;
                 
                 artistName += $"{joinPhrase}{artist.Name}";
-                joinPhrase = " & ";//artist.JoinPhrase ?? string.Empty;
                 index++;
-            }
-            if (addBrackets)
-            {
-                artistName += ")";
             }
         }
 
