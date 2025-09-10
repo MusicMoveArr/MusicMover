@@ -13,7 +13,7 @@ public class TidalAttributeEntity
     public string? Duration { get; set; }
     public bool Explicit { get; set; }
     public string? ReleaseDate { get; set; }
-    public string? Copyright { get; set; }
+    public TidalAttributeTextEntity? Copyright { get; set; }
     public float Popularity { get; set; }
     public List<string> Availability { get; set; }
     public List<string> MediaTags { get; set; }

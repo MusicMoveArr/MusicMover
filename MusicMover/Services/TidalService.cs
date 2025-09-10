@@ -462,7 +462,7 @@ public class TidalService
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ISRC", tidalTrack.Attributes.ISRC, ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "UPC", tidalAlbum.Attributes.BarcodeId, ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", tidalAlbum.Attributes.ReleaseDate, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Copyright", tidalTrack.Attributes.Copyright, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Copyright", tidalTrack.Attributes.Copyright?.Text, ref trackInfoUpdated);
         
         var trackNumber = albumTracks.Data
             .RelationShips
