@@ -709,7 +709,7 @@ public class MusicBrainzService
 
         if (string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustIdFingerPrint) && mediaFileInfo.AcoustIdFingerPrintDuration > 0)
         {
-            var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustIdFingerPrint, (int)mediaFileInfo.AcoustIdFingerPrintDuration);
+            var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustIdFingerPrint, mediaFileInfo.Duration);
 
             matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo, matchPercentage);
             acoustId = matchedRecording?.AcoustId;
