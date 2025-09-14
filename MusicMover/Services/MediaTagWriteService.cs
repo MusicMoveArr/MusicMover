@@ -413,6 +413,46 @@ public class MediaTagWriteService
                 track.AdditionalFields[GetFieldName(track, "Deezer Artist Href")] = value;
                 updated = IsDictionaryUpdated(track, oldValues, "Deezer Artist Href");
                 return true;
+            case "discogs track explicit":
+                orgValue = GetDictionaryValue(track, "Discogs Track Explicit");
+                track.AdditionalFields[GetFieldName(track, "Discogs Track Explicit")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Track Explicit");
+                return true;
+            case "discogs track href":
+                orgValue = GetDictionaryValue(track, "Discogs Track Href");
+                track.AdditionalFields[GetFieldName(track, "Discogs Track Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Track Href");
+                return true;
+            case "discogs album id":
+                orgValue = GetDictionaryValue(track, "Discogs Album Id");
+                track.AdditionalFields[GetFieldName(track, "Discogs Album Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Album Id");
+                return true;
+            case "discogs album group":
+                orgValue = GetDictionaryValue(track, "Discogs Album Group");
+                track.AdditionalFields[GetFieldName(track, "Discogs Album Group")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Album Group");
+                return true;
+            case "discogs album release date":
+                orgValue = GetDictionaryValue(track, "Discogs Album Release Date");
+                track.AdditionalFields[GetFieldName(track, "Discogs Album Release Date")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Album Release Date");
+                return true;
+            case "discogs artist href":
+                orgValue = GetDictionaryValue(track, "Discogs Artist Href");
+                track.AdditionalFields[GetFieldName(track, "Discogs Artist Href")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Artist Href");
+                return true;
+            case "discogs artist genres":
+                orgValue = GetDictionaryValue(track, "Discogs Artist Genres");
+                track.AdditionalFields[GetFieldName(track, "Discogs Artist Genres")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Artist Genres");
+                return true;
+            case "discogs artist id":
+                orgValue = GetDictionaryValue(track, "Discogs Artist Id");
+                track.AdditionalFields[GetFieldName(track, "Discogs Artist Id")] = value;
+                updated = IsDictionaryUpdated(track, oldValues, "Discogs Artist Id");
+                return true;
         }
 
         return false;

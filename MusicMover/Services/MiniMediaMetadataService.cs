@@ -342,7 +342,15 @@ public class MiniMediaMetadataService
             _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
             _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
             _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Artist Href", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            //_mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Artist Href", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+        }
+        else if (foundTrack.ProviderType == "Discogs")
+        {
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            //_mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Artist Href", foundTrack.Album, ref trackInfoUpdated);
         }
         
         if (string.IsNullOrWhiteSpace(mediaFileInfo.Title) || overWriteTrack)
