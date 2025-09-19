@@ -9,7 +9,7 @@ public class SearchTrackEntity
     public string Id { get; set; }
     public string Name { get; set; }
     public int DiscNumber { get; set; }
-    public int TrackNumber { get; set; }
+    public string TrackNumber { get; set; }
     public TimeSpan Duration { get; set; }
     public bool Explicit { get; set; }
     public string? ISRC { get; set; }
