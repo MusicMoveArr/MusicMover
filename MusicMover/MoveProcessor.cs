@@ -55,8 +55,6 @@ public class MoveProcessor
     private readonly MusicBrainzService _musicBrainzService;
     private readonly TidalService _tidalService;
     private readonly MiniMediaMetadataService _miniMediaMetadataService;
-    private readonly AsyncLock _asyncAcoustIdLock;
-    private readonly FingerPrintService _fingerPrintService;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private readonly List<PluginLoader> _loaders = new List<PluginLoader>();
     private readonly List<IPlugin> _plugins = new List<IPlugin>();
@@ -66,11 +64,9 @@ public class MoveProcessor
     public MoveProcessor(CliOptions options)
     {
         _options = options;
-        _asyncAcoustIdLock = new AsyncLock();
         _memoryCache = MemoryCache.Default;
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
-        _fingerPrintService = new FingerPrintService();
         _mediaTagWriteService = new MediaTagWriteService();
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
         _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
@@ -175,7 +171,7 @@ public class MoveProcessor
             .StartAsync(async ctx =>
             {
                 Dictionary<string, ProgressTask> progressTasks = new Dictionary<string, ProgressTask>();
-                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {_filesToProcess.Count} processed"));
+                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {_filesToProcess.Count}"));
                 totalProgressTask.MaxValue = _filesToProcess.Count;
                 if (_options.Parallel)
                 {
@@ -218,7 +214,7 @@ public class MoveProcessor
                         }
                         
                         totalProgressTask.Value++;
-                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count} processed"));
+                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count}, moved: {_movedFiles}, local delete: {_localDelete}, remote delete: {_remoteDelete}"));
                     });
                 }
                 else
@@ -257,7 +253,7 @@ public class MoveProcessor
                         }
                         
                         totalProgressTask.Value++;
-                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count} processed"));
+                        totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count}, moved: {_movedFiles}, local delete: {_localDelete}, remote delete: {_remoteDelete}"));
                     }
                 }
             });
@@ -1156,38 +1152,36 @@ public class MoveProcessor
     private async Task<bool> TagFileAcoustIdAsync(MediaFileInfo mediaFileInfo)
     {
         bool success = false;
-        using (await _asyncAcoustIdLock.LockAsync())
+        
+        if (!string.IsNullOrWhiteSpace(_options.AcoustIdApiKey) &&
+            (_options.AlwaysCheckAcoustId ||
+             string.IsNullOrWhiteSpace(mediaFileInfo.Artist) ||
+             string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
+             string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
         {
-            if (!string.IsNullOrWhiteSpace(_options.AcoustIdApiKey) &&
-                (_options.AlwaysCheckAcoustId ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.Artist) ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.Album) ||
-                 string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist)))
-            {
-                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
-                    _options.AcoustIdApiKey,
-                    _options.SearchByTagNames,
-                    _options.AcoustIdMatchPercentage,
-                    _options.MusicBrainzMatchPercentage);
-                
-                success =
-                    match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
-                        match,
-                        mediaFileInfo, 
-                        _options.OverwriteArtist, 
-                        _options.OverwriteAlbum, 
-                        _options.OverwriteTrack,
-                        _options.OverwriteAlbumArtist);
+            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo,
+                _options.AcoustIdApiKey,
+                _options.SearchByTagNames,
+                _options.AcoustIdMatchPercentage,
+                _options.MusicBrainzMatchPercentage);
             
-                if (success)
-                {
-                    mediaFileInfo.SetTrackInfo(mediaFileInfo.TrackInfo);
-                    Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
-                }
-                else
-                {
-                    Logger.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}", true);
-                }
+            success =
+                match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
+                    match,
+                    mediaFileInfo, 
+                    _options.OverwriteArtist, 
+                    _options.OverwriteAlbum, 
+                    _options.OverwriteTrack,
+                    _options.OverwriteAlbumArtist);
+        
+            if (success)
+            {
+                mediaFileInfo.SetTrackInfo(mediaFileInfo.TrackInfo);
+                Logger.WriteLine($"Updated with AcoustId/MusicBrainz tags {mediaFileInfo.FileInfo.FullName}", true);
+            }
+            else
+            {
+                Logger.WriteLine($"AcoustId not found by Fingerprint for {mediaFileInfo.FileInfo.FullName}", true);
             }
         }
 

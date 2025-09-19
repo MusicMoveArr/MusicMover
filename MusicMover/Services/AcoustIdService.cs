@@ -9,6 +9,13 @@ namespace MusicMover.Services;
 
 public class AcoustIdService
 {
+    private readonly AsyncLock _asyncAcoustIdLock;
+
+    public AcoustIdService()
+    {
+        _asyncAcoustIdLock = new AsyncLock();
+    }
+    
     public async Task<AcoustIdResponse?> LookupAcoustIdAsync(string acoustIdApiKey, string fingerprint, int duration)
     {
         if (string.IsNullOrWhiteSpace(acoustIdApiKey))
@@ -19,16 +26,19 @@ public class AcoustIdService
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         var client = new RestClient("https://api.acoustid.org/v2/lookup");
 
-        return await retryPolicy.ExecuteAsync(async () =>
+        using (await _asyncAcoustIdLock.LockAsync())
         {
-            var request = new RestRequest();
-            request.AddParameter("client", acoustIdApiKey);
-            request.AddParameter("meta", "recordings");
-            request.AddParameter("duration", duration);
-            request.AddParameter("fingerprint", fingerprint);
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                var request = new RestRequest();
+                request.AddParameter("client", acoustIdApiKey);
+                request.AddParameter("meta", "recordings");
+                request.AddParameter("duration", duration);
+                request.AddParameter("fingerprint", fingerprint);
 
-            return await client.GetAsync<AcoustIdResponse>(request);
-        });
+                return await client.GetAsync<AcoustIdResponse>(request);
+            });
+        }
     }
     
     public async Task<AcoustIdResponse?> LookupByAcoustIdAsync(string acoustIdApiKey, string acoustId)
@@ -40,15 +50,19 @@ public class AcoustIdService
         
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
         var client = new RestClient("https://api.acoustid.org/v2/lookup");
-        return await retryPolicy.ExecuteAsync(async () =>
+
+        using (await _asyncAcoustIdLock.LockAsync())
         {
-            var request = new RestRequest();
-            request.AddParameter("client", acoustIdApiKey);
-            request.AddParameter("meta", "recordings");
-            request.AddParameter("trackid", acoustId);
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                var request = new RestRequest();
+                request.AddParameter("client", acoustIdApiKey);
+                request.AddParameter("meta", "recordings");
+                request.AddParameter("trackid", acoustId);
             
-            return await client.GetAsync<AcoustIdResponse>(request);
-        });
+                return await client.GetAsync<AcoustIdResponse>(request);
+            });
+        }
     }
     
     private AsyncRetryPolicy GetRetryPolicy()

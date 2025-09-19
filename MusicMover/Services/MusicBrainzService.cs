@@ -691,12 +691,13 @@ public class MusicBrainzService
         string? acoustId = string.Empty;
         AcoustIdRecording? matchedRecording = null;
 
-        if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && Guid.TryParse(mediaFileInfo.AcoustId, out Guid _))
+        if (!string.IsNullOrWhiteSpace(mediaFileInfo.AcoustId) && 
+            Guid.TryParse(mediaFileInfo.AcoustId, out Guid _))
         {
             Logger.WriteLine($"Looking up AcoustID provided by AcoustId Tag", true);
             
             //try again but with the AcoustID from the media file
-            var acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
+            AcoustIdResponse? acoustIdLookup = await _acoustIdService.LookupByAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustId);
             matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo, matchPercentage);
             acoustId = matchedRecording?.AcoustId;
             recordingId = matchedRecording?.Id;
@@ -707,9 +708,12 @@ public class MusicBrainzService
             }
         }
 
-        if (string.IsNullOrWhiteSpace(recordingId) && !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustIdFingerPrint) && mediaFileInfo.AcoustIdFingerPrintDuration > 0)
+        if (string.IsNullOrWhiteSpace(recordingId) && 
+            !string.IsNullOrWhiteSpace(mediaFileInfo.AcoustIdFingerPrint) && 
+            mediaFileInfo.AcoustIdFingerPrintDuration > 0)
         {
-            var acoustIdLookup = await _acoustIdService.LookupAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustIdFingerPrint, mediaFileInfo.Duration);
+            AcoustIdResponse? acoustIdLookup = await _acoustIdService
+                .LookupAcoustIdAsync(acoustIdApiKey, mediaFileInfo.AcoustIdFingerPrint, mediaFileInfo.Duration);
 
             matchedRecording = await GetBestMatchingAcoustIdAsync(acoustIdLookup, mediaFileInfo, matchPercentage);
             acoustId = matchedRecording?.AcoustId;
@@ -736,7 +740,8 @@ public class MusicBrainzService
         
         GetDataByAcoustIdResult result = new GetDataByAcoustIdResult();
         
-        if (string.IsNullOrWhiteSpace(recordingId) || string.IsNullOrWhiteSpace(acoustId))
+        if (string.IsNullOrWhiteSpace(recordingId) || 
+            string.IsNullOrWhiteSpace(acoustId))
         {
             Logger.WriteLine($"MusicBrainz recording not found by id '{recordingId}'", true);
             result.Success = false;
