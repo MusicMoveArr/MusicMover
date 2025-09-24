@@ -31,6 +31,13 @@ public class MediaFileInfo
     public double BitRate { get; set; }
     public int Disc { get; set; }
     public int Duration { get; set; }
+    
+    
+    //during processing
+    public bool MetadataApiTaggingSuccess { get; set; }
+    public bool MusicBrainzTaggingSuccess { get; set; }
+    public bool TidalTaggingSuccess { get; set; }
+    public SimilarFileResult SimilarFileResult { get; set; }
 
     public MediaFileInfo()
     {
