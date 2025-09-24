@@ -38,6 +38,9 @@ public class MiniMediaMetadataService
         artistSearch.Add(uncoupledArtistName);
         artistSearch.Add(uncoupledAlbumArtist);
         
+        artistSearch.AddRange(mediaFileInfo.Artist.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        artistSearch.AddRange(mediaFileInfo.AlbumArtist.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        
         artistSearch = artistSearch
             .Where(artist => !string.IsNullOrWhiteSpace(artist))
             .DistinctBy(artist => artist)
