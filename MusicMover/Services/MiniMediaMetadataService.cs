@@ -9,7 +9,7 @@ public class MiniMediaMetadataService
 {
     private readonly string VariousArtists = "Various Artists";
     private readonly string VariousArtistsVA = "VA";
-    private readonly MiniMediaMetadataAPIService _miniMediaMetadataApiService;
+    private readonly MiniMediaMetadataApiCacheLayerService _miniMediaMetadataApiCacheLayerService;
     private readonly MediaTagWriteService _mediaTagWriteService;
 
     private readonly List<string> _providerTypes;
@@ -18,7 +18,7 @@ public class MiniMediaMetadataService
     {
         _providerTypes = providerTypes;
         _mediaTagWriteService = new MediaTagWriteService();
-        _miniMediaMetadataApiService = new MiniMediaMetadataAPIService(baseUrl, providerTypes);
+        _miniMediaMetadataApiCacheLayerService = new MiniMediaMetadataApiCacheLayerService(baseUrl, providerTypes);
     }
 
     public async Task<List<SearchTrackEntity>> GetMatchesAsync(
@@ -32,21 +32,7 @@ public class MiniMediaMetadataService
             return new List<SearchTrackEntity>();
         }
 
-        List<string> artistSearch = new List<string>();
-        artistSearch.Add(mediaFileInfo.Artist);
-        artistSearch.Add(mediaFileInfo.AlbumArtist);
-        artistSearch.Add(uncoupledArtistName);
-        artistSearch.Add(uncoupledAlbumArtist);
-        
-        artistSearch.AddRange(mediaFileInfo.Artist.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-        artistSearch.AddRange(mediaFileInfo.AlbumArtist.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-        
-        artistSearch = artistSearch
-            .Where(artist => !string.IsNullOrWhiteSpace(artist))
-            .DistinctBy(artist => artist)
-            .ToList();
-
-        if (!artistSearch.Any())
+        if (!mediaFileInfo.AllArtistNames.Any())
         {
             return new List<SearchTrackEntity>();
         }
@@ -59,7 +45,7 @@ public class MiniMediaMetadataService
             targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
         }
 
-        foreach (var artist in artistSearch)
+        foreach (var artist in mediaFileInfo.AllArtistNames)
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'", true);
             Logger.WriteLine($"Searching for artist '{artist}'", true);
@@ -71,11 +57,11 @@ public class MiniMediaMetadataService
             }
         }
 
-        string? artistInAlbumName = artistSearch.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
+        string? artistInAlbumName = mediaFileInfo.AllArtistNames.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
         if (!string.IsNullOrWhiteSpace(artistInAlbumName))
         {
             string withoutArtistInAlbum = targetAlbum.ToLower().Replace(artistInAlbumName.ToLower(), string.Empty);
-            foreach (var artist in artistSearch)
+            foreach (var artist in mediaFileInfo.AllArtistNames)
             {
                 Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'", true);
                 Logger.WriteLine($"Searching for artist '{artist}'", true);
@@ -102,7 +88,7 @@ public class MiniMediaMetadataService
             return foundTracks;
         }
 
-        var searchResult = await _miniMediaMetadataApiService.SearchArtistsAsync(artistName);
+        var searchResult = await _miniMediaMetadataApiCacheLayerService.SearchArtistsAsync(artistName);
 
         if (!searchResult.Artists.Any())
         {
@@ -155,7 +141,7 @@ public class MiniMediaMetadataService
         int matchPercentage)
     {
         Logger.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'", true);
-        var searchResultTracks = await _miniMediaMetadataApiService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
+        var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
 
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
         List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchResultTracks.Tracks, targetTrackTitle, matchPercentage);

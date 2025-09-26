@@ -8,12 +8,12 @@ using Spectre.Console;
 
 namespace MusicMover.Services;
 
-public class MiniMediaMetadataAPIService
+public class MiniMediaMetadataApiService
 {
     private readonly string _baseUrl;
     private readonly List<string> _providerTypes;
     
-    public MiniMediaMetadataAPIService(string baseUrl, List<string> providerTypes)
+    public MiniMediaMetadataApiService(string baseUrl, List<string> providerTypes)
     {
         _baseUrl = baseUrl;
         _providerTypes = providerTypes;

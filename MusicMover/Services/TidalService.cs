@@ -1,12 +1,9 @@
 using System.Diagnostics;
-using System.Runtime.Caching;
 using System.Text.RegularExpressions;
-using ATL;
 using FuzzySharp;
 using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Models.Tidal;
-using Spectre.Console;
 
 namespace MusicMover.Services;
 
@@ -28,8 +25,6 @@ public class TidalService
     
     public async Task<bool> WriteTagsAsync(
         MediaFileInfo mediaFileInfo, 
-        FileInfo fromFile, string uncoupledArtistName, 
-        string uncoupledAlbumArtist,
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
@@ -43,23 +38,12 @@ public class TidalService
             await _tidalAPIService.AuthenticateAsync();
         }
 
-        List<string?> artistSearch = new List<string?>();
-        artistSearch.Add(mediaFileInfo.Artist);
-        artistSearch.Add(mediaFileInfo.AlbumArtist);
-        artistSearch.Add(uncoupledArtistName);
-        artistSearch.Add(uncoupledAlbumArtist);
-        
-        artistSearch = artistSearch
-            .Where(artist => !string.IsNullOrWhiteSpace(artist))
-            .DistinctBy(artist => artist)
-            .ToList();
-
-        if (!artistSearch.Any())
+        if (!mediaFileInfo.AllArtistNames.Any())
         {
             return false;
         }
 
-        foreach (var artist in artistSearch)
+        foreach (var artist in mediaFileInfo.AllArtistNames)
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
             Logger.WriteLine($"Searching for tidal artist '{artist}'", true);
@@ -76,7 +60,7 @@ public class TidalService
         {
             mediaFileInfo.Title = Regex.Replace(mediaFileInfo.Title, "^[0-9]*", string.Empty).TrimStart();
             
-            foreach (var artist in artistSearch)
+            foreach (var artist in mediaFileInfo.AllArtistNames)
             {
                 Logger.WriteLine($"Need to match artist: '{artist}', album: '{mediaFileInfo.Album}', track: '{mediaFileInfo.Title}'", true);
                 Logger.WriteLine($"Searching for tidal artist '{artist}'", true);

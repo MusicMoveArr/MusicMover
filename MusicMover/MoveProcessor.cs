@@ -43,6 +43,7 @@ public class MoveProcessor
     private object _counterLock = new object();
     private int _updatedTagfiles = 0;
     private bool _exitProcess = false;
+    private int _processedFiles = 0;
 
     private Stopwatch _sw = Stopwatch.StartNew();
     private Stopwatch _runtimeSw = Stopwatch.StartNew();
@@ -58,6 +59,7 @@ public class MoveProcessor
     private readonly MediaTagWriteService _mediaTagWriteService;
     private readonly List<IPlugin> _plugins = new List<IPlugin>();
     private List<string> _artistsNotFound = new List<string>();
+    private List<string> _unprocessedArtists = new List<string>();
 
     public MoveProcessor(CliOptions options)
     {
@@ -111,6 +113,15 @@ public class MoveProcessor
             Logger.WriteLine($"Artists not found: {_artistsNotFound.Count}");
             _artistsNotFound.ForEach(artist => Logger.WriteLine(artist));
         }
+
+        if (_unprocessedArtists.Any())
+        {
+            Console.WriteLine("Unable to tag the following artists:");
+            _unprocessedArtists
+                .OrderBy(artist => artist)
+                .ToList()
+                .ForEach(artist => Logger.WriteLine(artist));
+        }
     }
 
     private async Task ProcessMediaFiles()
@@ -137,12 +148,12 @@ public class MoveProcessor
             .StartAsync(async ctx =>
             {
                 Dictionary<string, ProgressTask> progressTasks = new Dictionary<string, ProgressTask>();
-                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks 0 of {_filesToProcess.Count}"));
+                var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks {_processedFiles} of {_filesToProcess.Count + _processedFiles}"));
                 totalProgressTask.MaxValue = _filesToProcess.Count;
                 
                 int maxDegreeOfParallelism = _options.Parallel ? 5 : 1;
                 AsyncLock progressLock = new AsyncLock();
-                
+
                 await ParallelHelper.ForEachAsync(_filesToProcess, maxDegreeOfParallelism, async mediaFileInfo =>
                 {
                     string artistName = ArtistHelper.GetShortVersion(mediaFileInfo.Artist, 30, "...");
@@ -172,6 +183,18 @@ public class MoveProcessor
                     
                     using (await progressLock.LockAsync())
                     {
+                        if (!mediaFileInfo.TaggerUpdatedTags)
+                        {
+                            foreach (string artist in mediaFileInfo.AllArtistNames)
+                            {
+                                if(!_unprocessedArtists.Contains(artist))
+                                {
+                                    _unprocessedArtists.Add(artist);
+                                }
+                            }
+                        }
+                        
+                        
                         if (progressTasks.TryGetValue(artistName, out ProgressTask progressTask))
                         {
                             progressTask.Increment(1);
@@ -180,10 +203,11 @@ public class MoveProcessor
                     }
                     
                     totalProgressTask.Value++;
-                    totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value} of {_filesToProcess.Count}, moved: {_movedFiles}, local delete: {_localDelete}, remote delete: {_remoteDelete}"));
+                    totalProgressTask.Description(Markup.Escape($"Processing tracks {totalProgressTask.Value + _processedFiles} of {_filesToProcess.Count + _processedFiles}, moved: {_movedFiles}, local delete: {_localDelete}, remote delete: {_remoteDelete}"));
                 });
             });
-        
+
+        _processedFiles += _filesToProcess.Count;
         _filesToProcess.Clear();
     }
 
@@ -1158,9 +1182,6 @@ public class MoveProcessor
             !string.IsNullOrWhiteSpace(_options.TidalCountryCode))
         {
             bool success = await _tidalService.WriteTagsAsync(mediaFileInfo, 
-                mediaFileInfo.FileInfo, 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.Artist), 
-                ArtistHelper.GetUncoupledArtistName(mediaFileInfo.AlbumArtist),
                 _options.OverwriteArtist, 
                 _options.OverwriteAlbum, 
                 _options.OverwriteTrack,

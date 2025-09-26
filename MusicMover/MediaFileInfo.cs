@@ -1,5 +1,6 @@
 using System.Globalization;
 using ATL;
+using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Services;
 
@@ -31,6 +32,7 @@ public class MediaFileInfo
     public double BitRate { get; set; }
     public int Disc { get; set; }
     public int Duration { get; set; }
+    public List<string> AllArtistNames { get; private set; }
     
     
     //during processing
@@ -197,6 +199,19 @@ public class MediaFileInfo
         this.Artist = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key, "artist", StringComparison.OrdinalIgnoreCase)).Value?.Trim();
 
+        AllArtistNames = new List<string>();
+        AllArtistNames.Add(Artist);
+        AllArtistNames.Add(AlbumArtist);
+        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(Artist));
+        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(AlbumArtist));
+        
+        AllArtistNames.AddRange(Artist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
+        AllArtistNames.AddRange(AlbumArtist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
+        AllArtistNames = AllArtistNames
+            .Where(artist => !string.IsNullOrWhiteSpace(artist))
+            .DistinctBy(artist => artist)
+            .ToList();
+        
         this.BitRate = TrackInfo.Bitrate;
         AcoustIdFingerPrint = mediaTags.FirstOrDefault(tag => 
             string.Equals(tag.Key,AcoustidFingerprintTag, StringComparison.OrdinalIgnoreCase)).Value?.Trim();
