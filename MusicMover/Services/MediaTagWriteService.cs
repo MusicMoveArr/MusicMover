@@ -512,13 +512,24 @@ public class MediaTagWriteService
         }
         
         bool success = false;
-        try
+        CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        
+        var writeTask = Task.Run(() =>
         {
-            success = await track.SaveToAsync(tempFile);
-        }
-        catch (Exception ex)
+            try
+            {
+                success = track.SaveTo(tempFile);
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine(ex.Message);
+            }
+        });
+        await Task.WhenAny(writeTask, Task.Delay(TimeSpan.FromMinutes(1)));
+
+        if (!writeTask.IsCompleted)
         {
-            Logger.WriteLine(ex.Message);
+            cancellationToken.Cancel();
         }
 
         if (success && File.Exists(tempFile))
