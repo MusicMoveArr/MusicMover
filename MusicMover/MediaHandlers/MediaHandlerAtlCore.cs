@@ -41,18 +41,18 @@ public class MediaHandlerAtlCore : MediaHandler
     public override string? Title => GetMediaTagValue("title");
     public override string? Album => GetMediaTagValue("album");
 
-    public override int? TrackCount => GetMediaTagInt("tracktotal", "total tracks");
+    public override int? TrackCount => GetMediaTagInt("tracktotal", "total tracks") ?? 0;
     public override string? AlbumArtist => GetMediaTagValue("album_artist", "albumartist");
     public override string? AcoustId => GetMediaTagValue(AcoustIdIdTag, AcoustIdTag);
     public override string? AcoustIdFingerPrint => GetMediaTagValue(AcoustidFingerprintTag);
-    public override float? AcoustIdFingerPrintDuration => GetMediaTagFloat(AcoustidFingerprintDurationTag);
+    public override float? AcoustIdFingerPrintDuration => GetMediaTagFloat(AcoustidFingerprintDurationTag) ?? 0;
     public override double BitRate => TrackInfo.Bitrate;
     public override int Duration => TrackInfo.Duration;
     public override int? Year => TrackInfo.Year;
     public override DateTime? Date => TrackInfo.Date;
     public override string? CatalogNumber => TrackInfo.CatalogNumber;
     public override string ISRC => TrackInfo.ISRC;
-    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc");
+    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc") ?? 0;
 
     public override int? DiscNumber
     {
