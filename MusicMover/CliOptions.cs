@@ -45,4 +45,6 @@ public class CliOptions
     public required int AcoustIdMatchPercentage { get; init; }
     public required bool TrustAcoustIdWhenTaggingFailed { get; init; }
     public required string MoveUntaggableFilesPath { get; init; }
+    public required string MetadataHandlerLibrary { get; init; }
+    
 }

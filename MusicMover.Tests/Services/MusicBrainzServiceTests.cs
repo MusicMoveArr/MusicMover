@@ -2,6 +2,7 @@ using ATL;
 using MusicMover.Models.MusicBrainz;
 using AutoFixture;
 using MusicMover.Helpers;
+using MusicMover.MediaHandlers;
 using MusicMover.Services;
 using Shouldly;
 
@@ -68,9 +69,16 @@ public class MusicBrainzServiceTests
         track.Album = album;
         track.Title = title;
         track.AdditionalFields = new Dictionary<string, string>();
-        MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
+        MediaHandlerDummy mediaHandler = new MediaHandlerDummy();
+        mediaHandler.SetMediaTagValue(track.Artist, nameof(track.Artist));
+        mediaHandler.SetMediaTagValue(track.AlbumArtist, nameof(track.AlbumArtist));
+        mediaHandler.SetMediaTagValue(track.Album, nameof(track.Album));
+        mediaHandler.SetMediaTagValue(track.Title, nameof(track.Title));
+        mediaHandler.SetMediaTagValue(track.DiscNumber, nameof(track.DiscNumber));
+        mediaHandler.SetMediaTagValue(track.TrackNumber, nameof(track.TrackNumber));
+        mediaHandler.SetArtists();
 
-        var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
+        var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaHandler, 
             string.Empty, 
             true, 
             80, 
@@ -88,9 +96,16 @@ public class MusicBrainzServiceTests
         foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
         {
             Track track = new Track(filePath);
-            MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
+            MediaHandlerDummy mediaHandler = new MediaHandlerDummy();
+            mediaHandler.SetMediaTagValue(track.Artist, nameof(track.Artist));
+            mediaHandler.SetMediaTagValue(track.AlbumArtist, nameof(track.AlbumArtist));
+            mediaHandler.SetMediaTagValue(track.Album, nameof(track.Album));
+            mediaHandler.SetMediaTagValue(track.Title, nameof(track.Title));
+            mediaHandler.SetMediaTagValue(track.DiscNumber, nameof(track.DiscNumber));
+            mediaHandler.SetMediaTagValue(track.TrackNumber, nameof(track.TrackNumber));
+            mediaHandler.SetArtists();
 
-            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
+            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaHandler, 
                 string.Empty, 
                 true, 
                 80, 
@@ -130,11 +145,19 @@ public class MusicBrainzServiceTests
             {
                 var fingerprint = await _fingerPrintService.GetFingerprintAsync(filePath);
                 Track track = new Track(filePath);
-                MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
-                mediaFileInfo.AcoustIdFingerPrint = fingerprint.Fingerprint;
-                mediaFileInfo.AcoustIdFingerPrintDuration = fingerprint.Duration;
+                MediaHandlerDummy mediaHandler = new MediaHandlerDummy();
+                mediaHandler.SetMediaTagValue(track.Artist, nameof(track.Artist));
+                mediaHandler.SetMediaTagValue(track.AlbumArtist, nameof(track.AlbumArtist));
+                mediaHandler.SetMediaTagValue(track.Album, nameof(track.Album));
+                mediaHandler.SetMediaTagValue(track.Title, nameof(track.Title));
+                mediaHandler.SetMediaTagValue(track.DiscNumber, nameof(track.DiscNumber));
+                mediaHandler.SetMediaTagValue(track.TrackNumber, nameof(track.TrackNumber));
+                
+                mediaHandler.SetMediaTagValue(fingerprint.Fingerprint, MediaHandler.AcoustidFingerprintTag);
+                mediaHandler.SetMediaTagValue(fingerprint.Duration, MediaHandler.AcoustidFingerprintDurationTag);
+                mediaHandler.SetArtists();
 
-                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
+                var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaHandler, 
                     acoustId, 
                     true, 
                     80, 
@@ -187,7 +210,9 @@ public class MusicBrainzServiceTests
     {
         string path = @$"/home/{Environment.UserName}/Music/";
         
-        foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
+        foreach (string filePath in Directory
+                     .GetFiles(path, "*.*", SearchOption.AllDirectories)
+                     .Where(file => MoveProcessor.MediaFileExtensions.Any(ext => file.EndsWith(ext))))
         {
             var fingerprint = await _fingerPrintService.GetFingerprintAsync(filePath);
             Track track = new Track(filePath);
@@ -201,11 +226,20 @@ public class MusicBrainzServiceTests
             track.AlbumArtist = string.Empty;
             track.Artist = string.Empty;
             track.Title = string.Empty;
-            MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
-            mediaFileInfo.AcoustIdFingerPrint = fingerprint.Fingerprint;
-            mediaFileInfo.AcoustIdFingerPrintDuration = fingerprint.Duration;
+            
+            MediaHandlerDummy mediaHandler = new MediaHandlerDummy();
+            mediaHandler.SetMediaTagValue(track.Artist, nameof(track.Artist));
+            mediaHandler.SetMediaTagValue(track.AlbumArtist, nameof(track.AlbumArtist));
+            mediaHandler.SetMediaTagValue(track.Album, nameof(track.Album));
+            mediaHandler.SetMediaTagValue(track.Title, nameof(track.Title));
+            mediaHandler.SetMediaTagValue(track.DiscNumber, nameof(track.DiscNumber));
+            mediaHandler.SetMediaTagValue(track.TrackNumber, nameof(track.TrackNumber));
+            
+            mediaHandler.SetMediaTagValue(fingerprint.Fingerprint, MediaHandler.AcoustidFingerprintTag);
+            mediaHandler.SetMediaTagValue(fingerprint.Duration, MediaHandler.AcoustidFingerprintDurationTag);
+            mediaHandler.SetArtists();
 
-            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaFileInfo, 
+            var match = await _musicBrainzService.GetMatchFromAcoustIdAsync(mediaHandler, 
                 acoustId, 
                 true, 
                 80, 

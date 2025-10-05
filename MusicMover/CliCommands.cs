@@ -2,6 +2,7 @@ using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using MusicMover.Helpers;
+using MusicMover.MediaHandlers;
 
 namespace MusicMover;
 
@@ -119,7 +120,7 @@ public class CliCommands : ICommand
     public string AcoustidApiKey { get; set; }
     
     [CommandOption("file-format", 
-        Description = "rename file format {Artist} {SortArtist} {Title} {Album} {Track} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {BitRate}.", 
+        Description = "Rename file format {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.", 
         EnvironmentVariable = "MOVE_FILEFORMAT",
         IsRequired = false)]
     public string FileFormat { get; set; }
@@ -261,6 +262,12 @@ public class CliCommands : ICommand
         EnvironmentVariable = "MOVE_MOVE_UNTAGGABLE_FILES_PATH",
         IsRequired = false)]
     public string MoveUntaggableFilesPath { get; set; }
+
+    [CommandOption("metadata-handler",
+        Description = $"The metadata library handler, can be either {MoveProcessor.MediaHandlerATLCore} or {MoveProcessor.MediaHandlerFFmpeg}.",
+        EnvironmentVariable = "MOVE_METADATA_HANDLER",
+        IsRequired = false)]
+    public string MetadataHandlerLibrary { get; set; } = MoveProcessor.MediaHandlerATLCore;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -324,7 +331,8 @@ public class CliCommands : ICommand
             MusicBrainzMatchPercentage = MusicBrainzMatchPercentage,
             AcoustIdMatchPercentage = AcoustIdMatchPercentage,
             TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed,
-            MoveUntaggableFilesPath = MoveUntaggableFilesPath
+            MoveUntaggableFilesPath = MoveUntaggableFilesPath,
+            MetadataHandlerLibrary = MetadataHandlerLibrary
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))
@@ -343,6 +351,14 @@ public class CliCommands : ICommand
             !MetadataApiProviders?.Any(provider => supportedProviderTypes.Contains(provider)) == true))
         {
             Logger.WriteLine("No provider type selected for --metadata-api-providers / -MP variable");
+            return;
+        }
+
+        string[] supportedMetadataHandlers = [MoveProcessor.MediaHandlerATLCore, MoveProcessor.MediaHandlerFFmpeg];
+        if (string.IsNullOrWhiteSpace(MetadataHandlerLibrary) || 
+            !supportedMetadataHandlers?.Any(metadataHandler => string.Equals(MetadataHandlerLibrary, metadataHandler)) == true)
+        {
+            Logger.WriteLine($"The metadata library handler, can be either {MoveProcessor.MediaHandlerATLCore} or {MoveProcessor.MediaHandlerFFmpeg}.");
             return;
         }
         
@@ -420,26 +436,26 @@ public class CliCommands : ICommand
 
         if (!string.IsNullOrWhiteSpace(options?.FileFormat))
         {
-            MediaFileInfo mediaFileInfo = new MediaFileInfo();
-            mediaFileInfo.Artist = "Music";
-            mediaFileInfo.SortArtist = "Music";
-            mediaFileInfo.Title = "SomeTrack";
-            mediaFileInfo.Album = "Mover";
-            mediaFileInfo.Track = 5;
-            mediaFileInfo.TrackCount = 15;
-            mediaFileInfo.AlbumArtist = "MusicMover";
-            mediaFileInfo.BitRate = 320;
-            mediaFileInfo.Disc = 10;
+            MediaHandlerDummy dummyFile = new MediaHandlerDummy();
+            dummyFile.SetMediaTagValue("Music", nameof(dummyFile.Artist));
+            dummyFile.SetMediaTagValue("Music", nameof(dummyFile.SortArtist));
+            dummyFile.SetMediaTagValue("SomeTrack", nameof(dummyFile.Title));
+            dummyFile.SetMediaTagValue("Mover", nameof(dummyFile.Album));
+            dummyFile.SetMediaTagValue("5", nameof(dummyFile.TrackNumber));
+            dummyFile.SetMediaTagValue("15", nameof(dummyFile.TrackCount));
+            dummyFile.SetMediaTagValue("MusicMover", nameof(dummyFile.AlbumArtist));
+            dummyFile.SetMediaTagValue("320", nameof(dummyFile.BitRate));
+            dummyFile.SetMediaTagValue("10", nameof(dummyFile.DiscNumber));
 
-            if (!TestFileFormatOutput(moveProcessor, mediaFileInfo, options))
+            if (!TestFileFormatOutput(moveProcessor, dummyFile, options))
             {
                 return;
             }
             
             //test again but just 1 disc
-            mediaFileInfo.Disc = 1;
+            dummyFile.SetMediaTagValue("1", nameof(dummyFile.DiscNumber));
             
-            if (!TestFileFormatOutput(moveProcessor, mediaFileInfo, options))
+            if (!TestFileFormatOutput(moveProcessor, dummyFile, options))
             {
                 return;
             }
@@ -448,11 +464,11 @@ public class CliCommands : ICommand
         await moveProcessor.ProcessAsync();
     }
 
-    private static bool TestFileFormatOutput(MoveProcessor moveProcessor, MediaFileInfo fileInfo, CliOptions options)
+    private static bool TestFileFormatOutput(MoveProcessor moveProcessor, MediaHandler mediaHandler, CliOptions options)
     {
         string[] invalidCharacters = ["?", "<", ">", "=", "{", "}"];
             
-        string newFileName = moveProcessor.GetFormatName(fileInfo, options.FileFormat, options.DirectorySeperator);
+        string newFileName = moveProcessor.GetFormatName(mediaHandler, options.FileFormat, options.DirectorySeperator);
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
         {
             Logger.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");

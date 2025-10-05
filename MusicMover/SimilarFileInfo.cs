@@ -1,14 +1,16 @@
+using MusicMover.MediaHandlers;
+
 namespace MusicMover;
 
 public class SimilarFileInfo
 {
     public FileInfo File { get; set; }
-    public MediaFileInfo? MediaInfo { get; set; }
+    public MediaHandler? MediaHandler { get; set; }
 
-    public SimilarFileInfo(FileInfo file, MediaFileInfo mediaInfo )
+    public SimilarFileInfo(FileInfo file, MediaHandler mediaHandler )
     {
         this.File = file;
-        this.MediaInfo = mediaInfo;
+        this.MediaHandler = mediaHandler;
     }
     public SimilarFileInfo(FileInfo file)
     {

@@ -1,6 +1,7 @@
 using ATL;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter;
 using MusicMover.Helpers;
+using MusicMover.MediaHandlers;
 using MusicMover.Services;
 using Shouldly;
 
@@ -24,13 +25,20 @@ public class MiniMediaMetadataServiceTests
         foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
         {
             Track track = new Track(filePath);
-            MediaFileInfo mediaFileInfo = new MediaFileInfo(track);
+            MediaHandlerDummy mediaHandler = new MediaHandlerDummy();
+            mediaHandler.SetMediaTagValue(track.Artist, nameof(track.Artist));
+            mediaHandler.SetMediaTagValue(track.AlbumArtist, nameof(track.AlbumArtist));
+            mediaHandler.SetMediaTagValue(track.Album, nameof(track.Album));
+            mediaHandler.SetMediaTagValue(track.Title, nameof(track.Title));
+            mediaHandler.SetMediaTagValue(track.DiscNumber, nameof(track.DiscNumber));
+            mediaHandler.SetMediaTagValue(track.TrackNumber, nameof(track.TrackNumber));
+            mediaHandler.SetArtists();
 
             string uncoupledArtistName = ArtistHelper.GetUncoupledArtistName(track.Artist);
             string uncoupledAlbumArtistName = ArtistHelper.GetUncoupledArtistName(track.AlbumArtist);
 
             var matches = await miniMediaMetadataService.GetMatchesAsync(
-                mediaFileInfo, 
+                mediaHandler, 
                 uncoupledArtistName,
                 uncoupledAlbumArtistName, 
                 80);

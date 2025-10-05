@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using ATL;
 using MusicMover.Helpers;
+using MusicMover.MediaHandlers;
 using MusicMover.Models.MetadataAPI.Entities;
 
 namespace MusicMover.Services;
@@ -22,51 +22,51 @@ public class MiniMediaMetadataService
     }
 
     public async Task<List<SearchTrackEntity>> GetMatchesAsync(
-        MediaFileInfo mediaFileInfo,
+        MediaHandler mediaHandler,
         string uncoupledArtistName,
         string uncoupledAlbumArtist,
         int matchPercentage)
     {
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist) || string.IsNullOrWhiteSpace(mediaFileInfo.Title))
+        if (string.IsNullOrWhiteSpace(mediaHandler.Artist) || string.IsNullOrWhiteSpace(mediaHandler.Title))
         {
             return new List<SearchTrackEntity>();
         }
 
-        if (!mediaFileInfo.AllArtistNames.Any())
+        if (!mediaHandler.AllArtistNames.Any())
         {
             return new List<SearchTrackEntity>();
         }
         
         //replace disc X from album
-        string targetAlbum = mediaFileInfo?.Album ?? string.Empty;
+        string targetAlbum = mediaHandler?.Album ?? string.Empty;
         string discPattern = @"(?:[\[(])?(disc|cd)\s*([0-9]+)[\])]?";
         if (Regex.IsMatch(targetAlbum.ToLower(), discPattern))
         {
             targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
         }
 
-        foreach (var artist in mediaFileInfo.AllArtistNames)
+        foreach (var artist in mediaHandler.AllArtistNames)
         {
-            Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaFileInfo.Title}'", true);
+            Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaHandler.Title}'", true);
             Logger.WriteLine($"Searching for artist '{artist}'", true);
 
-            List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaFileInfo.Title, targetAlbum, matchPercentage);
+            List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaHandler.Title, targetAlbum, matchPercentage);
             if (foundTracks.Count > 0)
             {
                 return foundTracks;
             }
         }
 
-        string? artistInAlbumName = mediaFileInfo.AllArtistNames.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
+        string? artistInAlbumName = mediaHandler.AllArtistNames.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
         if (!string.IsNullOrWhiteSpace(artistInAlbumName))
         {
             string withoutArtistInAlbum = targetAlbum.ToLower().Replace(artistInAlbumName.ToLower(), string.Empty);
-            foreach (var artist in mediaFileInfo.AllArtistNames)
+            foreach (var artist in mediaHandler.AllArtistNames)
             {
-                Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaFileInfo.Title}'", true);
+                Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaHandler.Title}'", true);
                 Logger.WriteLine($"Searching for artist '{artist}'", true);
 
-                List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaFileInfo.Title, withoutArtistInAlbum, matchPercentage);
+                List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaHandler.Title, withoutArtistInAlbum, matchPercentage);
                 if (foundTracks.Count > 0)
                 {
                     return foundTracks;
@@ -262,7 +262,7 @@ public class MiniMediaMetadataService
     
     public async Task<bool> WriteTagsToFileAsync(
         SearchTrackEntity foundTrack, 
-        MediaFileInfo mediaFileInfo,
+        MediaHandler mediaHandler,
         bool overWriteArtist, 
         bool overWriteAlbum, 
         bool overWriteTrack, 
@@ -279,99 +279,99 @@ public class MiniMediaMetadataService
             return false;
         }
         
-        Logger.WriteLine($"Filpath: {mediaFileInfo.FileInfo.FullName}", true);
+        Logger.WriteLine($"Filpath: {mediaHandler.FileInfo.FullName}", true);
         Logger.WriteLine($"Provider: {foundTrack.ProviderType}", true);
         Logger.WriteLine($"API Artist: {mainArtist}", true);
         Logger.WriteLine($"API Album: {foundTrack.Album.Name}", true);
         Logger.WriteLine($"API TrackName: {foundTrack.Name}", true);
-        Logger.WriteLine($"Media Artist: {mediaFileInfo.Artist}", true);
-        Logger.WriteLine($"Media AlbumArtist: {mediaFileInfo.AlbumArtist}", true);
-        Logger.WriteLine($"Media Album: {mediaFileInfo.Album}", true);
-        Logger.WriteLine($"Media TrackName: {mediaFileInfo.Title}", true);
+        Logger.WriteLine($"Media Artist: {mediaHandler.Artist}", true);
+        Logger.WriteLine($"Media AlbumArtist: {mediaHandler.AlbumArtist}", true);
+        Logger.WriteLine($"Media Album: {mediaHandler.Album}", true);
+        Logger.WriteLine($"Media TrackName: {mediaHandler.Title}", true);
 
         if (foundTrack.ProviderType == "Tidal")
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Id", foundTrack.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Track Href", foundTrack.Url, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Tidal Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Track Id", foundTrack.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Track Href", foundTrack.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Tidal Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
         }
         else if (foundTrack.ProviderType == "MusicBrainz")
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Artist Id", foundTrack.MusicBrainz.ArtistId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Track Id", foundTrack.MusicBrainz.RecordingId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Track Id", foundTrack.MusicBrainz.ReleaseTrackId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Group Id", foundTrack.MusicBrainz.ReleaseGroupId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Release Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Type", foundTrack.MusicBrainz.AlbumType?.ToLower(), ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Release Country", foundTrack.MusicBrainz.AlbumReleaseCountry, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "MusicBrainz Album Status", foundTrack.MusicBrainz.AlbumStatus?.ToLower(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Artist Id", foundTrack.MusicBrainz.ArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Track Id", foundTrack.MusicBrainz.RecordingId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Release Track Id", foundTrack.MusicBrainz.ReleaseTrackId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Release Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Release Group Id", foundTrack.MusicBrainz.ReleaseGroupId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Release Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Album Artist Id", foundTrack.MusicBrainz.ReleaseArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Album Id", foundTrack.MusicBrainz.ReleaseId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Album Type", foundTrack.MusicBrainz.AlbumType?.ToLower(), ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Album Release Country", foundTrack.MusicBrainz.AlbumReleaseCountry, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "MusicBrainz Album Status", foundTrack.MusicBrainz.AlbumStatus?.ToLower(), ref trackInfoUpdated);
         }
         else if (foundTrack.ProviderType == "Deezer")
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Track Id", foundTrack.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Track Href", foundTrack.Url, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Deezer Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Track Id", foundTrack.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Track Href", foundTrack.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Album Href", foundTrack.Album.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Deezer Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
         }
         else if (foundTrack.ProviderType == "Spotify")
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Track Id", foundTrack.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Track Href", foundTrack.Url, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Track Id", foundTrack.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Track Href", foundTrack.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Spotify Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
             //_mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Spotify Artist Href", foundTrack.Album.ArtistId, ref trackInfoUpdated);
         }
         else if (foundTrack.ProviderType == "Discogs")
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Discogs Track Explicit", foundTrack.Explicit ? "Y": "N", ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Discogs Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Discogs Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Discogs Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
             //_mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Artist Href", foundTrack.Album, ref trackInfoUpdated);
         }
         
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Title) || overWriteTrack)
+        if (string.IsNullOrWhiteSpace(mediaHandler.Title) || overWriteTrack)
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Title", foundTrack.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Title", foundTrack.Name, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Album) || overWriteAlbum)
+        if (string.IsNullOrWhiteSpace(mediaHandler.Album) || overWriteAlbum)
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Album", foundTrack.Album.Name, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Album", foundTrack.Album.Name, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.AlbumArtist) || mediaFileInfo.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
+        if (string.IsNullOrWhiteSpace(mediaHandler.AlbumArtist) || mediaHandler.AlbumArtist.ToLower().Contains("various") || overwriteAlbumArtist)
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "AlbumArtist", mainArtist, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "AlbumArtist", mainArtist, ref trackInfoUpdated);
         }
-        if (string.IsNullOrWhiteSpace(mediaFileInfo.Artist) || mediaFileInfo.Artist.ToLower().Contains("various") || overWriteArtist)
+        if (string.IsNullOrWhiteSpace(mediaHandler.Artist) || mediaHandler.Artist.ToLower().Contains("various") || overWriteArtist)
         {
-            _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Artist",  mainArtist, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "Artist",  mainArtist, ref trackInfoUpdated);
         }
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ARTISTS", artists, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "ARTISTS", artists, ref trackInfoUpdated);
 
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "ISRC", foundTrack.ISRC, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "UPC", foundTrack.Album.UPC, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Copyright", foundTrack.Copyright, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "ISRC", foundTrack.ISRC, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "UPC", foundTrack.Album.UPC, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "Copyright", foundTrack.Copyright, ref trackInfoUpdated);
         
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Disc Number", foundTrack.DiscNumber.ToString(), ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Track Number", foundTrack.TrackNumber.ToString(), ref trackInfoUpdated);
-        _mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Total Tracks", foundTrack.Album.TotalTracks.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "Disc Number", foundTrack.DiscNumber.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "Track Number", foundTrack.TrackNumber.ToString(), ref trackInfoUpdated);
+        _mediaTagWriteService.UpdateTag(mediaHandler, "Total Tracks", foundTrack.Album.TotalTracks.ToString(), ref trackInfoUpdated);
 
         if (trackInfoUpdated)
         {
-            mediaFileInfo.TaggerUpdatedTags = true;
+            mediaHandler.TaggerUpdatedTags = true;
         }
         
         return true;
