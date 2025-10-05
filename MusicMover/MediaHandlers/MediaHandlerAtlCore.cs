@@ -52,7 +52,7 @@ public class MediaHandlerAtlCore : MediaHandler
     public override DateTime? Date => TrackInfo.Date;
     public override string? CatalogNumber => TrackInfo.CatalogNumber;
     public override string ISRC => TrackInfo.ISRC;
-    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc") ?? 0;
+    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc", "disc total", "total disc") ?? 0;
 
     public override int? DiscNumber
     {
@@ -76,8 +76,8 @@ public class MediaHandlerAtlCore : MediaHandler
     {
         get
         {
-            int trackTotal = GetMediaTagInt("tracktotal", "totaltracks") ?? 0;
-            string track = GetMediaTagValue("track", "tracknumber");
+            int trackTotal = GetMediaTagInt("tracktotal", "totaltracks", "track total", "total tracks") ?? 0;
+            string track = GetMediaTagValue("track", "tracknumber", "track number");
             if (trackTotal > 0)
             {
                 return trackTotal;
@@ -93,7 +93,7 @@ public class MediaHandlerAtlCore : MediaHandler
     {
         get
         {
-            string track = GetMediaTagValue("track", "tracknumber");
+            string track = GetMediaTagValue("track", "tracknumber", "track number");
             int trackNumber = 0;
             if (track?.Contains('/') == true)
             {

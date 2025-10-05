@@ -12,7 +12,7 @@ public class MediaHandlerFFmpeg : MediaHandler
     public override string? SortArtist => GetMediaTagValue("artistsort", "artist-sort", "sort_artist", "artistsortorder", "sortartist");
     public override string? Title => GetMediaTagValue("title");
     public override string? Album => GetMediaTagValue("album");
-    public override int? TrackNumber => GetMediaTagInt("track") ?? 0;
+    public override int? TrackNumber => GetMediaTagInt("track", "tracknumber", "track number") ?? 0;
     public override int? TrackCount => GetMediaTagInt("tracktotal", "total tracks") ?? 0;
     public override string? AlbumArtist => GetMediaTagValue("album_artist", "albumartist");
     public override string? AcoustId => GetMediaTagValue(AcoustIdIdTag, AcoustIdTag);
@@ -20,8 +20,8 @@ public class MediaHandlerFFmpeg : MediaHandler
     public override float? AcoustIdFingerPrintDuration => GetMediaTagFloat(AcoustidFingerprintDurationTag);
     public override double BitRate => _audioStream?.BitRate ?? 0;
     public override int? DiscNumber => GetMediaTagInt("disc", "discnumber", "disc number") ?? 0;
-    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc") ?? 0;
-    public override int? TrackTotal => GetMediaTagInt("tracktotal", "totaltracks") ?? 0;
+    public override int? DiscTotal => GetMediaTagInt("disctotal", "totaldisc", "disc total", "total disc") ?? 0;
+    public override int? TrackTotal => GetMediaTagInt("tracktotal", "totaltracks", "track total", "total tracks") ?? 0;
     public override int Duration => (int)_audioStream.Duration.TotalSeconds;
     public override int? Year => GetMediaTagInt("originalyear", "year", "date");
     public override DateTime? Date => GetMediaTagDateTime("date", "originaldate");
