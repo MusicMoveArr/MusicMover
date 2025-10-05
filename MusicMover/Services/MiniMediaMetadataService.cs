@@ -278,6 +278,8 @@ public class MiniMediaMetadataService
             Logger.WriteLine("Main artist is missing, bug in MiniMedia's Metadata API?");
             return false;
         }
+
+        mainArtist = ArtistHelper.GetUncoupledArtistName(mainArtist);
         
         Logger.WriteLine($"Filpath: {mediaHandler.FileInfo.FullName}", true);
         Logger.WriteLine($"Provider: {foundTrack.ProviderType}", true);
