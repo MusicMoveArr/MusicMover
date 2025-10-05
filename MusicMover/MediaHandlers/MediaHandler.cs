@@ -117,8 +117,11 @@ public abstract class MediaHandler
     public string GetMediaTagValue(params string[] tagNames)
     {
         string keyTagName = GetFirstTagNameWithValue(tagNames);
-        MediaTags.TryGetValue(keyTagName, out string? value);
-        return value ?? string.Empty;
+
+        string value = MediaTags.FirstOrDefault(pair =>
+            string.Equals(GetSetterTagName(pair.Key), keyTagName, StringComparison.OrdinalIgnoreCase)).Value;
+        
+        return !string.IsNullOrWhiteSpace(value) ? value : string.Empty;
     }
 
     public int? GetMediaTagInt(params string[] tagNames)

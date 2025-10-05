@@ -527,7 +527,6 @@ public class MoveProcessor
             Logger.WriteLine($"File is missing Artist, Album or title in the tags, skipping, {mediaHandler.FileInfo.FullName}");
             return false;
         }
-        
 
         if (!String.IsNullOrWhiteSpace(_options.FileFormat))
         {
