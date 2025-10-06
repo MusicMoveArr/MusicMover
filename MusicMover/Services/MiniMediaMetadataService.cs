@@ -273,6 +273,15 @@ public class MiniMediaMetadataService
 
         string? mainArtist = foundTrack.Artists.FirstOrDefault(artist => artist.Id == foundTrack.Album.ArtistId)?.Name;
 
+        if (string.IsNullOrWhiteSpace(mainArtist) && 
+            !string.IsNullOrWhiteSpace(foundTrack.Album.ArtistId))
+        {
+            var artistResponse = await _miniMediaMetadataApiCacheLayerService
+                .GetArtistByIdAsync(foundTrack.Album.ArtistId, foundTrack.ProviderType);
+
+            mainArtist = artistResponse?.Artists?.FirstOrDefault(artist => artist.Id == foundTrack.Album.ArtistId)?.Name;
+        }
+        
         if (string.IsNullOrWhiteSpace(mainArtist))
         {
             Logger.WriteLine("Main artist is missing, bug in MiniMedia's Metadata API?");

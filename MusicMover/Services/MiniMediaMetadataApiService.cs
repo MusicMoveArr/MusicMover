@@ -53,6 +53,22 @@ public class MiniMediaMetadataApiService
             return await client.GetAsync<SearchTrackResponse>(request);
         });
     }
+    public async Task<SearchArtistResponse?> GetArtistByIdAsync(string artistId, string providerType)
+    {
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
+        Debug.WriteLine($"Requesting GetArtistByIdAsync '{artistId}'");
+        
+        using RestClient client = new RestClient(_baseUrl + "/api/SearchArtist");
+
+        return await retryPolicy.ExecuteAsync(async () =>
+        {
+            RestRequest request = new RestRequest();
+            request.AddParameter("Provider", providerType);
+            request.AddParameter("Id", artistId);
+            
+            return await client.GetAsync<SearchArtistResponse>(request);
+        });
+    }
     
     private AsyncRetryPolicy GetRetryPolicy()
     {

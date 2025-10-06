@@ -39,6 +39,20 @@ public class MiniMediaMetadataApiCacheLayerService
         return result;
     }
     
+    public async Task<SearchArtistResponse?> GetArtistByIdAsync(string artistId, string providerType)
+    {
+        string cacheKey = $"GetArtistByIdAsync_{artistId}_{providerType}";
+
+        if (_cache.Contains(cacheKey))
+        {
+            return (SearchArtistResponse?)_cache.Get(cacheKey);
+        }
+        
+        var result = await _miniMediaMetadataApiService.GetArtistByIdAsync(artistId, providerType);
+        AddToCache(cacheKey, result);
+        return result;
+    }
+    
     public async Task<SearchTrackResponse?> SearchTracksAsync(string searchTerm, string artistId, string providerType)
     {
         string cacheKey = $"SearchTracksAsync_{searchTerm}_{artistId}_{providerType}";
