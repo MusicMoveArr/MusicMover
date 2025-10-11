@@ -1136,8 +1136,6 @@ public class MoveProcessor
         {
             var matches = await _miniMediaMetadataService.GetMatchesAsync(
                 mediaHandler,
-                ArtistHelper.GetUncoupledArtistName(mediaHandler.Artist), 
-                ArtistHelper.GetUncoupledArtistName(mediaHandler.AlbumArtist),
                 _options.MetadataApiMatchPercentage);
 
             bool success = false;

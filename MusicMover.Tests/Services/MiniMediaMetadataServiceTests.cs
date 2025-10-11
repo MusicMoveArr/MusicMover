@@ -39,8 +39,6 @@ public class MiniMediaMetadataServiceTests
 
             var matches = await miniMediaMetadataService.GetMatchesAsync(
                 mediaHandler, 
-                uncoupledArtistName,
-                uncoupledAlbumArtistName, 
                 80);
             
             if (!matches.Any())

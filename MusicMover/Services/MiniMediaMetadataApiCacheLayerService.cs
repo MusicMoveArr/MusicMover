@@ -66,4 +66,18 @@ public class MiniMediaMetadataApiCacheLayerService
         AddToCache(cacheKey, result);
         return result;
     }
+    
+    public async Task<SearchTrackResponse?> GetTrackByIdAsync(string trackId, string providerType)
+    {
+        string cacheKey = $"GetTrackByIdAsync{trackId}_{providerType}";
+
+        if (_cache.Contains(cacheKey))
+        {
+            return (SearchTrackResponse?)_cache.Get(cacheKey);
+        }
+        
+        var result = await _miniMediaMetadataApiService.GetTrackByIdAsync(trackId, providerType);
+        AddToCache(cacheKey, result);
+        return result;
+    }
 }

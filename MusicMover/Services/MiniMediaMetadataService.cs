@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using MusicMover.Helpers;
 using MusicMover.MediaHandlers;
+using MusicMover.Models.MetadataAPI;
 using MusicMover.Models.MetadataAPI.Entities;
 
 namespace MusicMover.Services;
@@ -23,8 +24,6 @@ public class MiniMediaMetadataService
 
     public async Task<List<SearchTrackEntity>> GetMatchesAsync(
         MediaHandler mediaHandler,
-        string uncoupledArtistName,
-        string uncoupledAlbumArtist,
         int matchPercentage)
     {
         if (string.IsNullOrWhiteSpace(mediaHandler.Artist) || string.IsNullOrWhiteSpace(mediaHandler.Title))
@@ -43,6 +42,29 @@ public class MiniMediaMetadataService
         if (Regex.IsMatch(targetAlbum.ToLower(), discPattern))
         {
             targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
+        }
+
+
+        string tag_Url = mediaHandler.GetMediaTagValue("url");
+
+        if (!string.IsNullOrWhiteSpace(tag_Url) && 
+            tag_Url.StartsWith("https://tidal.com/browse/track/") &&
+            int.TryParse(tag_Url.Split('/').LastOrDefault(), out int tidalTrackId))
+        {
+            Logger.WriteLine($"MiniMedia Metadata API, get track query: '{tidalTrackId}', Provider: Tidal", true);
+            var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.GetTrackByIdAsync(tidalTrackId.ToString(), "Tidal");
+            
+            SearchTrackEntity? foundTrack = await ProcessTracksAsync(
+                mediaHandler.AllArtistNames, 
+                searchResultTracks, 
+                mediaHandler.Title, 
+                mediaHandler.Album, 
+                matchPercentage);
+                    
+            if (foundTrack != null)
+            {
+                return [foundTrack];
+            }
         }
 
         foreach (var artist in mediaHandler.AllArtistNames)
@@ -117,7 +139,10 @@ public class MiniMediaMetadataService
             {
                 try
                 {
-                    SearchTrackEntity? foundTrack = await ProcessArtistAsync(artist, targetTrackTitle, targetAlbumTitle, matchPercentage);
+                    Logger.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'", true);
+                    var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
+
+                    SearchTrackEntity? foundTrack = await ProcessTracksAsync([artist.Name], searchResultTracks, targetTrackTitle, targetAlbumTitle, matchPercentage);
                     
                     if (foundTrack != null)
                     {
@@ -134,17 +159,16 @@ public class MiniMediaMetadataService
         return foundTracks;
     }
 
-    private async Task<SearchTrackEntity?> ProcessArtistAsync(
-        SearchArtistEntity artist,
+    private async Task<SearchTrackEntity?> ProcessTracksAsync(
+        List<string> targetArtistNames,
+        SearchTrackResponse searchTrackResponse,
         string targetTrackTitle,
         string targetAlbumTitle,
         int matchPercentage)
     {
-        Logger.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'", true);
-        var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
-
+        
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
-        List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchResultTracks.Tracks, targetTrackTitle, matchPercentage);
+        List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchTrackResponse.Tracks, targetTrackTitle, matchPercentage);
 
         foreach (var result in bestTrackMatches)
         {
@@ -158,10 +182,13 @@ public class MiniMediaMetadataService
                 .Select(artist => artist.Name)
                 .ToList();
 
-            bool containsArtist = artistNames.Any(artistName =>
-                                      FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, artistName) > matchPercentage) ||
-                                      FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, string.Join(' ', artistNames)) > matchPercentage; //maybe collab?
-
+            bool containsArtist = artistNames.Any(artistName => 
+                                      targetArtistNames.Any(targetArtist => 
+                                          FuzzyHelper.FuzzTokenSortRatioToLower(targetArtist, artistName) > matchPercentage)) ||
+                                  
+                                  targetArtistNames.Any(targetArtist => 
+                                      FuzzyHelper.FuzzTokenSortRatioToLower(targetArtist, string.Join(' ', artistNames)) > matchPercentage); //maybe collab?
+            
             if (!containsArtist)
             {
                 continue;
@@ -225,6 +252,8 @@ public class MiniMediaMetadataService
 
         return null;
     }
+    
+    
     
     private List<SearchTrackEntity> FindBestMatchingTracks(
         List<SearchTrackEntity> searchResults, 

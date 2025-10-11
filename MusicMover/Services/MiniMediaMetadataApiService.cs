@@ -53,6 +53,7 @@ public class MiniMediaMetadataApiService
             return await client.GetAsync<SearchTrackResponse>(request);
         });
     }
+    
     public async Task<SearchArtistResponse?> GetArtistByIdAsync(string artistId, string providerType)
     {
         AsyncRetryPolicy retryPolicy = GetRetryPolicy();
@@ -67,6 +68,23 @@ public class MiniMediaMetadataApiService
             request.AddParameter("Id", artistId);
             
             return await client.GetAsync<SearchArtistResponse>(request);
+        });
+    }
+    
+    public async Task<SearchTrackResponse?> GetTrackByIdAsync(string trackId, string providerType)
+    {
+        AsyncRetryPolicy retryPolicy = GetRetryPolicy();
+        Debug.WriteLine($"Requesting GetTrackByIdAsync '{trackId}'");
+        
+        using RestClient client = new RestClient(_baseUrl + "/api/SearchTrack");
+
+        return await retryPolicy.ExecuteAsync(async () =>
+        {
+            RestRequest request = new RestRequest();
+            request.AddParameter("Provider", providerType);
+            request.AddParameter("TrackId", trackId);
+            
+            return await client.GetAsync<SearchTrackResponse>(request);
         });
     }
     
