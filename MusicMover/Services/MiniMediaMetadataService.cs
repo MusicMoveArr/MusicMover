@@ -44,7 +44,6 @@ public class MiniMediaMetadataService
             targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
         }
 
-
         string tag_Url = mediaHandler.GetMediaTagValue("url");
 
         if (!string.IsNullOrWhiteSpace(tag_Url) && 
@@ -60,7 +59,7 @@ public class MiniMediaMetadataService
                 mediaHandler.Title, 
                 mediaHandler.Album, 
                 matchPercentage);
-                    
+            
             if (foundTrack != null)
             {
                 return [foundTrack];
@@ -124,10 +123,14 @@ public class MiniMediaMetadataService
                 .Where(artist => string.Equals(artist.ProviderType, provider) || string.Equals(provider, "any", StringComparison.OrdinalIgnoreCase))
                 .Select(artist => new
                 {
-                    MatchedFor = FuzzyHelper.FuzzRatioToLower(artistName, artist.Name),
+                    MatchedFor = Math.Max(FuzzyHelper.FuzzRatioToLower(artistName, artist.Name), 
+                                          !string.IsNullOrWhiteSpace(artist.MusicBrainz.SortName) ? 
+                                              FuzzyHelper.FuzzTokenSortRatioToLower(artistName, artist.MusicBrainz.SortName) : 0),
                     Artist = artist
                 })
-                .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name))
+                .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name) ||
+                                                    (!string.IsNullOrWhiteSpace(match.Artist.MusicBrainz.SortName) ? 
+                                                        FuzzyHelper.ExactNumberMatch(artistName, match.Artist.MusicBrainz.SortName) : false))
                 .Where(match => match.MatchedFor >= matchPercentage)
                 .OrderByDescending(result => result.MatchedFor)
                 .ThenByDescending(result => result.Artist.Popularity)
@@ -181,7 +184,16 @@ public class MiniMediaMetadataService
             var artistNames = result.Artists
                 .Select(artist => artist.Name)
                 .ToList();
+            
+            artistNames.AddRange(result.Artists
+                .Where(artist => !string.IsNullOrWhiteSpace(artist.MusicBrainz.SortName))
+                .Select(artist => artist.MusicBrainz.SortName)
+                .ToList());
 
+            artistNames = artistNames
+                .Distinct()
+                .ToList();
+                
             bool containsArtist = artistNames.Any(artistName => 
                                       targetArtistNames.Any(targetArtist => 
                                           FuzzyHelper.FuzzTokenSortRatioToLower(targetArtist, artistName) > matchPercentage)) ||

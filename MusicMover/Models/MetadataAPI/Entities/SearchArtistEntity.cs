@@ -15,4 +15,5 @@ public class SearchArtistEntity
     public List<SearchArtistImageEntity>? Images { get; set; }
     public string ProviderType { get; set; }
     public DateTime LastSyncTime { get; set; }
+    public SearchArtistMusicBrainzEntity? MusicBrainz { get; set; }
 }
