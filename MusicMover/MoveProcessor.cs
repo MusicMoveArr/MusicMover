@@ -1009,7 +1009,7 @@ public class MoveProcessor
                            (!_options.OnlyFileNameMatching ? $"Cached Read Target: {_cachedReadTargetFiles}. " : string.Empty) +
                            (!_options.OnlyFileNameMatching ? $"Scanned Target: {_scannedTargetFiles}. " : string.Empty) +
                            $"Skipped Error: {_skippedErrorFiles}, " +
-                           $"Running: {_runtimeSw.Elapsed.Hours}:{_runtimeSw.Elapsed.Minutes}:{_runtimeSw.Elapsed.Seconds}");
+                           $"Running: {_runtimeSw.Elapsed.Hours:D2}:{_runtimeSw.Elapsed.Minutes:D2}:{_runtimeSw.Elapsed.Seconds:D2}");
     }
 
     private void IncrementCounter(Action callback)
