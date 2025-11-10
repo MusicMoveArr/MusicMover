@@ -296,9 +296,10 @@ public class MusicBrainzService
                     })
                     .OrderByDescending(match => match.MatchedFor)
                     .FirstOrDefault(),
-                ArtistMatchedFor = result.Result.Artists?
+                ArtistMatchedFor = mediaHandler.AllArtistNames.Count > 0 ?
+                    result.Result.Artists?
                     .Sum(artist =>
-                        mediaHandler.AllArtistNames.Max(mediaArtist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaArtist))) ?? 0,
+                        mediaHandler.AllArtistNames.Max(mediaArtist => FuzzyHelper.FuzzTokenSortRatioToLower(artist.Name, mediaArtist))) ?? 0 : 0,
                 
                 TitleMatchedFor = FuzzyHelper.FuzzTokenSortRatioToLower(mediaHandler.Title, result.Result.Title),
                 LengthMatch = Math.Abs(mediaHandler.Duration - result.Result.Duration ?? 100),
