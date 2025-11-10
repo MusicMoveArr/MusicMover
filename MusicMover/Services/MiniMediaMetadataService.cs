@@ -181,14 +181,14 @@ public class MiniMediaMetadataService
                 break;
             }
 
-            var artistNames = result.Artists
+            var artistNames = result.Artists?
                 .Select(artist => artist.Name)
-                .ToList();
+                .ToList() ?? [];
             
-            artistNames.AddRange(result.Artists
-                .Where(artist => !string.IsNullOrWhiteSpace(artist.MusicBrainz.SortName))
-                .Select(artist => artist.MusicBrainz.SortName)
-                .ToList());
+            artistNames.AddRange(result.Artists?
+                .Where(artist => !string.IsNullOrWhiteSpace(artist.MusicBrainz?.SortName))
+                .Select(artist => artist.MusicBrainz?.SortName)
+                .ToList()!);
 
             artistNames = artistNames
                 .Distinct()
