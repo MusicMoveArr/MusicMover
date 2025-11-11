@@ -2,8 +2,6 @@ using System.Diagnostics;
 using System.Runtime.Caching;
 using System.Text.RegularExpressions;
 using FuzzySharp;
-using ListRandomizer;
-using McMaster.NETCore.Plugins;
 using MusicMover.Helpers;
 using MusicMover.MediaHandlers;
 using MusicMover.Models;
@@ -64,6 +62,7 @@ public class MoveProcessor
     private readonly List<IPlugin> _plugins = new List<IPlugin>();
     private List<string> _artistsNotFound = new List<string>();
     private List<string> _unprocessedArtists = new List<string>();
+    private readonly TranslationService _translationService;
 
     public MoveProcessor(CliOptions options)
     {
@@ -72,8 +71,9 @@ public class MoveProcessor
         _corruptionFixer = new CorruptionFixer();
         _musicBrainzService = new MusicBrainzService();
         _mediaTagWriteService = new MediaTagWriteService();
+        _translationService = new TranslationService(options.TranslationPath);
         _tidalService = new TidalService(options.TidalClientId, options.TidalClientSecret, options.TidalCountryCode);
-        _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders);
+        _miniMediaMetadataService = new MiniMediaMetadataService(options.MetadataApiBaseUrl, options.MetadataApiProviders, _translationService);
     }
 
     public void LoadPlugins()
@@ -83,6 +83,8 @@ public class MoveProcessor
 
     public async Task ProcessAsync()
     {
+        await _translationService.LoadTranslationsAsync();
+        
         if (!string.IsNullOrWhiteSpace(_options.FromDirectory))
         {
             var topDirectories = Directory

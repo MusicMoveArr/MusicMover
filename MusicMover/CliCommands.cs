@@ -269,6 +269,12 @@ public class CliCommands : ICommand
         IsRequired = false)]
     public string MetadataHandlerLibrary { get; set; } = MoveProcessor.MediaHandlerATLCore;
     
+    [CommandOption("translation-path",
+        Description = "Directory containing the json-translation files.",
+        EnvironmentVariable = "MOVE_TRANSLATION_PATH",
+        IsRequired = false)]
+    public string TranslationPath { get; set; }
+    
     public async ValueTask ExecuteAsync(IConsole console)
     {
         CliCommands.Debug = DebugInfo;
@@ -332,7 +338,8 @@ public class CliCommands : ICommand
             AcoustIdMatchPercentage = AcoustIdMatchPercentage,
             TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed,
             MoveUntaggableFilesPath = MoveUntaggableFilesPath,
-            MetadataHandlerLibrary = MetadataHandlerLibrary
+            MetadataHandlerLibrary = MetadataHandlerLibrary,
+            TranslationPath = TranslationPath
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))

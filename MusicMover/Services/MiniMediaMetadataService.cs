@@ -14,10 +14,12 @@ public class MiniMediaMetadataService
     private readonly MediaTagWriteService _mediaTagWriteService;
 
     private readonly List<string> _providerTypes;
+    private readonly TranslationService _translationService;
     
-    public MiniMediaMetadataService(string baseUrl, List<string> providerTypes)
+    public MiniMediaMetadataService(string baseUrl, List<string> providerTypes, TranslationService translationService)
     {
         _providerTypes = providerTypes;
+        _translationService = translationService;
         _mediaTagWriteService = new MediaTagWriteService();
         _miniMediaMetadataApiCacheLayerService = new MiniMediaMetadataApiCacheLayerService(baseUrl, providerTypes);
     }
@@ -66,6 +68,16 @@ public class MiniMediaMetadataService
             }
         }
 
+         var translation = _translationService.Translate(mediaHandler);
+         if (translation != null)
+         {
+             List<SearchTrackEntity> foundTracks = await TryArtistAsync(translation.ArtistName, translation.TrackName, translation.AlbumName, matchPercentage);
+             if (foundTracks.Count > 0)
+             {
+                 return foundTracks;
+             }
+         }
+        
         foreach (var artist in mediaHandler.AllArtistNames)
         {
             Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaHandler.Title}'", true);
@@ -97,7 +109,8 @@ public class MiniMediaMetadataService
         return new List<SearchTrackEntity>();
     }
     
-    private async Task<List<SearchTrackEntity>> TryArtistAsync(string? artistName, 
+    private async Task<List<SearchTrackEntity>> TryArtistAsync(
+        string? artistName, 
         string targetTrackTitle,
         string targetAlbumTitle,
         int matchPercentage)
@@ -124,13 +137,13 @@ public class MiniMediaMetadataService
                 .Select(artist => new
                 {
                     MatchedFor = Math.Max(FuzzyHelper.FuzzRatioToLower(artistName, artist.Name), 
-                                          !string.IsNullOrWhiteSpace(artist.MusicBrainz.SortName) ? 
-                                              FuzzyHelper.FuzzTokenSortRatioToLower(artistName, artist.MusicBrainz.SortName) : 0),
+                                          !string.IsNullOrWhiteSpace(artist.MusicBrainz?.SortName) ? 
+                                              FuzzyHelper.FuzzTokenSortRatioToLower(artistName, artist.MusicBrainz?.SortName) : 0),
                     Artist = artist
                 })
                 .Where(match => FuzzyHelper.ExactNumberMatch(artistName, match.Artist.Name) ||
-                                                    (!string.IsNullOrWhiteSpace(match.Artist.MusicBrainz.SortName) ? 
-                                                        FuzzyHelper.ExactNumberMatch(artistName, match.Artist.MusicBrainz.SortName) : false))
+                                                    (!string.IsNullOrWhiteSpace(match.Artist.MusicBrainz?.SortName) ? 
+                                                        FuzzyHelper.ExactNumberMatch(artistName, match.Artist.MusicBrainz?.SortName) : false))
                 .Where(match => match.MatchedFor >= matchPercentage)
                 .OrderByDescending(result => result.MatchedFor)
                 .ThenByDescending(result => result.Artist.Popularity)
