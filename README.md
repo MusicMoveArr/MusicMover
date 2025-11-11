@@ -23,7 +23,7 @@ Loving the work I do? buy me a coffee https://buymeacoffee.com/musicmovearr
 10. Rename the file name that constains "Various Artists" to the first performer using --various-artists, it will rename it for example from "Various Artists - Jane Album - 01 - My Song.mp3" to "John Doe - Jane Album - 01 - My Song.mp3"
 11. Update the Artist and Performers tags by using "--update-artist-tags", this will cleanup the tags (so to say) by saving the "Various Artists" to it's real Artist name, this includes as well changing "John Doe feat Jane Doe" in the Artist tags to just "John Doe"
 12. Apply media tags from MusicBrainz by fingerprinting using AcoustId
-13. Apply media tags from Tidal
+13. Apply media tags from the Tidal API
 14. Argument "--always-check-acoustid" will always force reading from MusicBrainz even with tags available already in the media file
 15. Rename filenames with a file format, most used standard is "Artist - Album - Disc-TrackNumber - Title, Note: Discnumber in this example is only applied if discnumber is higher then 1
 
@@ -31,7 +31,12 @@ Format: {Artist} - {Album} - {Disc:cond:<=1?{Track:00}|{Disc:00}-{Track:00}} - {
 
 16. Fix possible file corruption by re-writing the file using FFMpeg if MusicMover is unable to read the media tags
 FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_filepath]"
-17. Apply media tags from MusicBrainz, Tidal using the self-hosted MiniMedia Metadata API 
+17. Apply media tags from MusicBrainz, Tidal, Deezer, Spotify, Discogs using the self-hosted MiniMedia Metadata API
+18. Using "--only-move-when-tagged" will make sure your library gets fully tagged
+19. "--preferred-file-extensions" ensures we move files to your library with your preferred file extensions
+20. Move untaggable files to a specific directory to checkout later using "--move-untaggable-files-path"
+21. Choose being either FFmpeg or ATL_Core using "--metadata-handler"
+22. Process hard to process files due language differences using "--translation-path" (below example)
 
 # Description of arguments
 | Longname Argument  | Description | Example |
@@ -69,7 +74,16 @@ FFMpeg arguments: ffmpeg -i "[filepath]" -c copy -movflags +faststart "[temp_fil
 | --tidal-country-code | Tidal's CountryCode (e.g. US, FR, NL, DE etc). | "US" |
 | --metadata-api-base-url | MiniMedia's Metadata API Base Url. | http://localhost:8080 |
 | --metadata-api-providers | MiniMedia's Metadata API Provider (Any, Spotify, Tidal, MusicBrainz). | "Tidal" "MusicBrainz" |
-
+| --preferred-file-extensions | The preferred music file extensions to use for your library (opus, m4a, flac etc with out '.'). | flac:opus:m4a:mp3 |
+| --debug | Show more detailed information in the console. | true |
+| --metadata-api-match-percentage | The percentage used for tagging, how accurate it must match with the remote metadata server. | 80 |
+| --tidal-match-percentage | The percentage used for tagging, how accurate it must match with Tidal. | 80 |
+| --musicbrainz-match-percentage | The percentage used for tagging, how accurate it must match with MusicBrainz. | 80 |
+| --acoustid-match-percentage | The percentage used for tagging, how accurate it must match with AcoustId. | 80 |
+| --trust-acoustid-when-tagging-failed | Put the trust into AcoustId when tagging failed completely. | true |
+| --move-untaggable-files-path | Move untaggable files (failed to tag by MusicBrainz, AcoustId, Spotify etc) to a specific folder. | ~/home/untaggable_music |
+| --metadata-handler | The metadata library handler, can be either ATL_Core or FFmpeg. | FFmpeg |
+| --translation-path | Directory containing the json-translation files. | ~/music_translations/ |
 
 # Usage
 ```
@@ -184,4 +198,65 @@ dotnet restore
 dotnet build
 cd MusicMover/bin/Debug/net8.0
 dotnet MusicMover.dll --help
+```
+# Translations
+Some times it's hard to process files due to language differences/mismatches because either people translated it from language X to Y or other reasons
+
+This makes it hard or near impossible to tag certain artists, this is where translations comes in
+
+I personally found it easier to define translations in a json file then to manually translate it for a lot of files in a GUI
+
+When translations is used by defining the path by using the option "--translation-path" it will first try to translate the Artist/Album/Track and then the normal behavior
+
+When everything is filled in like below the Artist, Album and Trackname will get translated
+
+If only the ArtistName+Translated is filled it will only translate the ArtistName
+
+When the ArtistName+Translated and AlbumName+Translated (and matched) is used, it will use the translated the ArtistName+AlbumName and TrackName will be kept original
+
+So in short, it works from top to bottom
+
+Multiple artists fit in 1 json-file
+
+```
+[
+  {
+    "ArtistName": "Music Mover",
+    "ArtistName_Translated": "μουσικός μετακινητής",
+    "Albums": [
+      {
+        "AlbumName": "Some Album",
+        "AlbumName_Translated": "άλμπουμ",
+        "Tracks": [
+          {
+            "TrackName": "Music Track 1",
+            "TrackName_Translated": "μουσικό κομμάτι 1"
+          },
+          {
+            "TrackName": "Music Track 2",
+            "TrackName_Translated": "μουσικό κομμάτι 2"
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+## Example of only translating the artistname
+```
+[
+  {
+    "ArtistName": "Music Mover",
+    "ArtistName_Translated": "μουσικός μετακινητής"
+  },
+  {
+    "ArtistName": "Music Mover 2",
+    "ArtistName_Translated": "μουσικός μετακινητής 2"
+  },
+  {
+    "ArtistName": "Music Mover 3",
+    "ArtistName_Translated": "μουσικός μετακινητής 3"
+  }
+]
 ```
