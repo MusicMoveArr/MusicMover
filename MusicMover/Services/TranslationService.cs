@@ -18,17 +18,20 @@ public class TranslationService
     public async Task LoadTranslationsAsync()
     {
         _translations.Clear();
-        foreach (string filePath in Directory.EnumerateFiles(_directoryPath, "*.json"))
+        if (!string.IsNullOrWhiteSpace(_directoryPath))
         {
-            try
+            foreach (string filePath in Directory.EnumerateFiles(_directoryPath, "*.json"))
             {
-                var translation = JsonConvert.DeserializeObject<List<TranslationModel>>(File.ReadAllText(filePath));
+                try
+                {
+                    var translation = JsonConvert.DeserializeObject<List<TranslationModel>>(File.ReadAllText(filePath));
                 
-                _translations.AddRange(translation);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + "\r\n" + e.StackTrace);
+                    _translations.AddRange(translation);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + "\r\n" + e.StackTrace);
+                }
             }
         }
     }

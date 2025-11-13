@@ -19,7 +19,7 @@ public class MiniMediaMetadataServiceTests
         }
         
         List<string> providerTypes = ["Any"];
-        MiniMediaMetadataService miniMediaMetadataService = new MiniMediaMetadataService(baseUrl, providerTypes);
+        MiniMediaMetadataService miniMediaMetadataService = new MiniMediaMetadataService(baseUrl, providerTypes, new TranslationService(string.Empty));
         string path = @$"/home/{Environment.UserName}/Music/";
         
         foreach (string filePath in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
