@@ -68,7 +68,7 @@ public class MediaHandlerFFmpeg : MediaHandler
             .OutputToFile(targetFile.FullName + FileInfo.Extension, overwrite: true, options =>
             {
                 options.WithCustomArgument("-codec copy"); 
-                options.WithCustomArgument("-map 0");
+                options.WithCustomArgument("-map 0:a");
                     
                 foreach (var keyValue in _audioStream.Tags)
                 {
