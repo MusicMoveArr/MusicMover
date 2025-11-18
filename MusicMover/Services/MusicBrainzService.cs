@@ -168,16 +168,18 @@ public class MusicBrainzService
         string acoustIdApiKey,
         bool searchByTagNames,
         int acoustIdMatchPercentage,
-        int musicBrainzMatchPercentage)
+        int musicBrainzMatchPercentage,
+        TimeSpan acoustIdMaxTimeSpan)
     {
         string artistCountry = string.Empty;
         MusicBrainzArtistCreditModel? artistCredit = null;
         MusicBrainzArtistReleaseModel? release = null;
         List<MusicBrainzArtistCreditModel> artistCredits = new List<MusicBrainzArtistCreditModel>();
         List<string>? listISRCs = new List<string>();
-        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(mediaHandler, acoustIdApiKey, acoustIdMatchPercentage);
+        GetDataByAcoustIdResult acoustIdResult = await GetDataByAcoustIdAsync(mediaHandler, acoustIdApiKey, acoustIdMatchPercentage, acoustIdMaxTimeSpan);
 
-        if (acoustIdResult.Success && !string.IsNullOrWhiteSpace(acoustIdResult.RecordingId))
+        if (acoustIdResult.Success && 
+            !string.IsNullOrWhiteSpace(acoustIdResult.RecordingId))
         {
             var data = await _musicBrainzApiService.GetRecordingByIdAsync(acoustIdResult.RecordingId);
             if (data != null)
@@ -678,11 +680,20 @@ public class MusicBrainzService
     public async Task<GetDataByAcoustIdResult> GetDataByAcoustIdAsync(
         MediaHandler mediaHandler, 
         string acoustIdApiKey,
-        int matchPercentage)
+        int matchPercentage,
+        TimeSpan acoustIdMaxTimeSpan)
     {
+        GetDataByAcoustIdResult result = new GetDataByAcoustIdResult();
         string? recordingId = string.Empty;
         string? acoustId = string.Empty;
         AcoustIdRecording? matchedRecording = null;
+
+        if (TimeSpan.FromSeconds(mediaHandler.Duration) >= acoustIdMaxTimeSpan)
+        {
+            Logger.WriteLine($"Track duration is '{mediaHandler.Duration}', AcoustIdMaxTimeSpan is set to '{acoustIdMaxTimeSpan}'", true);
+            result.Success = false;
+            return result;
+        }
 
         if (!string.IsNullOrWhiteSpace(mediaHandler.AcoustId) && 
             Guid.TryParse(mediaHandler.AcoustId, out Guid _))
@@ -731,7 +742,6 @@ public class MusicBrainzService
             }
         }
         
-        GetDataByAcoustIdResult result = new GetDataByAcoustIdResult();
         
         if (string.IsNullOrWhiteSpace(recordingId) || 
             string.IsNullOrWhiteSpace(acoustId))

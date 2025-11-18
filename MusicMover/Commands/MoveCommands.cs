@@ -280,6 +280,12 @@ public class MoveCommands : ICommand
         EnvironmentVariable = "MOVE_DUMP_COVER_FILENAME",
         IsRequired = false)]
     public string DumpCoverFilename { get; set; }
+
+    [CommandOption("acoustid-max-timespan",
+        Description = "Set the max track length to AcoustId Fingerprint, the longer a track, the less accurate it will be. Especially for mixes and the like +30-60minutes long",
+        EnvironmentVariable = "MOVE_ACOUSTID_MAX_TIMESPAN",
+        IsRequired = false)]
+    public TimeSpan AcoustIdMaxTimeSpan { get; set; } = TimeSpan.FromMinutes(10);
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -346,7 +352,8 @@ public class MoveCommands : ICommand
             MoveUntaggableFilesPath = MoveUntaggableFilesPath,
             MetadataHandlerLibrary = MetadataHandlerLibrary,
             TranslationPath = TranslationPath,
-            DumpCoverFilename = DumpCoverFilename
+            DumpCoverFilename = DumpCoverFilename,
+            AcoustIdMaxTimeSpan = AcoustIdMaxTimeSpan
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))
@@ -358,7 +365,6 @@ public class MoveCommands : ICommand
         {
             MoveUntaggableFilesPath += '/';
         }
-        
 
         string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal", "Discogs" ];
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||

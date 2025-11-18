@@ -82,7 +82,8 @@ public class MusicBrainzServiceTests
             string.Empty, 
             true, 
             80, 
-            80);
+            80,
+            TimeSpan.FromHours(5));
 
         match.Release.Title.ShouldBe(track.Album);
         match.Release.Media.ShouldNotBeEmpty();
@@ -109,7 +110,8 @@ public class MusicBrainzServiceTests
                 string.Empty, 
                 true, 
                 80, 
-                80);
+                80,
+                TimeSpan.FromHours(5));
 
             if (match == null ||
                 !match.Release.Media.Any() ||
@@ -161,7 +163,8 @@ public class MusicBrainzServiceTests
                     acoustId, 
                     true, 
                     80, 
-                    80);
+                    80,
+                    TimeSpan.FromHours(5));
 
                 if (match == null ||
                     !match.Release.Media.Any() ||
@@ -243,7 +246,8 @@ public class MusicBrainzServiceTests
                 acoustId, 
                 true, 
                 80, 
-                80);
+                80,
+                TimeSpan.FromHours(5));
 
             if (match == null ||
                 !match.Release.Media.Any() ||

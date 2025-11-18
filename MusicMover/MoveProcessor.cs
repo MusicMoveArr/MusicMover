@@ -1123,7 +1123,8 @@ public class MoveProcessor
                 _options.AcoustIdApiKey,
                 _options.SearchByTagNames,
                 _options.AcoustIdMatchPercentage,
-                _options.MusicBrainzMatchPercentage);
+                _options.MusicBrainzMatchPercentage,
+                _options.AcoustIdMaxTimeSpan);
             
             bool success =
                 match != null && await _musicBrainzService.WriteTagFromAcoustIdAsync(
