@@ -62,20 +62,36 @@ public class MediaHandlerFFmpeg : MediaHandler
         {
             MapMediaTag(keyValue.Key, keyValue.Value);
         }
+
+        bool success = false;
+        string tempTargetFile = targetFile.FullName + FileInfo.Extension;
         
-        bool success = FFMpegArguments
-            .FromFileInput(FileInfo.FullName)
-            .OutputToFile(targetFile.FullName + FileInfo.Extension, overwrite: true, options =>
-            {
-                options.WithCustomArgument("-codec copy"); 
-                options.WithCustomArgument("-map 0:a");
-                    
-                foreach (var keyValue in _audioStream.Tags)
+        try
+        {
+            success = FFMpegArguments
+                .FromFileInput(FileInfo.FullName)
+                .OutputToFile(tempTargetFile, overwrite: true, options =>
                 {
-                    options = options.WithCustomArgument($"-metadata:s:a:0 \"{keyValue.Key}\"=\"{keyValue.Value}\"");
-                }
-            })
-            .ProcessSynchronously();
+                    options.WithCustomArgument("-codec copy");
+                    options.WithCustomArgument("-map 0:a");
+                    
+                    foreach (var keyValue in _audioStream.Tags)
+                    {
+                        options = options.WithCustomArgument($"-metadata:s:a:0 \"{keyValue.Key}\"=\"{keyValue.Value}\"");
+                    }
+                })
+                .ProcessSynchronously();
+        }
+        catch (Exception e)
+        {
+            //extra check for ".bak." to be extra sure it's a temp file
+            if (File.Exists(tempTargetFile) && tempTargetFile.Contains(".bak."))
+            {
+                File.Delete(tempTargetFile);
+            }
+            throw;
+        }
+        
         
         //small trick to allow FFmpeg saving to ".bak" file by applying the original file extension
         if (success)
