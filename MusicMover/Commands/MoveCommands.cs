@@ -7,7 +7,7 @@ using MusicMover.MediaHandlers;
 namespace MusicMover;
 
 [Command("", Description = "Move missing music to directories to complete your collection")]
-public class CliCommands : ICommand
+public class MoveCommands : ICommand
 {
     public static bool Debug { get; private set; }
 
@@ -275,9 +275,15 @@ public class CliCommands : ICommand
         IsRequired = false)]
     public string TranslationPath { get; set; }
     
+    [CommandOption("dump-cover-filename",
+        Description = "Dump the cover into the album directory.",
+        EnvironmentVariable = "MOVE_DUMP_COVER_FILENAME",
+        IsRequired = false)]
+    public string DumpCoverFilename { get; set; }
+    
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        CliCommands.Debug = DebugInfo;
+        MoveCommands.Debug = DebugInfo;
 
         if (string.IsNullOrWhiteSpace(From) && 
             string.IsNullOrWhiteSpace(FromFile))
@@ -339,7 +345,8 @@ public class CliCommands : ICommand
             TrustAcoustIdWhenTaggingFailed = TrustAcoustIdWhenTaggingFailed,
             MoveUntaggableFilesPath = MoveUntaggableFilesPath,
             MetadataHandlerLibrary = MetadataHandlerLibrary,
-            TranslationPath = TranslationPath
+            TranslationPath = TranslationPath,
+            DumpCoverFilename = DumpCoverFilename
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))

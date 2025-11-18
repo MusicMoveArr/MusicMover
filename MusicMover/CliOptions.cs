@@ -47,4 +47,5 @@ public class CliOptions
     public required string MoveUntaggableFilesPath { get; init; }
     public required string MetadataHandlerLibrary { get; init; }
     public required string TranslationPath { get; init; }
+    public required string DumpCoverFilename { get; init; }
 }

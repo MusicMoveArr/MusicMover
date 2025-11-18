@@ -658,6 +658,7 @@ public class MoveProcessor
             if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
                 !string.Equals(mediaHandler.FileInfo.FullName, newFromFilePath))
             {
+                DumpCoverArt(mediaHandler, toAlbumDirInfo);
                 mediaHandler.FileInfo.Delete();
             }
 
@@ -691,6 +692,7 @@ public class MoveProcessor
 
                 if (await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath)))
                 {
+                    DumpCoverArt(mediaHandler, toAlbumDirInfo);
                     if (!string.Equals(mediaHandler.FileInfo.FullName, newFromFilePath))
                     {
                         mediaHandler.FileInfo.Delete();
@@ -735,11 +737,13 @@ public class MoveProcessor
                 if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
                     !string.Equals(mediaHandler.FileInfo.FullName, newFromFilePath))
                 {
+                    DumpCoverArt(mediaHandler, toAlbumDirInfo);
                     mediaHandler.FileInfo.Delete();
                 }
 
                 if (saveSuccess)
                 {
+                    DumpCoverArt(mediaHandler, toAlbumDirInfo);
                     Logger.WriteLine($"Moved {mediaHandler.FileInfo.Name} >> {newFromFilePath}", true);
                     
                     if (similarFile.File.FullName != newFromFilePath && _options.DeleteDuplicateTo)
@@ -801,11 +805,14 @@ public class MoveProcessor
                 if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
                     !string.Equals(mediaHandler.FileInfo.FullName, newFromFilePath))
                 {
+                    DumpCoverArt(mediaHandler, toAlbumDirInfo);
                     mediaHandler.FileInfo.Delete();
                 }
 
                 if (saveSuccess)
                 {
+                    DumpCoverArt(mediaHandler, toAlbumDirInfo);
+                    
                     Logger.WriteLine($"Moved {mediaHandler.FileInfo.Name} >> {newFromFilePath}");
                     RemoveCacheByPath(newFromFilePath);
 
@@ -1014,6 +1021,14 @@ public class MoveProcessor
                            $"Running: {_runtimeSw.Elapsed.Hours:D2}:{_runtimeSw.Elapsed.Minutes:D2}:{_runtimeSw.Elapsed.Seconds:D2}");
     }
 
+    private void DumpCoverArt(MediaHandler mediaHandler, DirectoryInfo toAlbumDirInfo)
+    {
+        if (!string.IsNullOrWhiteSpace(_options.DumpCoverFilename))
+        {
+            mediaHandler.DumpCover(new FileInfo(Path.Join(toAlbumDirInfo.FullName, _options.DumpCoverFilename)));
+        }
+    }
+    
     private void IncrementCounter(Action callback)
     {
         lock (_counterLock)

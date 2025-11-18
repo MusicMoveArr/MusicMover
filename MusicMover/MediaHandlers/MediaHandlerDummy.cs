@@ -35,6 +35,10 @@ public class MediaHandlerDummy : MediaHandler
     {
         return tagName;
     }
+    public override bool DumpCover(FileInfo targetFile)
+    {
+        return false;
+    }
 
     public void SetArtists()
     {

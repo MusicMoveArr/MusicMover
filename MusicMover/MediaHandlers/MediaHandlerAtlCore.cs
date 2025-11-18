@@ -165,6 +165,22 @@ public class MediaHandlerAtlCore : MediaHandler
     {
         return tagName;
     }
+    public override bool DumpCover(FileInfo targetFile)
+    {
+        if (targetFile.Exists)
+        {
+            return true;
+        }
+        
+        var cover = TrackInfo.EmbeddedPictures.FirstOrDefault();
+        if (cover?.PictureData?.Length > 0)
+        {
+            File.WriteAllBytes(targetFile.FullName, cover.PictureData);
+            return true;
+        }
+        
+        return false;
+    }
 
     protected override void MapMediaTag(string key, string value)
     {

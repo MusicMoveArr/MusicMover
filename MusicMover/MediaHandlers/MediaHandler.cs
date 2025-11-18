@@ -65,6 +65,7 @@ public abstract class MediaHandler
     }
 
     public abstract string GetSetterTagName(string tagName);
+    public abstract bool DumpCover(FileInfo targetFile);
 
     public string GetFirstTagNameWithValue(string[] tagNames)
     {

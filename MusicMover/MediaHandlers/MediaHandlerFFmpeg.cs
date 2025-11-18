@@ -101,4 +101,29 @@ public class MediaHandlerFFmpeg : MediaHandler
             .Replace("__", "_") //again to be sure
             .ToUpper();
     }
+
+    public override bool DumpCover(FileInfo targetFile)
+    {
+        if (targetFile.Exists)
+        {
+            return true;
+        }
+
+        try
+        {
+            return FFMpegArguments
+                .FromFileInput(FileInfo.FullName)
+                .OutputToFile(targetFile.FullName, overwrite: true, options =>
+                {
+                    options.WithCustomArgument("-map 0:v");
+                })
+                .ProcessSynchronously();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{e.Message}\r\n{e.StackTrace}");
+            return false;
+        }
+        
+    }
 }
