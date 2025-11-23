@@ -695,6 +695,8 @@ public class MusicBrainzService
             return result;
         }
 
+        await mediaHandler.GenerateSaveFingerprintAsync();
+
         if (!string.IsNullOrWhiteSpace(mediaHandler.AcoustId) && 
             Guid.TryParse(mediaHandler.AcoustId, out Guid _))
         {

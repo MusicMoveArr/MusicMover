@@ -385,8 +385,6 @@ public class MoveProcessor
         IncrementCounter(() => _scannedFromFiles++);
         Debug.WriteLine($"File: {mediaHandler.FileInfo.FullName}");
 
-        await mediaHandler.GenerateSaveFingerprintAsync();
-
         foreach (var plugin in _plugins)
         { 
             //plugin.OnLoad(mediaHandler);
@@ -653,6 +651,8 @@ public class MoveProcessor
 
             await UpdateArtistTagAsync(updatedArtistName, mediaHandler, artist);
 
+            await mediaHandler.GenerateSaveFingerprintAsync();
+
             bool saveSuccess = false;
             
             if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
@@ -689,6 +689,8 @@ public class MoveProcessor
                 }
 
                 await UpdateArtistTagAsync(updatedArtistName, mediaHandler, artist);
+
+                await mediaHandler.GenerateSaveFingerprintAsync();
 
                 if (await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath)))
                 {
@@ -732,6 +734,8 @@ public class MoveProcessor
                 }
 
                 await UpdateArtistTagAsync(updatedArtistName, mediaHandler, artist);
+
+                await mediaHandler.GenerateSaveFingerprintAsync();
                 
                 bool saveSuccess = false;
                 if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
@@ -800,6 +804,8 @@ public class MoveProcessor
                 }
 
                 await UpdateArtistTagAsync(updatedArtistName, mediaHandler, artist);
+
+                await mediaHandler.GenerateSaveFingerprintAsync();
 
                 bool saveSuccess = false;
                 if ((saveSuccess = await _mediaTagWriteService.SafeSaveAsync(mediaHandler, new FileInfo(newFromFilePath))) &&
