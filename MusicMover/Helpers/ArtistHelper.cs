@@ -47,4 +47,47 @@ public static class ArtistHelper
 
         return value.Substring(0, length) + postfix;
     }
+
+    public static string GetShortWordVersion(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        string result = string.Empty;
+        string[] wordSplit = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (string word in wordSplit)
+        {
+            if (result.Length + word.Length <= maxLength)
+            {
+                result += word + " ";
+            }
+        }
+
+        if (string.IsNullOrEmpty(result) && value.Length >= maxLength)
+        {
+            result = value.Substring(0, maxLength);
+        }
+
+
+        char[] charsToCleanup = "`~!@#$%^&*()_+-=[]{};':\",./<>? ".ToCharArray();
+        while(result.Length > 0)
+        {
+            if (!result.Skip(result.Length - 1).TakeLast(1).Any(c => charsToCleanup.Contains(c)))
+            {
+                break;
+            }
+
+            result = result.Substring(0, result.Length - 1);
+        }
+
+    return result.Trim();
+    }
 }

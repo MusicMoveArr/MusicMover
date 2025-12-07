@@ -32,6 +32,7 @@ public class MoveProcessor
     private const string VariousArtistsName = "Various Artists";
 
     private const int NamingAccuracy = 98;
+    private const int MaxFilePartNameLength = 50;
     
     private int _movedFiles = 0;
     private int _localDelete = 0;
@@ -472,8 +473,8 @@ public class MoveProcessor
 
             if (!string.IsNullOrWhiteSpace(_options.MoveUntaggableFilesPath))
             {
-                string artistFolderName = mediaHandler.Artist;
-                string albumFolderName = mediaHandler.Album;
+                string artistFolderName = SanitizeArtistName(mediaHandler.Artist);
+                string albumFolderName = SanitizeAlbumName(mediaHandler.Album);
                 if (string.IsNullOrWhiteSpace(artistFolderName))
                 {
                     artistFolderName = "[unknown_artist]";
@@ -530,10 +531,12 @@ public class MoveProcessor
 
         if (!String.IsNullOrWhiteSpace(_options.FileFormat))
         {
-            string newFileName = GetFormatName(mediaHandler, _options.FileFormat, _options.DirectorySeperator) + mediaHandler.FileInfo.Extension;
+            string newFileName = SanitizeFileName(GetFormatName(mediaHandler, _options.FileFormat, _options.DirectorySeperator)) + mediaHandler.FileInfo.Extension;
             string newFilePath = Path.Join(mediaHandler.FileInfo.Directory.FullName, newFileName);
             mediaHandler.TargetSaveFileInfo = new FileInfo(newFilePath);
         }
+        
+        
 
         DirectoryInfo toArtistDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}");
         DirectoryInfo toAlbumDirInfo = new DirectoryInfo($"{_options.ToDirectory}{SanitizeArtistName(artist)}/{SanitizeAlbumName(mediaHandler.Album)}");
@@ -1000,6 +1003,7 @@ public class MoveProcessor
 
     private string SanitizeAlbumName(string albumName)
     {
+        albumName = ArtistHelper.GetShortWordVersion(albumName, MaxFilePartNameLength);
         return albumName
             .Replace('/', '+')
             .Replace('\\', '+');
@@ -1007,7 +1011,16 @@ public class MoveProcessor
 
     private string SanitizeArtistName(string artistName)
     {
+        artistName = ArtistHelper.GetShortWordVersion(artistName, MaxFilePartNameLength);
         return artistName
+            .Replace('/', '+')
+            .Replace('\\', '+');
+    }
+
+    private string SanitizeFileName(string fileName)
+    {
+        fileName = ArtistHelper.GetShortWordVersion(fileName, MaxFilePartNameLength - 5);
+        return fileName
             .Replace('/', '+')
             .Replace('\\', '+');
     }
