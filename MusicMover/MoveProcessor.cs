@@ -32,7 +32,7 @@ public class MoveProcessor
     private const string VariousArtistsName = "Various Artists";
 
     private const int NamingAccuracy = 98;
-    private const int MaxFilePartNameLength = 50;
+    private const int MaxFilePartNameLength = 80;
     
     private int _movedFiles = 0;
     private int _localDelete = 0;
