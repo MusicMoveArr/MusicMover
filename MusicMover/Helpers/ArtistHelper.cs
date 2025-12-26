@@ -1,3 +1,6 @@
+using MusicMover.MediaHandlers;
+using SmartFormat;
+
 namespace MusicMover.Helpers;
 
 public static class ArtistHelper
@@ -88,6 +91,36 @@ public static class ArtistHelper
             result = result.Substring(0, result.Length - 1);
         }
 
-    return result.Trim();
+        return result.Trim();
+    }
+    
+    public static string GetFormatName(MediaHandler mediaHandler, string format, string seperator)
+    {
+        mediaHandler.SetMediaTagValue(ReplaceDirectorySeparators(mediaHandler.Artist, seperator), "Artist");
+        mediaHandler.SetMediaTagValue(ReplaceDirectorySeparators(mediaHandler.Title, seperator), "Title");
+        mediaHandler.SetMediaTagValue(ReplaceDirectorySeparators(mediaHandler.Album, seperator), "Album");
+        
+        format = Smart.Format(format, mediaHandler);
+        format = format.Trim();
+        return format;
+    }
+    
+    public static string ReplaceDirectorySeparators(string? input, string seperator)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+        
+        if (input.Contains('/'))
+        {
+            input = input.Replace("/", seperator);
+        }
+        else if (input.Contains('\\'))
+        {
+            input = input.Replace("\\", seperator);
+        }
+
+        return input;
     }
 }

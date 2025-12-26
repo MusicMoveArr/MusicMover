@@ -90,11 +90,11 @@ public class MusicBrainzService
         if (string.IsNullOrWhiteSpace(mediaHandler.Title) || overWriteTrack)
         {
             string? trackTitle = match.ReleaseMedia.Tracks?.FirstOrDefault()?.Title;
-            string credits = GetArtistFeatCreditString(match.ArtistCredits);
-            if (credits.Length > 2)
-            {
-                trackTitle += " " + credits;
-            }
+            //string credits = GetArtistFeatCreditString(match.ArtistCredits);
+            //if (credits.Length > 2)
+            //{
+            //    trackTitle += " " + credits;
+            //}
             _mediaTagWriteService.UpdateTag(mediaHandler, "Title", trackTitle, ref trackInfoUpdated);
         }
         if (overWriteAlbum && 

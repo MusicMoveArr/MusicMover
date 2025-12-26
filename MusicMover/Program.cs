@@ -2,13 +2,18 @@
 using MusicMover.Jobs;
 using Quartz;
 using Quartz.Impl;
+using SmartFormat;
+using SmartFormat.Extensions;
 
 class Program
 {
     public static string[] ConsoleArguments { get; private set; }
     public static async Task Main(string[] args)
     {
-        ATL.Settings.OutputStacktracesToConsole = false;
+        ATL.Settings.OutputStacktracesToConsole = true;
+        Smart.Default.GetFormatterExtension<SubStringFormatter>().OutOfRangeBehavior =
+            SubStringFormatter.SubStringOutOfRangeBehavior.ReturnStartIndexToEndOfString;
+        
         ConsoleArguments = args;
         
         string? cronExpression = Environment.GetEnvironmentVariable("CRON");

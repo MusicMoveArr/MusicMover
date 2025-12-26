@@ -14,7 +14,7 @@ public static class Logger
             }
             else
             {
-                AnsiConsole.WriteLine(message);
+                AnsiConsole.WriteLine(Markup.Escape(message));
             }
         }
     }

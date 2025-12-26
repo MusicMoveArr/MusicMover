@@ -51,7 +51,9 @@ public class TidalAPIService
 
         if (token != null)
         {
+            token.RequestedAt = DateTime.Now;
             this.AuthenticationResponse = token;
+            
         }
         return token;
     }

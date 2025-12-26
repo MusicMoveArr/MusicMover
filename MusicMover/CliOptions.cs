@@ -21,6 +21,8 @@ public class CliOptions
     public required bool FixFileCorruption { get; init; }
     public required string? AcoustIdApiKey { get; init; }
     public required string FileFormat { get; init; }
+    public required string ArtistDirectoryFormat { get; init; }
+    public required string AlbumDirectoryFormat { get; init; }
     public required string DirectorySeperator { get; init; }
     public required bool AlwaysCheckAcoustId { get; init; }
     public required bool ContinueScanError { get; init; }

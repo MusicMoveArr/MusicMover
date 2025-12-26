@@ -1,4 +1,5 @@
 using System.Globalization;
+using MusicMover.Helpers;
 using MusicMover.Models;
 using MusicMover.Services;
 
@@ -10,6 +11,8 @@ public abstract class MediaHandler
     public const string AcoustidFingerprintDurationTag = "Acoustid Fingerprint Duration";
     public const string AcoustIdIdTag = "AcoustidId";
     public const string AcoustIdTag = "AcoustId";
+    public const string VariousArtistsName = "Various Artists";
+    private const int MaxFilePartNameLength = 80;
     
     public FileInfo FileInfo { get; set; }
     public FileInfo TargetSaveFileInfo { get; set; }
@@ -38,14 +41,42 @@ public abstract class MediaHandler
     
     public List<string> AllArtistNames { get; protected set; }
     protected Dictionary<string, string> MediaTags { get; set; }
-    
-    
-    
-    //during processing
-    public bool MetadataApiTaggingSuccess { get; set; }
-    public bool MusicBrainzTaggingSuccess { get; set; }
-    public bool TidalTaggingSuccess { get; set; }
-    public SimilarFileResult SimilarFileResult { get; set; }
+
+    public string CleanArtist
+    {
+        get
+        {
+            string? artist = AlbumArtist;
+            
+            if (string.IsNullOrWhiteSpace(artist) ||
+                (artist.Contains(VariousArtistsName) && !string.IsNullOrWhiteSpace(Artist)))
+            {
+                artist = Artist;
+            }
+        
+            if (string.IsNullOrWhiteSpace(artist) ||
+                (artist.Contains(VariousArtistsName) && !string.IsNullOrWhiteSpace(SortArtist)))
+            {
+                artist = SortArtist;
+            }
+            
+            artist = ArtistHelper.GetUncoupledArtistName(artist);
+            artist = ArtistHelper.GetShortWordVersion(artist, MaxFilePartNameLength);
+            return artist
+                .Replace('/', '+')
+                .Replace('\\', '+');
+        }
+    }
+    public string CleanAlbum
+    {
+        get
+        {
+            string albumName = ArtistHelper.GetShortWordVersion(Album, MaxFilePartNameLength);
+            return albumName
+                .Replace('/', '+')
+                .Replace('\\', '+');
+        }
+    }
     
     public abstract bool SaveTo(FileInfo targetFile);
     protected abstract void MapMediaTag(string key, string value);

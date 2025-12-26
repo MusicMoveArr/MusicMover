@@ -125,6 +125,19 @@ public class MoveCommands : ICommand
         IsRequired = false)]
     public string FileFormat { get; set; }
 
+    [CommandOption("artist-directory-format",
+        Description =
+            "Artist Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.",
+        EnvironmentVariable = "MOVE_ARTIST_DIRECTORY_FORMAT",
+        IsRequired = false)]
+    public string ArtistDirectoryFormat { get; set; } = "{CleanArtist}";
+    
+    [CommandOption("album-directory-format", 
+        Description = "Album Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.", 
+        EnvironmentVariable = "MOVE_ALBUM_DIRECTORY_FORMAT",
+        IsRequired = false)]
+    public string AlbumDirectoryFormat { get; set; } = "{CleanAlbum}";
+
     [CommandOption("directory-seperator",
         Description = "Directory Seperator replacer, replace '/' '\\' to .e.g. '_'.",
         EnvironmentVariable = "MOVE_DIRECTORYSEPERATOR",
@@ -314,6 +327,8 @@ public class MoveCommands : ICommand
             ToDirectory = Target,
             AcoustIdApiKey = AcoustidApiKey,
             FileFormat = FileFormat,
+            ArtistDirectoryFormat = ArtistDirectoryFormat,
+            AlbumDirectoryFormat = AlbumDirectoryFormat,
             DirectorySeperator = DirectorySeperator,
             TidalClientId = TidalClientId,
             TidalClientSecret = TidalClientSecret,
@@ -488,7 +503,7 @@ public class MoveCommands : ICommand
     {
         string[] invalidCharacters = ["?", "<", ">", "=", "{", "}"];
             
-        string newFileName = moveProcessor.GetFormatName(mediaHandler, options.FileFormat, options.DirectorySeperator);
+        string newFileName = ArtistHelper.GetFormatName(mediaHandler, options.FileFormat, options.DirectorySeperator);
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
         {
             Logger.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
