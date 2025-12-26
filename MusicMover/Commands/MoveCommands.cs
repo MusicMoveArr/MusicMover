@@ -120,20 +120,20 @@ public class MoveCommands : ICommand
     public string AcoustidApiKey { get; set; }
     
     [CommandOption("file-format", 
-        Description = "Rename file format {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.", 
+        Description = "Rename file format {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC} {CleanArtistUpper} {CleanAlbumUpper} {ArtistUpper} {AlbumUpper}.", 
         EnvironmentVariable = "MOVE_FILEFORMAT",
         IsRequired = false)]
     public string FileFormat { get; set; }
 
     [CommandOption("artist-directory-format",
         Description =
-            "Artist Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.",
+            "Artist Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC} {CleanArtistUpper} {CleanAlbumUpper} {ArtistUpper} {AlbumUpper}.",
         EnvironmentVariable = "MOVE_ARTIST_DIRECTORY_FORMAT",
         IsRequired = false)]
     public string ArtistDirectoryFormat { get; set; } = "{CleanArtist}";
     
     [CommandOption("album-directory-format", 
-        Description = "Album Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC}.", 
+        Description = "Album Directory Format to move the file to, properties available: {Artist} {SortArtist} {Title} {Album} {TrackNumber} {TrackCount} {AlbumArtist} {AcoustId} {AcoustIdFingerPrint} {AcoustIdFingerPrintDuration} {BitRate} {DiscNumber} {DiscTotal} {TrackTotal} {Duration} {Year} {Date} {CatalogNumber} {ISRC} {CleanArtistUpper} {CleanAlbumUpper} {ArtistUpper} {AlbumUpper}.", 
         EnvironmentVariable = "MOVE_ALBUM_DIRECTORY_FORMAT",
         IsRequired = false)]
     public string AlbumDirectoryFormat { get; set; } = "{CleanAlbum}";
@@ -504,9 +504,23 @@ public class MoveCommands : ICommand
         string[] invalidCharacters = ["?", "<", ">", "=", "{", "}"];
             
         string newFileName = ArtistHelper.GetFormatName(mediaHandler, options.FileFormat, options.DirectorySeperator);
+        string newArtistFolder = ArtistHelper.GetFormatName(mediaHandler, options.ArtistDirectoryFormat, options.DirectorySeperator);
+        string newAlbumFolder = ArtistHelper.GetFormatName(mediaHandler, options.AlbumDirectoryFormat, options.DirectorySeperator);
+        
+        
         if (invalidCharacters.Any(invalidChar => newFileName.Contains(invalidChar)))
         {
             Logger.WriteLine($"FileFormat is incorrect, sample output: {newFileName}");
+            return false;
+        }
+        if (invalidCharacters.Any(invalidChar => newArtistFolder.Contains(invalidChar)))
+        {
+            Logger.WriteLine($"FileFormat is incorrect, sample output: {newArtistFolder}");
+            return false;
+        }
+        if (invalidCharacters.Any(invalidChar => newAlbumFolder.Contains(invalidChar)))
+        {
+            Logger.WriteLine($"FileFormat is incorrect, sample output: {newAlbumFolder}");
             return false;
         }
 

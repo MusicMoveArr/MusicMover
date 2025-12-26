@@ -23,30 +23,35 @@ public class OnlyMoveWhenTaggedMoveFileRule : Rule
         string albumFolderName = ArtistHelper.GetFormatName(StateObject.MediaHandler, StateObject.Options.AlbumDirectoryFormat, StateObject.Options.DirectorySeperator);
         StateResult result = new StateResult(false, "Skipped processing, tagging failed");
 
+        artistFolderName = artistFolderName.Replace("\0", string.Empty);
+        albumFolderName = albumFolderName.Replace("\0", string.Empty);
+        
         if (!string.IsNullOrWhiteSpace(StateObject.Options.MoveUntaggableFilesPath))
         {
-            if (string.IsNullOrWhiteSpace(artistFolderName))
+            if (string.IsNullOrWhiteSpace(artistFolderName.Replace("/", string.Empty).Replace("\\", string.Empty)))
             {
                 artistFolderName = "[unknown_artist]";
             }
-            if (string.IsNullOrWhiteSpace(albumFolderName))
+            if (string.IsNullOrWhiteSpace(albumFolderName.Replace("/", string.Empty).Replace("\\", string.Empty)))
             {
                 albumFolderName = "[unknown_album]";
             }
-                
-            artistFolderName = string.Join("_", artistFolderName.Split(Path.GetInvalidFileNameChars()));
-            albumFolderName = string.Join("_", albumFolderName.Split(Path.GetInvalidFileNameChars()));
-            string safeFileName = string.Join("_", StateObject.MediaHandler.FileInfo.Name.Split(Path.GetInvalidFileNameChars()));
-                
+            
             string newFilePath = Path.Join(
                 StateObject.Options.MoveUntaggableFilesPath, 
                 artistFolderName, 
                 albumFolderName, 
-                safeFileName);
+                StateObject.MediaHandler.FileInfo.Name);
             
             result.LogInfo($"Moving untaggable file to '{newFilePath}'");
                 
             FileInfo newFilePathInfo = new FileInfo(newFilePath);
+
+            var sure = newFilePathInfo.Directory.FullName
+                .Substring(StateObject.Options.MoveUntaggableFilesPath.Length)
+                .Split('/')
+                .ToList();
+            
             if (!newFilePathInfo.Directory.Exists)
             {
                 newFilePathInfo.Directory.Create();

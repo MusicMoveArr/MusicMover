@@ -67,6 +67,8 @@ public abstract class MediaHandler
                 .Replace('\\', '+');
         }
     }
+
+    
     public string CleanAlbum
     {
         get
@@ -77,6 +79,10 @@ public abstract class MediaHandler
                 .Replace('\\', '+');
         }
     }
+    public string CleanArtistUpper => CleanArtist.ToUpper();
+    public string CleanAlbumUpper => CleanAlbum.ToUpper();
+    public string ArtistUpper => Artist.ToUpper();
+    public string AlbumUpper => Album.ToUpper();
     
     public abstract bool SaveTo(FileInfo targetFile);
     protected abstract void MapMediaTag(string key, string value);
