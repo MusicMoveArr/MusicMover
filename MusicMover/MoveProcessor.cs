@@ -267,6 +267,7 @@ public class MoveProcessor
         ruleEngine.AddRule<CheckRequiredTagsRule>();
         ruleEngine.AddRule<CheckSimilarFilesRule>();
         ruleEngine.AddRule<StopAtDryRunRule>();
+        ruleEngine.AddRule<CreateArtistDirectoryRule>();
         ruleEngine.AddRule<MoveNewFileRule>();
         ruleEngine.AddRule<MoveOneSimilarFileRule>();
         ruleEngine.AddRule<MoveMultipleSimilarFilesRule>();
