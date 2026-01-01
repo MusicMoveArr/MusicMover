@@ -4,6 +4,7 @@ using MusicMover.Helpers;
 using MusicMover.MediaHandlers;
 using MusicMover.Models;
 using MusicMover.Rules.Machine;
+using MusicMover.Services;
 
 namespace MusicMover.Rules;
 
@@ -14,15 +15,17 @@ public class CheckSimilarFilesRule : Rule
     public override bool Required { get; } = true;
     public override ContinueType ContinueType { get; } = ContinueType.Stop;
     private readonly MemoryCache _memoryCache;
+    private readonly FingerPrintService _fingerPrintService;
 
     public CheckSimilarFilesRule()
     {
         _memoryCache = MemoryCache.Default;
+        _fingerPrintService = new FingerPrintService();
     }
     
     public override async Task<StateResult> ExecuteAsync()
     {
-        StateObject.SimilarFileResult = await GetSimilarFileFromTagsArtistAsync(
+        StateObject.SimilarFileResult = await GetSimilarFilesAsync(
             StateObject.MediaHandler, 
             StateObject.MediaHandler.TargetSaveFileInfo, 
             StateObject.ToAlbumDirInfo, 
@@ -49,7 +52,7 @@ public class CheckSimilarFilesRule : Rule
                 continue;
             }
 
-            var extraSimilarResult = await GetSimilarFileFromTagsArtistAsync(StateObject.MediaHandler, StateObject.MediaHandler.TargetSaveFileInfo, albumDirInfo, StateObject.Options);
+            var extraSimilarResult = await GetSimilarFilesAsync(StateObject.MediaHandler, StateObject.MediaHandler.TargetSaveFileInfo, albumDirInfo, StateObject.Options);
 
             if (extraSimilarResult.Errors && !StateObject.Options.ContinueScanError)
             {
@@ -76,7 +79,7 @@ public class CheckSimilarFilesRule : Rule
         return new StateResult(true);
     }
     
-    private async Task<SimilarFileResult> GetSimilarFileFromTagsArtistAsync(
+    private async Task<SimilarFileResult> GetSimilarFilesAsync(
         MediaHandler mediaHandler, 
         FileInfo fromFileInfo,
         DirectoryInfo toAlbumDirInfo,
@@ -95,28 +98,25 @@ public class CheckSimilarFilesRule : Rule
             .Where(file => MoveProcessor.MediaFileExtensions.Any(ext => file.Name.ToLower().EndsWith(ext)))
             .ToList();
 
-        foreach (FileInfo toFile in toFiles)
+        if (options.OnlyFileNameMatching)
+        {
+            var similarFiles = toFiles
+                .Where(toFile => !string.Equals(toFile.FullName, fromFileInfo.FullName))
+                .Where(toFile => FuzzyHelper.FuzzRatioToLower(toFile.Name.Replace(toFile.Extension, string.Empty),
+                                            fromFileInfo.Name.Replace(fromFileInfo.Extension, string.Empty)) >= 95)
+                .Select(toFile => new SimilarFileInfo(toFile))
+                .ToList();
+
+            similarFileResult.SimilarFiles.AddRange(similarFiles);
+            return similarFileResult;
+        }
+        
+        await mediaHandler.GenerateSaveFingerprintAsync();
+
+        foreach (FileInfo toFile in toFiles.Where(toFile => !string.Equals(toFile.FullName, fromFileInfo.FullName)))
         {
             try
             {
-                if (toFile.FullName == fromFileInfo.FullName)
-                {
-                    continue;
-                }
-                
-                //quick compare before caching/reading the file tags, if filename matches +95%
-                if (Fuzz.Ratio(toFile.Name.ToLower().Replace(toFile.Extension, string.Empty),
-                        fromFileInfo.Name.ToLower().Replace(fromFileInfo.Extension, string.Empty)) >= 95)
-                {
-                    similarFileResult.SimilarFiles.Add(new SimilarFileInfo(toFile));
-                    continue;
-                }
-
-                if (options.OnlyFileNameMatching)
-                {
-                    continue;
-                }
-                
                 MediaHandler? cachedMediaHandler = null;
 
                 lock (_memoryCache)
@@ -139,37 +139,16 @@ public class CheckSimilarFilesRule : Rule
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(cachedMediaHandler.Title) || 
-                    string.IsNullOrWhiteSpace(cachedMediaHandler.Album) || 
-                    string.IsNullOrWhiteSpace(cachedMediaHandler.Artist) || 
-                    string.IsNullOrWhiteSpace(cachedMediaHandler.AlbumArtist))
-                {
-                    Logger.WriteLine($"scan error file, no Title, Album, Artist or AlbumArtist: {toFile}");
-                    similarFileResult.Errors = true;
-                    continue;
-                }
+                await cachedMediaHandler.GenerateSaveFingerprintAsync();
 
-                bool artistMatch = Fuzz.Ratio(cachedMediaHandler?.Artist,  mediaHandler.Artist) >= NamingAccuracy ||
-                                   Fuzz.Ratio(ArtistHelper.GetUncoupledArtistName(cachedMediaHandler?.Artist), ArtistHelper.GetUncoupledArtistName(mediaHandler.Artist)) >= NamingAccuracy;
-                
-                bool albumArtistMatch = Fuzz.Ratio(cachedMediaHandler?.AlbumArtist, mediaHandler.AlbumArtist) >= NamingAccuracy ||
-                                        Fuzz.Ratio(ArtistHelper.GetUncoupledArtistName(cachedMediaHandler?.AlbumArtist), ArtistHelper.GetUncoupledArtistName(mediaHandler.AlbumArtist)) >= NamingAccuracy;
-                
-                if (Fuzz.Ratio(cachedMediaHandler?.Title, mediaHandler.Title) >= NamingAccuracy &&
-                    Fuzz.Ratio(cachedMediaHandler?.Album,  mediaHandler.Album) >= NamingAccuracy &&
-                    cachedMediaHandler?.TrackNumber == mediaHandler.TrackNumber &&
-                    artistMatch && albumArtistMatch)
+                double similarity = _fingerPrintService.DTWSimilarity(
+                    mediaHandler.AcoustIdFingerprintData,
+                    cachedMediaHandler.AcoustIdFingerprintData);
+
+                if (similarity >= 0.99D)
                 {
                     similarFileResult.SimilarFiles.Add(new SimilarFileInfo(toFile, cachedMediaHandler));
                 }
-                //very tricky based on fingerprint
-                //songs can be both in e.g. "Best of ..." and in the actual album
-                //else if (!string.IsNullOrWhiteSpace(cachedMediaInfo?.AcoustIdFingerPrint) && 
-                //         !string.IsNullOrWhiteSpace(matchTagFile.AcoustIdFingerPrint) &&
-                //         cachedMediaInfo?.AcoustIdFingerPrint == matchTagFile.AcoustIdFingerPrint)
-                //{
-                //    similarFiles.Add(new SimilarFileInfo(toFile, cachedMediaInfo));
-                //}
             }
             catch (Exception e)
             {

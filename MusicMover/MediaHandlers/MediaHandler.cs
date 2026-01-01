@@ -42,6 +42,27 @@ public abstract class MediaHandler
     public List<string> AllArtistNames { get; protected set; }
     protected Dictionary<string, string> MediaTags { get; set; }
 
+    private int[]? _acoustIdFingerprintData;
+    public int[] AcoustIdFingerprintData
+    {
+        get
+        {
+            if (_acoustIdFingerprintData?.Length > 0)
+            {
+                return _acoustIdFingerprintData;
+            }
+            
+            if (string.IsNullOrWhiteSpace(AcoustIdFingerPrint))
+            {
+                return new int[0];
+            }
+
+            _acoustIdFingerprintData = _fingerPrintService.DecodeAcoustIdFingerprint(AcoustIdFingerPrint);
+            return _acoustIdFingerprintData;
+        }
+    }
+    
+
     public string CleanArtist
     {
         get
