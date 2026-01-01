@@ -23,6 +23,11 @@ public class SetToArtistDirectoryRule : Rule
         StateObject.ToArtistDirInfo = new DirectoryInfo(Path.Join(StateObject.Options.ToDirectory, artistPath));
         StateObject.ToAlbumDirInfo = new DirectoryInfo(Path.Join(StateObject.Options.ToDirectory, albumPath));
 
+        if (!StateObject.ToAlbumDirInfo.Exists)
+        {
+            StateObject.ToAlbumDirInfo.Create();
+        }
+        
         return new StateResult(true);
     }
 }

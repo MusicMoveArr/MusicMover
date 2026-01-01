@@ -263,6 +263,7 @@ public class MoveProcessor
         ruleEngine.AddRule<TagFileFailedRule>();
         ruleEngine.AddRule<OnlyMoveWhenTaggedRule>();
         ruleEngine.AddRule<OnlyMoveWhenTaggedMoveFileRule>();
+        ruleEngine.AddRule<SetToArtistDirectoryRule>();
         ruleEngine.AddRule<SetTargetFilePathRule>();
         ruleEngine.AddRule<CheckRequiredTagsRule>();
         ruleEngine.AddRule<CheckSimilarFilesRule>();
