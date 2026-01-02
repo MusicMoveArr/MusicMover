@@ -3,7 +3,7 @@
 # Install ffmpeg and fpcalc
 USER root
 RUN apt-get update
-RUN apt-get install -y ffmpeg libchromaprint-tools
+RUN apt-get install -y ffmpeg libchromaprint-tools libchromaprint1
 
 USER $APP_UID
 WORKDIR /app
