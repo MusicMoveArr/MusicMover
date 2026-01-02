@@ -9,15 +9,15 @@ namespace MusicMover.Services;
 public class FingerPrintService
 {
     // Returns a const char* (pointer to ANSI string)
-    [DllImport("libchromaprint", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("libchromaprint.so.1", CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr chromaprint_get_version();
 
     // Decodes fingerprint
-    [DllImport("libchromaprint", EntryPoint = "chromaprint_decode_fingerprint", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("libchromaprint.so.1", EntryPoint = "chromaprint_decode_fingerprint", CallingConvention = CallingConvention.Cdecl)]
     public static extern int chromaprint_decode_fingerprint(IntPtr encoded_fp, int encoded_size, out IntPtr fp, out int size, out int algorithm, int base64);
 
     // Free memory allocated by chromaprint
-    [DllImport("libchromaprint", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("libchromaprint.so.1", CallingConvention = CallingConvention.Cdecl)]
     public static extern void chromaprint_dealloc(IntPtr ptr);
     
     public async Task<FpcalcOutput?> GetFingerprintAsync(string filePath)
