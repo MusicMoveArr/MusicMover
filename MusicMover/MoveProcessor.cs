@@ -270,6 +270,7 @@ public class MoveProcessor
         ruleEngine.AddRule<StopAtDryRunRule>();
         ruleEngine.AddRule<CreateArtistDirectoryRule>();
         ruleEngine.AddRule<MoveNewFileRule>();
+        ruleEngine.AddRule<OnlyNewFilesDeleteRule>();
         ruleEngine.AddRule<MoveOneSimilarFileRule>();
         ruleEngine.AddRule<MoveMultipleSimilarFilesRule>();
         

@@ -299,6 +299,12 @@ public class MoveCommands : ICommand
         EnvironmentVariable = "MOVE_ACOUSTID_MAX_TIMESPAN",
         IsRequired = false)]
     public TimeSpan AcoustIdMaxTimeSpan { get; set; } = TimeSpan.FromMinutes(10);
+
+    [CommandOption("only-new-files",
+        Description = "Move only new files to the target library",
+        EnvironmentVariable = "MOVE_ONLY_NEW_FILES",
+        IsRequired = false)]
+    public bool OnlyNewFiles { get; set; } = false;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -368,7 +374,8 @@ public class MoveCommands : ICommand
             MetadataHandlerLibrary = MetadataHandlerLibrary,
             TranslationPath = TranslationPath,
             DumpCoverFilename = DumpCoverFilename,
-            AcoustIdMaxTimeSpan = AcoustIdMaxTimeSpan
+            AcoustIdMaxTimeSpan = AcoustIdMaxTimeSpan,
+            OnlyNewFiles = OnlyNewFiles
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))

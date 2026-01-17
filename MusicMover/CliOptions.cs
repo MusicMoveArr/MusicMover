@@ -51,4 +51,5 @@ public class CliOptions
     public required string TranslationPath { get; init; }
     public required string DumpCoverFilename { get; init; }
     public required TimeSpan AcoustIdMaxTimeSpan { get; init; }
+    public required bool OnlyNewFiles { get; init; }
 }

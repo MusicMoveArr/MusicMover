@@ -8,7 +8,7 @@ namespace MusicMover.Rules;
 
 public class MoveMultipleSimilarFilesRule : Rule
 {
-    public override bool Required => StateObject.SimilarFileResult.SimilarFiles.Count > 1;
+    public override bool Required => StateObject.SimilarFileResult.SimilarFiles.Count > 1 && !StateObject.Options.OnlyNewFiles;
     public override ContinueType ContinueType { get; } =  ContinueType.Continue;
     private readonly MediaTagWriteService _mediaTagWriteService;
     private readonly MemoryCache _memoryCache;
