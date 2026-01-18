@@ -27,6 +27,6 @@ public class OnlyMoveWhenTaggedRule : Rule
         ruleEngine.AddRule<TagFileTidalRule>();
         var results = await ruleEngine.RunAsync(StateObject);
 
-        return new StateResult(true);
+        return new StateResult(results.Any(r => r.Success));
     }
 }
