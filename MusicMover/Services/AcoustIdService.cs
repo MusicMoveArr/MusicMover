@@ -9,11 +9,11 @@ namespace MusicMover.Services;
 
 public class AcoustIdService
 {
-    private readonly AsyncLock _asyncAcoustIdLock;
+    private static readonly AsyncLock _asyncAcoustIdLock = new AsyncLock();
 
     public AcoustIdService()
     {
-        _asyncAcoustIdLock = new AsyncLock();
+        
     }
     
     public async Task<AcoustIdResponse?> LookupAcoustIdAsync(string acoustIdApiKey, string fingerprint, int duration)
