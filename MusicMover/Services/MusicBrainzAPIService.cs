@@ -11,14 +11,9 @@ namespace MusicMover.Services;
 
 public class MusicBrainzAPIService
 {
-    private static Stopwatch _apiStopwatch = Stopwatch.StartNew();
-    private readonly AsyncLock _asyncAcoustIdLock;
+    private static readonly Stopwatch _apiStopwatch = Stopwatch.StartNew();
+    private static readonly AsyncLock _asyncAcoustIdLock = new AsyncLock();
 
-    public MusicBrainzAPIService()
-    {
-        _asyncAcoustIdLock = new AsyncLock();
-    }
-    
     public async Task<MusicBrainzArtistModel?> GetRecordingByIdAsync(string recordingId)
     {
         using (await _asyncAcoustIdLock.LockAsync())
@@ -120,14 +115,11 @@ public class MusicBrainzAPIService
 
     private static void Delay()
     {
-        lock (_apiStopwatch)
+        int elapsed = (int)_apiStopwatch.ElapsedMilliseconds;
+        if (elapsed < 1000)
         {
-            int elapsed = (int)_apiStopwatch.ElapsedMilliseconds;
-            if (elapsed < 1000)
-            {
-                Thread.Sleep(TimeSpan.FromSeconds(1));
-                _apiStopwatch.Restart();
-            }
+            Thread.Sleep(TimeSpan.FromSeconds(1));
+            _apiStopwatch.Restart();
         }
     }
     
