@@ -7,5 +7,5 @@ namespace MusicMover.Models.MetadataAPI;
 public class SearchArtistResponse
 {
     public string SearchResult { get; set; }
-    public List<SearchArtistEntity> Artists { get; set; }
+    public List<SearchArtistEntity> Artists { get; set; } = new List<SearchArtistEntity>();
 }

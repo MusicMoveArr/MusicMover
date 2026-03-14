@@ -25,16 +25,25 @@ public class MiniMediaMetadataApiService
         Debug.WriteLine($"Requesting SearchArtists '{searchTerm}'");
         
         using RestClient client = new RestClient(_baseUrl + "/api/SearchArtist");
+        SearchArtistResponse result = new SearchArtistResponse();
 
-        return await retryPolicy.ExecuteAsync(async () =>
+        foreach (var provider in _providerTypes)
         {
-            RestRequest request = new RestRequest();
-            request.AddParameter("Provider", _providerTypes.Count > 1 ? "Any" : _providerTypes.First());
-            request.AddParameter("Name", searchTerm);
-            request.AddParameter("Offset", 0);
+            var providerResults = await retryPolicy.ExecuteAsync(async () =>
+            {
+                RestRequest request = new RestRequest();
+                request.AddParameter("Provider", provider);
+                request.AddParameter("Name", searchTerm);
+                request.AddParameter("Offset", 0);
             
-            return await client.GetAsync<SearchArtistResponse>(request);
-        });
+                return await client.GetAsync<SearchArtistResponse>(request);
+            });
+            if (providerResults.Artists?.Any() == true)
+            {
+                result.Artists.AddRange(providerResults.Artists);
+            }
+        }
+        return result;
     }
     public async Task<SearchTrackResponse?> SearchTracksAsync(string searchTerm, string artistId, string providerType)
     {
