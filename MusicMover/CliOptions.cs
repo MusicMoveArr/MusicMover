@@ -52,4 +52,5 @@ public class CliOptions
     public required string DumpCoverFilename { get; init; }
     public required TimeSpan AcoustIdMaxTimeSpan { get; init; }
     public required bool OnlyNewFiles { get; init; }
+    public required bool FileNameTagGuessing { get; init; }
 }

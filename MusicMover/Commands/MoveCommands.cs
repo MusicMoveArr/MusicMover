@@ -305,6 +305,12 @@ public class MoveCommands : ICommand
         EnvironmentVariable = "MOVE_ONLY_NEW_FILES",
         IsRequired = false)]
     public bool OnlyNewFiles { get; set; } = false;
+
+    [CommandOption("filename-tag-guessing",
+        Description = "Guess the best match for tagging based on filename",
+        EnvironmentVariable = "MOVE_FILENAME_TAG_GUESSING",
+        IsRequired = false)]
+    public bool FileNameTagGuessing { get; set; } = false;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -375,7 +381,8 @@ public class MoveCommands : ICommand
             TranslationPath = TranslationPath,
             DumpCoverFilename = DumpCoverFilename,
             AcoustIdMaxTimeSpan = AcoustIdMaxTimeSpan,
-            OnlyNewFiles = OnlyNewFiles
+            OnlyNewFiles = OnlyNewFiles,
+            FileNameTagGuessing = FileNameTagGuessing
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))
