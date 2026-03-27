@@ -12,27 +12,7 @@ public class MediaHandlerAtlCore : MediaHandler
         : base(fileInfo)
     {
         _ignoreAdditionalFieldTags = new List<string>();
-        
-        //load with a 5 second maximum
-        //ATL.Core has sometimes a bug where it will loop infinitely causing 100% cpu usage on some files
-        //we need to get out of this 100% cpu usage loop so cancel the token to achieve this
-        CancellationTokenSource cancellationToken = new CancellationTokenSource();
-        var readRask = Task.Run(() =>
-        {
-            this.TrackInfo = new Track(fileInfo.FullName);
-        }, cancellationToken.Token);
-        Task.WhenAny(readRask, Task.Delay(TimeSpan.FromSeconds(5))).GetAwaiter().GetResult();
-        
-        if (this.TrackInfo == null)
-        {
-            try
-            {
-                cancellationToken.Cancel();
-            }
-            catch { }
-            
-            throw new FileLoadException($"It took too long to load '{fileInfo.FullName}'");
-        }
+        this.TrackInfo = new Track(fileInfo.FullName);
         SetTrackInfo(this.TrackInfo);
     }
 
@@ -137,18 +117,7 @@ public class MediaHandlerAtlCore : MediaHandler
             base.MediaTags.TryAdd(tag.Key, tag.Value);
         }
         
-        AllArtistNames.Clear();
-        AllArtistNames.Add(Artist);
-        AllArtistNames.Add(AlbumArtist);
-        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(Artist));
-        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(AlbumArtist));
-        
-        AllArtistNames.AddRange(Artist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
-        AllArtistNames.AddRange(AlbumArtist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
-        AllArtistNames = AllArtistNames
-            .Where(artist => !string.IsNullOrWhiteSpace(artist))
-            .DistinctBy(artist => artist)
-            .ToList();
+        RefreshAllArtistNames();
     }
     
     public override bool SaveTo(FileInfo targetFile)

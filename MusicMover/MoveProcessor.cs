@@ -134,7 +134,7 @@ public class MoveProcessor
                 Dictionary<string, ProgressTask> progressTasks = new Dictionary<string, ProgressTask>();
                 var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks {ProcessedFiles} of {_filesToProcess.Count + ProcessedFiles}"));
                 totalProgressTask.MaxValue = _filesToProcess.Count;
-                
+
                 int maxDegreeOfParallelism = _options.Parallel ? 4 : 1;
                 AsyncLock progressLock = new AsyncLock();
 
@@ -256,7 +256,11 @@ public class MoveProcessor
         SimpleRuleEngine ruleEngine = new SimpleRuleEngine();
         ruleEngine.AddRule<FileExistsRule>();
         ruleEngine.AddRule<EnoughDiskSpaceRule>();
+        ruleEngine.AddRule<FileNameTagGuessingRule>();
         ruleEngine.AddRule<SetToArtistDirectoryRule>();
+        
+        ruleEngine.AddRule<CheckEarlySimilarFilesRule>();
+        
         ruleEngine.AddRule<TagFileAcoustIdRule>();
         ruleEngine.AddRule<TagFileMetadataApiRule>();
         ruleEngine.AddRule<TagFileTidalRule>();

@@ -125,6 +125,22 @@ public abstract class MediaHandler
     public abstract string GetSetterTagName(string tagName);
     public abstract bool DumpCover(FileInfo targetFile);
 
+    public void RefreshAllArtistNames()
+    {
+        AllArtistNames.Clear();
+        AllArtistNames.Add(Artist);
+        AllArtistNames.Add(AlbumArtist);
+        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(Artist));
+        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(AlbumArtist));
+        
+        AllArtistNames.AddRange(Artist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
+        AllArtistNames.AddRange(AlbumArtist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
+        AllArtistNames = AllArtistNames
+            .Where(artist => !string.IsNullOrWhiteSpace(artist))
+            .DistinctBy(artist => artist)
+            .ToList();
+    }
+
     public string GetFirstTagNameWithValue(string[] tagNames)
     {
         string firstKey = GetTagName(tagNames.First());
@@ -179,7 +195,7 @@ public abstract class MediaHandler
 
         string value = MediaTags.FirstOrDefault(pair =>
             string.Equals(GetSetterTagName(pair.Key), keyTagName, StringComparison.OrdinalIgnoreCase)).Value;
-        
+
         return !string.IsNullOrWhiteSpace(value) ? value : string.Empty;
     }
 

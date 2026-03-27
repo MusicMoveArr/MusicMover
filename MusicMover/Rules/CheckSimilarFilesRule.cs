@@ -25,6 +25,18 @@ public class CheckSimilarFilesRule : Rule
     
     public override async Task<StateResult> ExecuteAsync()
     {
+        if (StateObject.ToArtistDirInfo.FullName == new DirectoryInfo(StateObject.Options.ToDirectory).FullName)
+        {
+            return new StateResult(true, "Can't check, Artist Directory is the same as Target Music Directory");
+        }
+        
+        if (string.IsNullOrWhiteSpace(StateObject.MediaHandler.Artist) ||
+            string.IsNullOrWhiteSpace(StateObject.MediaHandler.Album) ||
+            string.IsNullOrWhiteSpace(StateObject.MediaHandler.Title))
+        {
+            return new StateResult(true, "Can't check, no Artist or Album or Title");
+        }
+        
         StateObject.SimilarFileResult = await GetSimilarFilesAsync(
             StateObject.MediaHandler, 
             StateObject.MediaHandler.TargetSaveFileInfo, 
@@ -148,6 +160,8 @@ public class CheckSimilarFilesRule : Rule
                 if (similarity >= 0.99D)
                 {
                     similarFileResult.SimilarFiles.Add(new SimilarFileInfo(toFile, cachedMediaHandler));
+                    Logger.WriteLine($"From track: {fromFileInfo.FullName}");
+                    Logger.WriteLine($"Similar track: {toFile.FullName}");
                 }
             }
             catch (Exception e)

@@ -42,18 +42,7 @@ public class MediaHandlerFFmpeg : MediaHandler
         foreach (var pair in formatTags)
             base.MediaTags[pair.Key] = pair.Value;
         
-        AllArtistNames.Clear();
-        AllArtistNames.Add(Artist);
-        AllArtistNames.Add(AlbumArtist);
-        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(Artist));
-        AllArtistNames.Add(ArtistHelper.GetUncoupledArtistName(AlbumArtist));
-        
-        AllArtistNames.AddRange(Artist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
-        AllArtistNames.AddRange(AlbumArtist?.Split(new char[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
-        AllArtistNames = AllArtistNames
-            .Where(artist => !string.IsNullOrWhiteSpace(artist))
-            .DistinctBy(artist => artist)
-            .ToList();
+        RefreshAllArtistNames();
     }
     
     public override bool SaveTo(FileInfo targetFile)
