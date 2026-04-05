@@ -26,7 +26,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="CliFx" Version="3.0.0" />
+      <PackageReference Include="CliFx" Version="2.3.6" />
       <PackageReference Include="FFMpegCore" Version="5.4.0" />
       <PackageReference Include="FuzzySharp" Version="2.0.2" />
       <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
