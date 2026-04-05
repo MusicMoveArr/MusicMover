@@ -27,7 +27,7 @@ public class MiniMediaMetadataApiCacheLayerService
     
     public async Task<SearchArtistResponse?> SearchArtistsAsync(string searchTerm)
     {
-        string cacheKey = $"SearchArtistsAsync_{searchTerm}";
+        string cacheKey = $"SearchArtistsAsync_{searchTerm.ToLower()}";
 
         if (_cache.Contains(cacheKey))
         {
@@ -55,7 +55,7 @@ public class MiniMediaMetadataApiCacheLayerService
     
     public async Task<SearchTrackResponse?> SearchTracksAsync(string searchTerm, string artistId, string providerType)
     {
-        string cacheKey = $"SearchTracksAsync_{searchTerm}_{artistId}_{providerType}";
+        string cacheKey = $"SearchTracksAsync_{searchTerm.ToLower()}_{artistId}_{providerType}";
 
         if (_cache.Contains(cacheKey))
         {

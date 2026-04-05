@@ -116,7 +116,7 @@ public class MusicBrainzAPIService
     private static void Delay()
     {
         int elapsed = (int)_apiStopwatch.ElapsedMilliseconds;
-        if (elapsed < 1000)
+        if (elapsed < 1200)
         {
             Thread.Sleep(TimeSpan.FromSeconds(1));
             _apiStopwatch.Restart();

@@ -135,7 +135,7 @@ public class MoveProcessor
                 var totalProgressTask = ctx.AddTask(Markup.Escape($"Processing tracks {ProcessedFiles} of {_filesToProcess.Count + ProcessedFiles}"));
                 totalProgressTask.MaxValue = _filesToProcess.Count;
 
-                int maxDegreeOfParallelism = _options.Parallel ? 4 : 1;
+                int maxDegreeOfParallelism = _options.Parallel ? _options.Threads : 1;
                 AsyncLock progressLock = new AsyncLock();
 
                 await ParallelHelper.ForEachAsync(_filesToProcess, maxDegreeOfParallelism, async mediaHandler =>

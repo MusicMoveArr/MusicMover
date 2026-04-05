@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using MusicMover.Helpers;
 using MusicMover.MediaHandlers;
+using MusicMover.Models;
 using MusicMover.Models.MetadataAPI;
 using MusicMover.Models.MetadataAPI.Entities;
 
@@ -15,6 +16,22 @@ public class MiniMediaMetadataService
 
     private readonly List<string> _providerTypes;
     private readonly TranslationService _translationService;
+
+    private readonly string[] _trackPostfixes =
+    [
+        "Official Audio Release",
+        "Official Music Video",
+        "Official Video",
+        "Original Mix",
+        "(Official)",
+        "[Official]"
+    ];
+    private readonly string[] _featKeywords =
+    [
+        "feat.",
+        "feat ",
+        " ft."
+    ];
     
     public MiniMediaMetadataService(string baseUrl, List<string> providerTypes, TranslationService translationService)
     {
@@ -22,6 +39,159 @@ public class MiniMediaMetadataService
         _translationService = translationService;
         _mediaTagWriteService = new MediaTagWriteService();
         _miniMediaMetadataApiCacheLayerService = new MiniMediaMetadataApiCacheLayerService(baseUrl, providerTypes);
+    }
+
+    private List<TargetTrackModel> GetPossibleTargets(MediaHandler mediaHandler)
+    {
+        var targets = new List<TargetTrackModel>();
+        
+        //replace disc X from album
+        string targetAlbum = mediaHandler?.Album ?? string.Empty;
+        string discPattern = @"(?:[\[(])?(disc|cd)\s*([0-9]+)[\])]?";
+        if (Regex.IsMatch(targetAlbum.ToLower(), discPattern))
+        {
+            targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
+        }
+
+        foreach (var artist in mediaHandler.AllArtistNames)
+        {
+            var translation = _translationService.Translate(mediaHandler);
+            if (translation != null)
+            {
+                targets.Add(new TargetTrackModel(translation.ArtistName, translation.AlbumName, translation.TrackName));
+            }
+
+            targets.Add(new TargetTrackModel(artist, targetAlbum, mediaHandler.Title));
+
+            string? artistInAlbumName = mediaHandler.AllArtistNames.FirstOrDefault(artist =>
+                targetAlbum.Contains(artist, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(artistInAlbumName))
+            {
+                string withoutArtistInAlbum = targetAlbum.Replace(artistInAlbumName, string.Empty, StringComparison.OrdinalIgnoreCase);
+                targets.Add(new TargetTrackModel(artist, withoutArtistInAlbum, mediaHandler.Title));
+            }
+
+            string? artistInTitle = mediaHandler.AllArtistNames.FirstOrDefault(artist => mediaHandler.Title.Contains(artist, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(artistInTitle))
+            {
+                string withoutArtistInTitle = mediaHandler.Title.Replace(artistInTitle, string.Empty, StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(artistInAlbumName))
+                {
+                    targets.Add(new TargetTrackModel(artist, artistInAlbumName, withoutArtistInTitle));
+                }
+
+                targets.Add(new TargetTrackModel(artist, targetAlbum, withoutArtistInTitle));
+            }
+        }
+        
+        foreach (var target in targets.ToList())
+        {
+            foreach (string postfix in _trackPostfixes)
+            {
+                string withoutTitlePostfix = target.Title.Replace(postfix, string.Empty, StringComparison.OrdinalIgnoreCase);
+                string withoutAlbumPostfix = target.Album.Replace(postfix, string.Empty, StringComparison.OrdinalIgnoreCase);
+                
+                if (target.Title.Contains(postfix, StringComparison.OrdinalIgnoreCase))
+                {
+                    targets.Add(new TargetTrackModel(target.Artist, target.Album, withoutTitlePostfix));
+                }
+                if (target.Album.Contains(postfix, StringComparison.OrdinalIgnoreCase))
+                {
+                    targets.Add(new TargetTrackModel(target.Artist, withoutAlbumPostfix, target.Title));
+                }
+            }
+            
+            foreach (string keyword in _featKeywords)
+            {
+                int withoutTitleIndex = target.Title.LastIndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+                int withoutAlbumIndex = target.Album.LastIndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+                
+                if (withoutTitleIndex > 0)
+                {
+                    targets.Add(new TargetTrackModel(target.Artist, target.Album, target.Title.Substring(0, withoutTitleIndex)));
+                }
+                if (withoutAlbumIndex > 0)
+                {
+                    targets.Add(new TargetTrackModel(target.Artist, target.Album.Substring(0, withoutAlbumIndex), target.Title));
+                }
+            }
+        }
+
+        foreach (var target in targets.ToList())
+        {
+            foreach (string value in GetStringOffsets(target.Album, '-'))
+            {
+                targets.Add(new TargetTrackModel(target.Artist, value, target.Title));
+            }
+        }
+
+        foreach (var target in targets.ToList())
+        {
+            foreach (string value in GetStringOffsets(target.Title, '-'))
+            {
+                targets.Add(new TargetTrackModel(target.Artist, target.Album, value));
+            }
+        }
+
+        foreach (var target in targets)
+        {
+            int artistIndex = Math.Max(target.Artist.StartsWith("- ") ? 2 : 0, target.Artist.StartsWith(" - ") ? 3 : 0);
+            int albumIndex = Math.Max(target.Album.StartsWith("- ") ? 2 : 0, target.Album.StartsWith(" - ") ? 3 : 0);
+            int titleIndex = Math.Max(target.Title.StartsWith("- ") ? 2 : 0, target.Title.StartsWith(" - ") ? 3 : 0);
+
+            if (artistIndex > 0)
+            {
+                target.Artist = target.Artist.Substring(artistIndex);
+            }
+            if (albumIndex > 0)
+            {
+                target.Album = target.Album.Substring(albumIndex);
+            }
+            if (titleIndex > 0)
+            {
+                target.Title = target.Title.Substring(titleIndex);
+            }
+
+            target.Artist = target.Artist.TrimEnd(['(', ')', '[', ']']);
+            target.Album = target.Album.TrimEnd(['(', ')', '[', ']']);
+            target.Title = target.Title.TrimEnd(['(', ')', '[', ']']);
+            
+            target.Artist = target.Artist
+                .Replace("|", string.Empty)
+                .Replace("()", string.Empty)
+                .Trim();
+            
+            target.Album = target.Album
+                .Replace("|", string.Empty)
+                .Replace("()", string.Empty)
+                .Trim();
+            
+            target.Title = target.Title
+                .Replace("|", string.Empty)
+                .Replace("()", string.Empty)
+                .Trim();
+        }
+        
+        return targets
+            .Where(target => !string.IsNullOrWhiteSpace(target.Artist))
+            .Where(target => !string.IsNullOrWhiteSpace(target.Title))
+            .GroupBy(target => new { target.Artist, target.Album, target.Title })
+            .Select(target => target.First())
+            .Take(30)
+            .ToList();
+    }
+
+    private List<string> GetStringOffsets(string value, char character)
+    {
+        int offset = 0;
+        List<string> offsets = new List<string>();
+
+        while ((offset = value.IndexOf(character, offset)) > 0)
+        {
+            offsets.Add(value.Substring(0, offset).Trim());
+            offset++;
+        }
+        return offsets;
     }
 
     public async Task<List<SearchTrackEntity>> GetMatchesAsync(
@@ -37,17 +207,8 @@ public class MiniMediaMetadataService
         {
             return new List<SearchTrackEntity>();
         }
-        
-        //replace disc X from album
-        string targetAlbum = mediaHandler?.Album ?? string.Empty;
-        string discPattern = @"(?:[\[(])?(disc|cd)\s*([0-9]+)[\])]?";
-        if (Regex.IsMatch(targetAlbum.ToLower(), discPattern))
-        {
-            targetAlbum = Regex.Replace(targetAlbum.ToLower(), discPattern, string.Empty).TrimEnd();
-        }
 
         string tag_Url = mediaHandler.GetMediaTagValue("url");
-
         if (!string.IsNullOrWhiteSpace(tag_Url) && 
             tag_Url.StartsWith("https://tidal.com/browse/track/") &&
             int.TryParse(tag_Url.Split('/').LastOrDefault(), out int tidalTrackId))
@@ -56,10 +217,11 @@ public class MiniMediaMetadataService
             var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.GetTrackByIdAsync(tidalTrackId.ToString(), "Tidal");
             
             SearchTrackEntity? foundTrack = await ProcessTracksAsync(
-                mediaHandler.AllArtistNames, 
-                searchResultTracks, 
-                mediaHandler.Title, 
-                mediaHandler.Album, 
+                mediaHandler.AllArtistNames,
+                searchResultTracks,
+                mediaHandler.Title,
+                mediaHandler.Album,
+                mediaHandler.Duration,
                 matchPercentage);
             
             if (foundTrack != null)
@@ -67,43 +229,17 @@ public class MiniMediaMetadataService
                 return [foundTrack];
             }
         }
-
-         var translation = _translationService.Translate(mediaHandler);
-         if (translation != null)
-         {
-             List<SearchTrackEntity> foundTracks = await TryArtistAsync(translation.ArtistName, translation.TrackName, translation.AlbumName, matchPercentage);
-             if (foundTracks.Count > 0)
-             {
-                 return foundTracks;
-             }
-         }
         
-        foreach (var artist in mediaHandler.AllArtistNames)
+        var targets = GetPossibleTargets(mediaHandler);
+        foreach (var target in targets)
         {
-            Logger.WriteLine($"Need to match artist: '{artist}', album: '{targetAlbum}', track: '{mediaHandler.Title}'", true);
-            Logger.WriteLine($"Searching for artist '{artist}'", true);
+            Logger.WriteLine($"Need to match artist: '{target.Artist}', album: '{target.Album}', track: '{target.Title}'", true);
+            Logger.WriteLine($"Searching for artist '{target.Artist}'", true);
 
-            List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaHandler.Title, targetAlbum, matchPercentage);
+            List<SearchTrackEntity> foundTracks = await TryArtistAsync(target.Artist, target.Title, target.Album, mediaHandler.Duration, matchPercentage);
             if (foundTracks.Count > 0)
             {
                 return foundTracks;
-            }
-        }
-
-        string? artistInAlbumName = mediaHandler.AllArtistNames.FirstOrDefault(artist => targetAlbum.ToLower().Contains(artist.ToLower()));
-        if (!string.IsNullOrWhiteSpace(artistInAlbumName))
-        {
-            string withoutArtistInAlbum = targetAlbum.ToLower().Replace(artistInAlbumName.ToLower(), string.Empty);
-            foreach (var artist in mediaHandler.AllArtistNames)
-            {
-                Logger.WriteLine($"Need to match artist: '{artist}', album: '{withoutArtistInAlbum}', track: '{mediaHandler.Title}'", true);
-                Logger.WriteLine($"Searching for artist '{artist}'", true);
-
-                List<SearchTrackEntity> foundTracks = await TryArtistAsync(artist, mediaHandler.Title, withoutArtistInAlbum, matchPercentage);
-                if (foundTracks.Count > 0)
-                {
-                    return foundTracks;
-                }
             }
         }
         return new List<SearchTrackEntity>();
@@ -113,6 +249,7 @@ public class MiniMediaMetadataService
         string? artistName, 
         string targetTrackTitle,
         string targetAlbumTitle,
+        int trackDuration,
         int matchPercentage)
     {
         List<SearchTrackEntity> foundTracks = new List<SearchTrackEntity>();
@@ -158,7 +295,13 @@ public class MiniMediaMetadataService
                     Logger.WriteLine($"MiniMedia Metadata API, search query: '{artist.Name} - {targetTrackTitle}', Provider: {artist.ProviderType}, ArtistId: '{artist.Id}'", true);
                     var searchResultTracks = await _miniMediaMetadataApiCacheLayerService.SearchTracksAsync(targetTrackTitle, artist.Id, artist.ProviderType);
 
-                    SearchTrackEntity? foundTrack = await ProcessTracksAsync([artist.Name], searchResultTracks, targetTrackTitle, targetAlbumTitle, matchPercentage);
+                    SearchTrackEntity? foundTrack = await ProcessTracksAsync(
+                        [artist.Name], 
+                        searchResultTracks, 
+                        targetTrackTitle, 
+                        targetAlbumTitle, 
+                        trackDuration,
+                        matchPercentage);
                     
                     if (foundTrack != null)
                     {
@@ -180,11 +323,11 @@ public class MiniMediaMetadataService
         SearchTrackResponse searchTrackResponse,
         string targetTrackTitle,
         string targetAlbumTitle,
+        int trackDuration,
         int matchPercentage)
     {
-        
         List<SearchTrackEntity> matchesFound = new List<SearchTrackEntity>();
-        List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchTrackResponse.Tracks, targetTrackTitle, matchPercentage);
+        List<SearchTrackEntity> bestTrackMatches = FindBestMatchingTracks(searchTrackResponse.Tracks, targetTrackTitle, trackDuration, matchPercentage);
 
         foreach (var result in bestTrackMatches)
         {
@@ -226,7 +369,7 @@ public class MiniMediaMetadataService
                 continue;
             }
 
-            var trackMatches = FindBestMatchingTracks([result], targetTrackTitle, matchPercentage);
+            var trackMatches = FindBestMatchingTracks([result], targetTrackTitle, trackDuration, matchPercentage);
 
             if(trackMatches.Count > 0)
             {
@@ -283,6 +426,7 @@ public class MiniMediaMetadataService
     private List<SearchTrackEntity> FindBestMatchingTracks(
         List<SearchTrackEntity> searchResults, 
         string targetTrackTitle,
+        int trackDuration,
         int matchRatioPercentage)
     {
         //strict name matching
@@ -290,8 +434,10 @@ public class MiniMediaMetadataService
             ?.Select(t => new
             {
                 TitleMatchedFor = FuzzyHelper.FuzzRatioToLower(targetTrackTitle, t.Name),
+                DurationOffsetBy = Math.Abs(trackDuration - (int)t.Duration.TotalSeconds),
                 Track = t
             })
+            //.Where(match => match.DurationOffsetBy is > -10 and < 10)
             .Where(match => FuzzyHelper.ExactNumberMatch(targetTrackTitle, match.Track.Name))
             .Where(match => match.TitleMatchedFor >= matchRatioPercentage)
             .OrderByDescending(result => result.TitleMatchedFor)
@@ -406,6 +552,20 @@ public class MiniMediaMetadataService
             _mediaTagWriteService.UpdateTag(mediaHandler, "Discogs Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
             //_mediaTagWriteService.UpdateTag(mediaFileInfo.TrackInfo, "Discogs Artist Href", foundTrack.Album, ref trackInfoUpdated);
         }
+        else if (foundTrack.ProviderType == "SoundCloud")
+        {
+            _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Track Id", foundTrack.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Track Url", foundTrack.Url, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Album Id", foundTrack.Album.Id, ref trackInfoUpdated);
+            _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Album Url", foundTrack.Album.Url, ref trackInfoUpdated);
+
+            if (DateTime.TryParse(foundTrack.Album.ReleaseDate, out DateTime releaseDate) && releaseDate.Year > 1000)
+            {
+                _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Album Release Date", foundTrack.Album.ReleaseDate, ref trackInfoUpdated);
+            }
+            
+            _mediaTagWriteService.UpdateTag(mediaHandler, "SoundCloud Artist Id", foundTrack.Album.ArtistId, ref trackInfoUpdated);
+        }
         
         if (string.IsNullOrWhiteSpace(mediaHandler.Title) || overWriteTrack)
         {
@@ -423,7 +583,7 @@ public class MiniMediaMetadataService
         {
             _mediaTagWriteService.UpdateTag(mediaHandler, "Artist",  mainArtist, ref trackInfoUpdated);
         }
-        _mediaTagWriteService.UpdateTag(mediaHandler, "ARTISTS", artists, ref trackInfoUpdated);
+        //_mediaTagWriteService.UpdateTag(mediaHandler, "ARTISTS", artists, ref trackInfoUpdated);
 
         _mediaTagWriteService.UpdateTag(mediaHandler, "ISRC", foundTrack.ISRC, ref trackInfoUpdated);
         _mediaTagWriteService.UpdateTag(mediaHandler, "UPC", foundTrack.Album.UPC, ref trackInfoUpdated);

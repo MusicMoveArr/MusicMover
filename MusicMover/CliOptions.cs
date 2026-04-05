@@ -9,6 +9,7 @@ public class CliOptions
     public required bool CreateArtistDirectory { get; init; }
     public required bool CreateAlbumDirectory { get; init; }
     public required bool Parallel { get; init; }
+    public required int Threads { get; init; }
     public required int SkipFromDirAmount { get; init; }
     public required bool DeleteDuplicateFrom { get; init; }
     public required bool DeleteDuplicateTo { get; init; }

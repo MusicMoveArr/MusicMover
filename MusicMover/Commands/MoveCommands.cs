@@ -223,7 +223,7 @@ public class MoveCommands : ICommand
     public string MetadataApiBaseUrl { get; set; } = string.Empty;
     
     [CommandOption("metadata-api-providers", 
-        Description = "MiniMedia's Metadata API Provider (Any, Deezer, MusicBrainz, Spotify, Tidal, Discogs).", 
+        Description = "MiniMedia's Metadata API Provider (Any, Deezer, MusicBrainz, Spotify, Tidal, Discogs, SoundCloud).", 
         EnvironmentVariable = "MOVE_METADATAAPIPROVIDERS",
         IsRequired = false)]
     public List<string> MetadataApiProviders { get; set; }
@@ -311,6 +311,12 @@ public class MoveCommands : ICommand
         EnvironmentVariable = "MOVE_FILENAME_TAG_GUESSING",
         IsRequired = false)]
     public bool FileNameTagGuessing { get; set; } = false;
+
+    [CommandOption("threads",
+        Description = "The amount of threads to use, Parallel option must be enabled as well.",
+        EnvironmentVariable = "MOVE_THREADS",
+        IsRequired = false)]
+    public int Threads { get; set; } = 4;
     
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -350,6 +356,7 @@ public class MoveCommands : ICommand
             CreateAlbumDirectory = CreateAlbumDirectory,
             CreateArtistDirectory = CreateArtistDirectory,
             Parallel = Parallel,
+            Threads = Threads,
             SkipFromDirAmount = SkipDirectories,
             DeleteDuplicateFrom = DeleteDuplicateFrom,
             DeleteDuplicateTo = DeleteDuplicateTo,
@@ -395,7 +402,7 @@ public class MoveCommands : ICommand
             MoveUntaggableFilesPath += '/';
         }
 
-        string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal", "Discogs" ];
+        string[] supportedProviderTypes = [ "Any", "Deezer", "MusicBrainz", "Spotify", "Tidal", "Discogs", "SoundCloud" ];
         if (!string.IsNullOrWhiteSpace(MetadataApiBaseUrl) && (MetadataApiProviders?.Count == 0 ||
             !MetadataApiProviders?.Any(provider => supportedProviderTypes.Contains(provider)) == true))
         {
