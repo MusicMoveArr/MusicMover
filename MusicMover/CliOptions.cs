@@ -54,4 +54,5 @@ public class CliOptions
     public required TimeSpan AcoustIdMaxTimeSpan { get; init; }
     public required bool OnlyNewFiles { get; init; }
     public required bool FileNameTagGuessing { get; init; }
+    public required bool KeepSourceFile { get; init; }
 }

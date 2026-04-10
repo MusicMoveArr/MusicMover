@@ -54,7 +54,10 @@ public class MoveMultipleSimilarFilesRule : Rule
                 !string.Equals(StateObject.MediaHandler.FileInfo.FullName, newFromFilePath))
             {
                 MediaFileHelper.DumpCoverArt(StateObject.MediaHandler, StateObject.ToAlbumDirInfo, StateObject.Options);
-                StateObject.MediaHandler.FileInfo.Delete();
+                if (!StateObject.Options.KeepSourceFile)
+                {
+                    StateObject.MediaHandler.FileInfo.Delete();
+                }
             }
 
             if (saveSuccess)

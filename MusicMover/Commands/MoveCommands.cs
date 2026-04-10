@@ -318,6 +318,12 @@ public class MoveCommands : ICommand
         IsRequired = false)]
     public int Threads { get; set; } = 4;
     
+    [CommandOption("keep-source-file",
+        Description = "Keep the source file, don't delete only after moving it to your library.",
+        EnvironmentVariable = "MOVE_KEEP_SOURCE_FILE",
+        IsRequired = false)]
+    public bool KeepSourceFile { get; set; } = false;
+    
     public async ValueTask ExecuteAsync(IConsole console)
     {
         MoveCommands.Debug = DebugInfo;
@@ -389,7 +395,8 @@ public class MoveCommands : ICommand
             DumpCoverFilename = DumpCoverFilename,
             AcoustIdMaxTimeSpan = AcoustIdMaxTimeSpan,
             OnlyNewFiles = OnlyNewFiles,
-            FileNameTagGuessing = FileNameTagGuessing
+            FileNameTagGuessing = FileNameTagGuessing,
+            KeepSourceFile = KeepSourceFile
         };
 
         if (!string.IsNullOrWhiteSpace(MoveUntaggableFilesPath) && !Directory.Exists(MoveUntaggableFilesPath))

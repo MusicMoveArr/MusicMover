@@ -54,7 +54,8 @@ public class MoveOneSimilarFileRule : Rule
             if (await _mediaTagWriteService.SafeSaveAsync(StateObject.MediaHandler, new FileInfo(newFromFilePath)))
             {
                 MediaFileHelper.DumpCoverArt(StateObject.MediaHandler, StateObject.ToAlbumDirInfo, StateObject.Options);
-                if (!string.Equals(StateObject.MediaHandler.FileInfo.FullName, newFromFilePath))
+                if (!string.Equals(StateObject.MediaHandler.FileInfo.FullName, newFromFilePath) &&
+                    !StateObject.Options.KeepSourceFile)
                 {
                     StateObject.MediaHandler.FileInfo.Delete();
                 }
@@ -101,7 +102,10 @@ public class MoveOneSimilarFileRule : Rule
                 !string.Equals(StateObject.MediaHandler.FileInfo.FullName, newFromFilePath))
             {
                 MediaFileHelper.DumpCoverArt(StateObject.MediaHandler, StateObject.ToAlbumDirInfo, StateObject.Options);
-                StateObject.MediaHandler.FileInfo.Delete();
+                if (!StateObject.Options.KeepSourceFile)
+                {
+                    StateObject.MediaHandler.FileInfo.Delete();
+                }
             }
 
             if (saveSuccess)
