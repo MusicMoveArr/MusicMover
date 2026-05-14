@@ -46,9 +46,9 @@ public class MediaHandlerFFmpegTests
 
         MediaHandlerFFmpeg inputFile = new MediaHandlerFFmpeg(fileInfo);
         inputFile.SetMediaTagValue(Guid.NewGuid().ToString()[..10], tagName);
-        inputFile.SaveTo(targetFileInfo);
+        inputFile.SaveTo(targetFileInfo, out FileInfo outputFileInfo);
         
-        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(targetFileInfo);
+        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(outputFileInfo);
         bool hasTagValue = !string.IsNullOrWhiteSpace(outputFile.GetMediaTagValue(tagName));
         hasTagValue.ShouldBeTrue($"Tag should be written but is silently dropped '{tagName}'\r\n{fileInfo.FullName}");
     }
@@ -82,9 +82,9 @@ public class MediaHandlerFFmpegTests
         {
             inputFile.SetMediaTagValue(Guid.NewGuid().ToString()[..10], tagName);
         }
-        inputFile.SaveTo(targetFileInfo);
+        inputFile.SaveTo(targetFileInfo, out FileInfo outputFileInfo);
         
-        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(targetFileInfo);
+        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(outputFileInfo);
         foreach (string tagName in tagNames)
         {
             bool hasTagValue = !string.IsNullOrWhiteSpace(outputFile.GetMediaTagValue(tagName));
@@ -120,9 +120,9 @@ public class MediaHandlerFFmpegTests
         {
             inputFile.SetMediaTagValue(Guid.NewGuid().ToString()[..10], tagName);
         }
-        inputFile.SaveTo(targetFileInfo);
+        inputFile.SaveTo(targetFileInfo, out FileInfo outputFileInfo);
         
-        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(targetFileInfo);
+        MediaHandlerFFmpeg outputFile = new MediaHandlerFFmpeg(outputFileInfo);
         bool anyTagExisted = false;
         foreach (string tagName in tagNames)
         {

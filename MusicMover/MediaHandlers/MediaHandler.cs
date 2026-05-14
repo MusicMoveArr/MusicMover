@@ -105,7 +105,7 @@ public abstract class MediaHandler
     public string ArtistUpper => Artist.ToUpper();
     public string AlbumUpper => Album.ToUpper();
     
-    public abstract bool SaveTo(FileInfo targetFile);
+    public abstract bool SaveTo(FileInfo targetFile, out FileInfo fileOutput);
     protected abstract void MapMediaTag(string key, string value);
 
     public MediaHandler()

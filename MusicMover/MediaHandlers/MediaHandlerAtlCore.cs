@@ -120,8 +120,9 @@ public class MediaHandlerAtlCore : MediaHandler
         RefreshAllArtistNames();
     }
     
-    public override bool SaveTo(FileInfo targetFile)
+    public override bool SaveTo(FileInfo targetFile, out FileInfo fileOutput)
     {
+        fileOutput = targetFile;
         foreach (var keyValue in base.MediaTags)
         {
             MapMediaTag(keyValue.Key, keyValue.Value);

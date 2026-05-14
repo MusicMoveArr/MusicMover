@@ -21,7 +21,7 @@ public class MediaHandlerDummy : MediaHandler
     public override DateTime? Date => DateTime.Now;
     public override string? CatalogNumber => GetMediaTagValue(nameof(CatalogNumber));
     public override string ISRC => GetMediaTagValue(nameof(ISRC));
-    public override bool SaveTo(FileInfo targetFile)
+    public override bool SaveTo(FileInfo targetFile, out FileInfo fileOutput)
     {
         throw new NotImplementedException();
     }

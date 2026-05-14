@@ -32,12 +32,13 @@ public class MediaTagWriteService
         
         bool success = false;
         CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        FileInfo outputFileInfo = null;
         
         var writeTask = Task.Run(() =>
         {
             try
             {
-                success = track.SaveTo(new FileInfo(tempFile));
+                success = track.SaveTo(new FileInfo(tempFile), out outputFileInfo);
             }
             catch (Exception ex)
             {
@@ -51,13 +52,13 @@ public class MediaTagWriteService
             cancellationToken.Cancel();
         }
 
-        if (success && File.Exists(tempFile))
+        if (success && File.Exists(outputFileInfo.FullName))
         {
-            File.Move(tempFile, targetFile.FullName, true);
+            File.Move(outputFileInfo.FullName, outputFileInfo.FullName.Replace(".bak", string.Empty), true);
         }
-        else if (File.Exists(tempFile))
+        else if (File.Exists(outputFileInfo.FullName))
         {
-            File.Delete(tempFile);
+            File.Delete(outputFileInfo.FullName);
         }
 
         return success;
