@@ -27,6 +27,15 @@ public class MediaHandlerFFmpeg : MediaHandler
     public override DateTime? Date => GetMediaTagDateTime("date", "originaldate");
     public override string? CatalogNumber => GetMediaTagValue("CATALOGNUMBER");
     public override string ISRC => GetMediaTagValue("ISRC");
+    
+    private static readonly HashSet<string> _m4aIgnoreTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "handler_name", "language", "MAJOR_BRAND", "MINOR_VERSION", "COMPATIBLE_BRANDS", "ENCODER"
+    };
+    private static readonly HashSet<string> _aiffSupportedTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "title", "author", "copyright", "comment"
+    };
 
     public MediaHandlerFFmpeg(FileInfo fileInfo)
         : base(fileInfo)
@@ -54,22 +63,49 @@ public class MediaHandlerFFmpeg : MediaHandler
 
         bool success = false;
         string tempTargetFile = targetFile.FullName + FileInfo.Extension;
+
+        string[] mappingExtensions = [".flac", ".mp3", "opus", "m4a"];
+        string[] streamExtensions = [".opus"];
+        string metadataFlag = streamExtensions.Any(ext => string.Equals(FileInfo.Extension, ext, StringComparison.OrdinalIgnoreCase))
+            ? "-metadata:s:a:0" : "-metadata";
         
         try
         {
-            success = FFMpegArguments
+            var ffmpegArgs = FFMpegArguments
                 .FromFileInput(FileInfo.FullName)
                 .OutputToFile(tempTargetFile, overwrite: true, options =>
                 {
                     options.WithCustomArgument("-codec copy");
-                    options.WithCustomArgument("-map 0:a");
+
+                    if (mappingExtensions.Any(ext =>
+                            string.Equals(FileInfo.Extension, ext, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        options.WithCustomArgument("-map 0:a");
+                    }
+                    else
+                    {
+                        options.WithCustomArgument("-map 0");
+                    }
+                    
+                    if (string.Equals(FileInfo.Extension, ".m4a", StringComparison.OrdinalIgnoreCase))
+                    {
+                        options.WithCustomArgument("-movflags +use_metadata_tags");
+                    }
+
+                    bool isM4A = string.Equals(FileInfo.Extension, ".m4a", StringComparison.OrdinalIgnoreCase);
                     
                     foreach (var keyValue in _audioStream.Tags)
                     {
-                        options = options.WithCustomArgument($"-metadata:s:a:0 \"{keyValue.Key}\"=\"{keyValue.Value}\"");
+                        string tagKey = keyValue.Key;
+                        if (isM4A && _m4aIgnoreTags.Contains(keyValue.Key))
+                        {
+                            continue;
+                        }
+                        options = options.WithCustomArgument($"{metadataFlag} \"{tagKey}\"=\"{keyValue.Value}\"");
                     }
-                })
-                .ProcessSynchronously();
+                });
+            
+            success = ffmpegArgs.ProcessSynchronously();
         }
         catch (Exception e)
         {
@@ -80,7 +116,6 @@ public class MediaHandlerFFmpeg : MediaHandler
             }
             throw;
         }
-        
         
         //small trick to allow FFmpeg saving to ".bak" file by applying the original file extension
         if (success)

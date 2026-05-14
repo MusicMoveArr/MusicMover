@@ -33,14 +33,14 @@
       <PackageReference Include="MusicMoverPlugin" Version="1.0.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
       <PackageReference Include="Polly" Version="8.6.6" />
-      <PackageReference Include="Quartz" Version="3.17.1" />
+      <PackageReference Include="Quartz" Version="3.18.1" />
       <PackageReference Include="RestSharp" Version="114.0.0" />
       <PackageReference Include="ShuffleList" Version="1.0.0" />
       <PackageReference Include="SmartFormat" Version="3.6.1" />
-      <PackageReference Include="Spectre.Console" Version="0.55.0" />
+      <PackageReference Include="Spectre.Console" Version="0.55.2" />
       <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
-      <PackageReference Include="System.Runtime.Caching" Version="10.0.5" />
-      <PackageReference Include="z440.atl.core" Version="7.12.0" />
+      <PackageReference Include="System.Runtime.Caching" Version="10.0.8" />
+      <PackageReference Include="z440.atl.core" Version="7.13.0" />
     </ItemGroup>
 
     <ItemGroup>
