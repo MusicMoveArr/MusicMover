@@ -237,7 +237,8 @@ public abstract class MediaHandler
     public async Task<bool> GenerateSaveFingerprintAsync()
     {
         if (!string.IsNullOrWhiteSpace(AcoustIdFingerPrint) &&
-            AcoustIdFingerPrintDuration > 0)
+            AcoustIdFingerPrintDuration > 0 ||
+            string.IsNullOrWhiteSpace(FileInfo?.FullName))
         {
             return false;
         }
