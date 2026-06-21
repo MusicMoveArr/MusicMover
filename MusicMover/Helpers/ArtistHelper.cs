@@ -123,4 +123,9 @@ public static class ArtistHelper
 
         return input;
     }
+
+    public static bool IsVariousArtists(string name)
+    {
+        return FuzzyHelper.FuzzRatioToLower(name, "various artists") > 90;
+    }
 }

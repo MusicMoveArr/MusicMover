@@ -175,6 +175,7 @@ public class MiniMediaMetadataService
         return targets
             .Where(target => !string.IsNullOrWhiteSpace(target.Artist))
             .Where(target => !string.IsNullOrWhiteSpace(target.Title))
+            .Where(target => !ArtistHelper.IsVariousArtists(target.Artist))
             .GroupBy(target => new { target.Artist, target.Album, target.Title })
             .Select(target => target.First())
             .Take(30)
